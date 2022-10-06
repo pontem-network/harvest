@@ -1,7 +1,9 @@
 module staking_admin::staking {
     use std::signer;
 
+    use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
+    use aptos_std::event::{Self, EventHandle};
     use aptos_std::table::{Self, Table};
 
     //
@@ -28,7 +30,21 @@ module staking_admin::staking {
         // total staked
         total: u128,
         // stake ledger
-        ledger: Table<address, Coin<CoinType>>
+        ledger: Table<address, Coin<CoinType>>,
+        // stake events
+        stake_events: EventHandle<StakeEvent>,
+        // unstake events
+        unstake_events: EventHandle<UnstakeEvent>,
+    }
+
+    struct StakeEvent has drop, store {
+        user_address: address,
+        amount: u64,
+    }
+
+    struct UnstakeEvent has drop, store {
+        user_address: address,
+        amount: u64,
     }
 
     //
@@ -44,6 +60,8 @@ module staking_admin::staking {
             StakePool<CoinType> {
                 total: 0,
                 ledger: table::new(),
+                stake_events: account::new_event_handle<StakeEvent>(pool_admin),
+                unstake_events: account::new_event_handle<UnstakeEvent>(pool_admin),
             }
         );
     }
@@ -78,8 +96,7 @@ module staking_admin::staking {
 
         let user_address = signer::address_of(user);
         let pool = borrow_global_mut<StakePool<CoinType>>(@staking_admin);
-
-        pool.total = pool.total + (coin::value(&coins) as u128);
+        let amount = coin::value(&coins);
 
         if (table::contains(&pool.ledger, user_address)) {
             let staked_coins = table::borrow_mut(&mut pool.ledger, user_address);
@@ -87,7 +104,14 @@ module staking_admin::staking {
             coin::merge(staked_coins, coins);
         } else {
             table::add(&mut pool.ledger, user_address, coins);
-        }
+        };
+
+        pool.total = pool.total + (amount as u128);
+
+        event::emit_event<StakeEvent>(
+            &mut pool.stake_events,
+            StakeEvent { user_address, amount },
+        );
     }
 
     public fun unstake<CoinType>(user: &signer, amount: u64): Coin<CoinType> acquires StakePool {
@@ -103,6 +127,12 @@ module staking_admin::staking {
         assert!(amount <= coin::value(staked_coins), ERR_NOT_ENOUGH_BALANCE);
 
         pool.total = pool.total - (amount as u128);
+
+        event::emit_event<UnstakeEvent>(
+            &mut pool.unstake_events,
+            UnstakeEvent { user_address, amount },
+        );
+
         coin::extract(staked_coins, amount)
     }
 }
