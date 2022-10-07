@@ -5,6 +5,7 @@ module staking_admin::staking {
     use aptos_framework::coin::{Self, Coin};
     use aptos_std::event::{Self, EventHandle};
     use aptos_std::table::{Self, Table};
+    use liquidswap_lp::lp_coin::LP;
 
     //
     // Errors.
@@ -26,11 +27,13 @@ module staking_admin::staking {
     const ERR_NO_PERMISSIONS: u64 = 104;
 
     /// Core data structures
-    struct StakePool<phantom CoinType> has key {
+    struct StakePool<phantom X, phantom Y, phantom Curve> has key {
         // total staked
         total: u128,
+        // pool coins
+        coins: Coin<LP<X, Y, Curve>>,
         // stake ledger
-        ledger: Table<address, Coin<CoinType>>,
+        ledger: Table<address, u64>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
         // unstake events
@@ -51,14 +54,15 @@ module staking_admin::staking {
     // Pool config
     //
 
-    public entry fun initialize<CoinType>(pool_admin: &signer) {
+    public entry fun initialize<X, Y, Curve>(pool_admin: &signer) {
         assert!(signer::address_of(pool_admin) == @staking_admin, ERR_NO_PERMISSIONS);
-        assert!(!exists<StakePool<CoinType>>(@staking_admin), ERR_POOL_ALREADY_EXISTS);
+        assert!(!exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_POOL_ALREADY_EXISTS);
 
         move_to(
             pool_admin,
-            StakePool<CoinType> {
+            StakePool<X, Y, Curve> {
                 total: 0,
+                coins: coin::zero(),
                 ledger: table::new(),
                 stake_events: account::new_event_handle<StakeEvent>(pool_admin),
                 unstake_events: account::new_event_handle<UnstakeEvent>(pool_admin),
@@ -70,18 +74,18 @@ module staking_admin::staking {
     // Getter functions
     //
 
-    public fun get_total_stake<CoinType>(): u128 acquires StakePool {
-        assert!(exists<StakePool<CoinType>>(@staking_admin), ERR_NO_POOL);
+    public fun get_total_stake<X, Y, Curve>(): u128 acquires StakePool {
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
 
-        borrow_global<StakePool<CoinType>>(@staking_admin).total
+        borrow_global<StakePool<X, Y, Curve>>(@staking_admin).total
     }
 
-    public fun get_user_stake<CoinType>(user_address: address): u64 acquires StakePool {
-        assert!(exists<StakePool<CoinType>>(@staking_admin), ERR_NO_POOL);
+    public fun get_user_stake<X, Y, Curve>(user_address: address): u64 acquires StakePool {
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
 
-        let pool = borrow_global<StakePool<CoinType>>(@staking_admin);
+        let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_admin);
         if (table::contains(&pool.ledger, user_address)) {
-            coin::value(table::borrow(&pool.ledger, user_address))
+            *table::borrow(&pool.ledger, user_address)
         } else {
             0
         }
@@ -91,21 +95,18 @@ module staking_admin::staking {
     // Public functions
     //
 
-    public fun stake<CoinType>(user: &signer, coins: Coin<CoinType>) acquires StakePool {
-        assert!(exists<StakePool<CoinType>>(@staking_admin), ERR_NO_POOL);
+    public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>) acquires StakePool {
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
 
         let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<CoinType>>(@staking_admin);
         let amount = coin::value(&coins);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let user_staked_amount =
+            table::borrow_mut_with_default(&mut pool.ledger, user_address, 0);
 
-        if (table::contains(&pool.ledger, user_address)) {
-            let staked_coins = table::borrow_mut(&mut pool.ledger, user_address);
+        coin::merge(&mut pool.coins, coins);
 
-            coin::merge(staked_coins, coins);
-        } else {
-            table::add(&mut pool.ledger, user_address, coins);
-        };
-
+        *user_staked_amount = *user_staked_amount + amount;
         pool.total = pool.total + (amount as u128);
 
         event::emit_event<StakeEvent>(
@@ -114,25 +115,27 @@ module staking_admin::staking {
         );
     }
 
-    public fun unstake<CoinType>(user: &signer, amount: u64): Coin<CoinType> acquires StakePool {
-        assert!(exists<StakePool<CoinType>>(@staking_admin), ERR_NO_POOL);
+    public fun unstake<X, Y, Curve>(user: &signer, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool {
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
 
         let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<CoinType>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
 
         assert!(table::contains(&pool.ledger, user_address), ERR_NO_STAKE);
 
-        let staked_coins = table::borrow_mut(&mut pool.ledger, user_address);
+        let user_staked_amount =
+            table::borrow_mut(&mut pool.ledger, user_address);
 
-        assert!(amount <= coin::value(staked_coins), ERR_NOT_ENOUGH_BALANCE);
+        assert!(amount <= *user_staked_amount, ERR_NOT_ENOUGH_BALANCE);
 
         pool.total = pool.total - (amount as u128);
+        *user_staked_amount = *user_staked_amount - amount;
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
             UnstakeEvent { user_address, amount },
         );
 
-        coin::extract(staked_coins, amount)
+        coin::extract(&mut pool.coins, amount)
     }
 }
