@@ -8,5 +8,13 @@ staking_admin = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d
 
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'
-rev = '555b33b4d0cc7baa19ddca4f7f0873907691e25b'
+rev = '985f19d40457a5f09f2d741b1feca6bf7ba1f8a6'
 subdir = 'aptos-move/framework/aptos-framework'
+
+[dependencies.Liquidswap]
+git = 'https://github.com/pontem-network/liquidswap.git'
+rev = 'v0.4.0'
+
+[dependencies.TestCoins]
+git = 'https://github.com/pontem-network/test-coins.git'
+rev = 'v0.1.2'
