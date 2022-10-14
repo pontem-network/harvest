@@ -89,8 +89,6 @@ module staking_admin::liq_stake_tests {
         assert!(acc_reward == 0, 1);
         assert!(last_updated == start_time, 1);
         assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 0, 1);
-        assert!(liq_stake::get_pool_total_earned<BTC, USDT, Uncorrelated>() == 0, 1);
-        assert!(liq_stake::get_pool_total_paid<BTC, USDT, Uncorrelated>() == 0, 1);
     }
 
     #[test]
@@ -183,11 +181,10 @@ module staking_admin::liq_stake_tests {
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
 
         // check stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
         assert!(unobtainable_reward == 0, 1);
         assert!(earned_reward == 0, 1);
-        assert!(harvested_reward == 0, 1);
 
         // wait 10 seconds
         timestamp::update_global_time_for_test_secs(start_time + 10);
@@ -201,14 +198,12 @@ module staking_admin::liq_stake_tests {
         // (reward_per_sec_rate * time passed / total_staked) + previous period
         assert!(acc_reward == 1 * SIX_DECIMALS, 1);
         assert!(last_updated == start_time + 10, 1);
-        assert!(liq_stake::get_pool_total_earned<BTC, USDT, Uncorrelated>() == 100 * SIX_DECIMALS, 1);
 
         // check alice's stake
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
         assert!(unobtainable_reward == 100 * SIX_DECIMALS, 1);
         assert!(earned_reward == 100 * SIX_DECIMALS, 1);
-        assert!(harvested_reward == 0, 1);
 
         // stake 50 LP from bob
         let coins =
@@ -216,13 +211,12 @@ module staking_admin::liq_stake_tests {
         liq_stake::stake<BTC, USDT, Uncorrelated>(&bob_acc, coins);
 
         // check bob's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
         // stake amount * pool acc_reward
         // accumulated benefit that does not belong to bob
         assert!(unobtainable_reward == 50 * SIX_DECIMALS, 1);
         assert!(earned_reward == 0, 1);
-        assert!(harvested_reward == 0, 1);
 
         // stake 100 LP more from alice
         let coins =
@@ -241,21 +235,18 @@ module staking_admin::liq_stake_tests {
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
         assert!(acc_reward == 1400000, 1);
         assert!(last_updated == start_time + 20, 1);
-        assert!(liq_stake::get_pool_total_earned<BTC, USDT, Uncorrelated>() == 200 * SIX_DECIMALS, 1);
 
         // check alice's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
         assert!(unobtainable_reward == 280 * SIX_DECIMALS, 1);
         assert!(earned_reward == 180 * SIX_DECIMALS, 1);
-        assert!(harvested_reward == 0, 1);
 
         // check bob's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
         assert!(unobtainable_reward == 70 * SIX_DECIMALS, 1);
         assert!(earned_reward == 20 * SIX_DECIMALS, 1);
-        assert!(harvested_reward == 0, 1);
 
         // unstake 100 LP from alice
         let coins =
@@ -263,11 +254,10 @@ module staking_admin::liq_stake_tests {
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
 
         // check alice's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
         assert!(unobtainable_reward == 140 * SIX_DECIMALS, 1);
         assert!(earned_reward == 180 * SIX_DECIMALS, 1);
-        assert!(harvested_reward == 0, 1);
 
         // wait 10 seconds
         timestamp::update_global_time_for_test_secs(start_time + 30);
@@ -281,21 +271,18 @@ module staking_admin::liq_stake_tests {
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
         assert!(acc_reward == 2066666, 1);
         assert!(last_updated == start_time + 30, 1);
-        assert!(liq_stake::get_pool_total_earned<BTC, USDT, Uncorrelated>() == 299999900, 1);
 
         // check alice's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
         assert!(unobtainable_reward == 206666600, 1);
         assert!(earned_reward == 246666600, 1);
-        assert!(harvested_reward == 0, 1);
 
         // check bob's stake parameters
-        let (unobtainable_reward, earned_reward, harvested_reward) =
+        let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
         assert!(unobtainable_reward == 103333300, 1);
         assert!(earned_reward == 53333300, 1);
-        assert!(harvested_reward == 0, 1);
     }
 
     #[test]
@@ -329,18 +316,6 @@ module staking_admin::liq_stake_tests {
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pool_total_staked_fails_if_pool_does_not_exist() {
         liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>();
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
-    public fun test_get_pool_total_earned_fails_if_pool_does_not_exist() {
-        liq_stake::get_pool_total_earned<BTC, USDT, Uncorrelated>();
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
-    public fun test_get_pool_total_paid_fails_if_pool_does_not_exist() {
-        liq_stake::get_pool_total_paid<BTC, USDT, Uncorrelated>();
     }
 
     #[test]
