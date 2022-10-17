@@ -1,10 +1,11 @@
 module staking_admin::liq_stake {
     use std::signer;
 
+    use aptos_std::event::{Self, EventHandle};
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
-    use aptos_std::event::{Self, EventHandle};
+
     use liquidswap_lp::lp_coin::LP;
 
     use coin_creator::liq::LIQ;
@@ -55,7 +56,7 @@ module staking_admin::liq_stake {
         // pool reward LIQ per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + acc_reward (previous period)
-        acc_reward: u64,
+        accum_reward: u64,
         // last acc_reward & reward_per_sec update time
         last_updated: u64,
         // pool staked LP coins
@@ -80,25 +81,6 @@ module staking_admin::liq_stake {
     }
 
     //
-    // Events
-    //
-
-    struct StakeEvent has drop, store {
-        user_address: address,
-        amount: u64,
-    }
-
-    struct UnstakeEvent has drop, store {
-        user_address: address,
-        amount: u64,
-    }
-
-    struct HarvestEvent has drop, store {
-        user_address: address,
-        amount: u64,
-    }
-
-    //
     // Pool config
     //
 
@@ -111,7 +93,7 @@ module staking_admin::liq_stake {
             pool_admin,
             StakePool<X, Y, Curve> {
                 reward_per_sec,
-                acc_reward: 0,
+                accum_reward: 0,
                 last_updated: timestamp::now_seconds(),
                 lp_coins: coin::zero(),
                 liq_coins: coin::zero(),
@@ -135,7 +117,7 @@ module staking_admin::liq_stake {
     // Getter functions
     //
 
-    public fun get_pool_total_staked<X, Y, Curve>(): u64 acquires StakePool {
+    public fun get_pool_total_stake<X, Y, Curve>(): u64 acquires StakePool {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
 
         coin::value(&borrow_global<StakePool<X, Y, Curve>>(@staking_admin).lp_coins)
@@ -164,9 +146,9 @@ module staking_admin::liq_stake {
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
 
         // update pool acc_reward and timestamp
-        update_acc_reward(pool);
+        update_accum_reward(pool);
 
-        let acc_reward = pool.acc_reward;
+        let accum_reward = pool.accum_reward;
 
         if (!exists<Stake<X, Y, Curve>>(user_address)) {
             let new_stake = Stake<X, Y, Curve> {
@@ -174,9 +156,8 @@ module staking_admin::liq_stake {
                 unobtainable_reward: 0,
                 earned_reward: 0
             };
-
             // calculate unobtainable reward for new stake
-            new_stake.unobtainable_reward = (acc_reward * amount) / SIX_DECIMALS;
+            new_stake.unobtainable_reward = (accum_reward * amount) / SIX_DECIMALS;
 
             move_to(user, new_stake);
         } else {
@@ -188,7 +169,7 @@ module staking_admin::liq_stake {
             user_stake.amount = user_stake.amount + amount;
 
             // recalculate unobtainable reward after stake amount changed
-            user_stake.unobtainable_reward = (acc_reward * user_stake.amount) / SIX_DECIMALS;
+            user_stake.unobtainable_reward = (accum_reward * user_stake.amount) / SIX_DECIMALS;
         };
 
         coin::merge(&mut pool.lp_coins, coins);
@@ -207,12 +188,11 @@ module staking_admin::liq_stake {
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
 
         // update pool acc_reward and timestamp
-        update_acc_reward(pool);
+        update_accum_reward(pool);
 
         assert!(exists<Stake<X, Y, Curve>>(user_address), ERR_NO_STAKE);
 
-        let user_stake =
-            borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+        let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
 
         // update earnings
         update_user_earnings(pool, user_stake);
@@ -222,7 +202,7 @@ module staking_admin::liq_stake {
         user_stake.amount = user_stake.amount - amount;
 
         // recalculate unobtainable reward after stake amount changed
-        user_stake.unobtainable_reward = (pool.acc_reward * user_stake.amount) / SIX_DECIMALS;
+        user_stake.unobtainable_reward = (pool.accum_reward * user_stake.amount) / SIX_DECIMALS;
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
@@ -241,10 +221,9 @@ module staking_admin::liq_stake {
         assert!(exists<Stake<X, Y, Curve>>(user_address), ERR_NO_STAKE);
 
         // update pool acc_reward and timestamp
-        update_acc_reward(pool);
+        update_accum_reward(pool);
 
-        let user_stake =
-            borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+        let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
 
         // update earnings
         update_user_earnings(pool, user_stake);
@@ -263,23 +242,42 @@ module staking_admin::liq_stake {
         coin::extract(&mut pool.liq_coins, earned)
     }
 
-    fun update_acc_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>) {
-        let curr_time = timestamp::now_seconds();
-        let time_passed = curr_time - pool.last_updated;
-        let total_staked = coin::value(&pool.lp_coins);
+    fun update_accum_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>) {
+        let current_time = timestamp::now_seconds();
+        let seconds_passed = current_time - pool.last_updated;
+        let total_stake = coin::value(&pool.lp_coins);
 
-        pool.last_updated = curr_time;
+        pool.last_updated = current_time;
 
-        if (total_staked != 0) {
-            pool.acc_reward = pool.acc_reward + ((pool.reward_per_sec * time_passed * SIX_DECIMALS) / total_staked);
+        if (total_stake != 0) {
+            pool.accum_reward = pool.accum_reward + ((pool.reward_per_sec * seconds_passed * SIX_DECIMALS) / total_stake);
         }
     }
 
     fun update_user_earnings<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut Stake<X, Y, Curve>) {
-        let earned = ((user_stake.amount * pool.acc_reward) / SIX_DECIMALS) - user_stake.unobtainable_reward;
+        let earned = ((user_stake.amount * pool.accum_reward) / SIX_DECIMALS) - user_stake.unobtainable_reward;
 
         user_stake.earned_reward = user_stake.earned_reward + earned;
         user_stake.unobtainable_reward = user_stake.unobtainable_reward + earned;
+    }
+
+    //
+    // Events
+    //
+
+    struct StakeEvent has drop, store {
+        user_address: address,
+        amount: u64,
+    }
+
+    struct UnstakeEvent has drop, store {
+        user_address: address,
+        amount: u64,
+    }
+
+    struct HarvestEvent has drop, store {
+        user_address: address,
+        amount: u64,
     }
 
     #[test_only]
@@ -295,7 +293,7 @@ module staking_admin::liq_stake {
     public fun get_pool_info<X, Y, Curve>(): (u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_admin);
 
-        (pool.reward_per_sec, pool.acc_reward, pool.last_updated)
+        (pool.reward_per_sec, pool.accum_reward, pool.last_updated)
     }
 
     #[test_only]
@@ -303,7 +301,7 @@ module staking_admin::liq_stake {
     public fun recalculate_user_stake<X, Y, Curve>(user_address: address) acquires StakePool, Stake {
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
 
-        update_acc_reward(pool);
+        update_accum_reward(pool);
 
         let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
 
