@@ -157,7 +157,7 @@ module staking_admin::liq_stake {
                 earned_reward: 0
             };
             // calculate unobtainable reward for new stake
-            new_stake.unobtainable_reward = (accum_reward * (amount as u128)) / SIX_DECIMALS;
+            new_stake.unobtainable_reward = (accum_reward * to_u128(amount)) / SIX_DECIMALS;
 
             move_to(user, new_stake);
         } else {
@@ -169,7 +169,7 @@ module staking_admin::liq_stake {
             user_stake.amount = user_stake.amount + amount;
 
             // recalculate unobtainable reward after stake amount changed
-            user_stake.unobtainable_reward = (accum_reward * (user_stake.amount as u128)) / SIX_DECIMALS;
+            user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake.amount)) / SIX_DECIMALS;
         };
 
         coin::merge(&mut pool.lp_coins, coins);
