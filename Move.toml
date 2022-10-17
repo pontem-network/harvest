@@ -6,11 +6,6 @@ version = '1.0.0'
 coin_creator = "0xa6351dc37dca26c0a4fb4ca0b743371c8c55b67834136e54ea29e50a4591e09e"
 staking_admin = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
 
-[dependencies.AptosFramework]
-git = 'https://github.com/aptos-labs/aptos-core.git'
-rev = '985f19d40457a5f09f2d741b1feca6bf7ba1f8a6'
-subdir = 'aptos-move/framework/aptos-framework'
-
 [dependencies.Liquidswap]
 git = 'https://github.com/pontem-network/liquidswap.git'
 rev = 'v0.4.0'

@@ -5,26 +5,44 @@ module staking_admin::liq_stake_tests {
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::genesis;
+    use aptos_framework::timestamp;
     use liquidswap::curves::Uncorrelated;
     use liquidswap::liquidity_pool;
     use liquidswap_lp::lp_coin::LP;
     use test_coins::coins::{Self, USDT, BTC};
     use test_helpers::test_pool;
 
+    use coin_creator::liq::{Self, LIQ};
     use staking_admin::liq_stake;
-    use aptos_framework::timestamp;
 
-    // multiplier to account six decimal places for LP, LIQ and USDT coins
-    const SIX_DECIMALS: u64 = 1000000;
+    // multiplier to account six decimal places for LP coin
+    const ONE_LP: u64 = 1000000;
+
+    // multiplier to account six decimal places for LIQ coin
+    const ONE_LIQ: u64 = 1000000;
+
+    // multiplier to account six decimal places for USDT coin
+    const ONE_USDT: u64 = 1000000;
 
     // multiplier to account eight decimal places for BTC coin
-    const EIGHT_DECIMALS: u64 = 100000000;
+    const ONE_BTC: u64 = 100000000;
+
+    fun to_u128(num: u64): u128 {
+        (num as u128)
+    }
 
     public fun create_account(account_address: address): (signer, address) {
         let new_acc = account::create_account_for_test(account_address);
         let new_addr = signer::address_of(&new_acc);
 
         (new_acc, new_addr)
+    }
+
+    public fun mint_liq_coins(creator_addr: address, amount: u64): Coin<LIQ> {
+        let (coin_creator_acc, _) = create_account(creator_addr);
+
+        liq::initialize(&coin_creator_acc);
+        liq::mint(&coin_creator_acc, amount)
     }
 
     public fun btc_usdt_pool_with_999_liqudity(): Coin<LP<BTC, USDT, Uncorrelated>> {
@@ -40,8 +58,8 @@ module staking_admin::liq_stake_tests {
         liquidity_pool::register<BTC, USDT, Uncorrelated>(&lp_owner);
 
         // mint coins for LP
-        let btc_amount = 1 * EIGHT_DECIMALS; // 1 BTC
-        let usdt_amount = 10000 * SIX_DECIMALS; // 10 000 USDT
+        let btc_amount = 1 * ONE_BTC;
+        let usdt_amount = 10000 * ONE_USDT;
         coin::register<BTC>(&coins_owner_acc);
         coin::register<USDT>(&coins_owner_acc);
         coins::mint_coin<BTC>(&coins_owner_acc, coins_owner_addr, btc_amount);
@@ -54,7 +72,7 @@ module staking_admin::liq_stake_tests {
         test_pool::mint_liquidity<BTC, USDT, Uncorrelated>(&lp_owner, coin_btc, coin_usdt);
 
         // return 999 LP coins
-        coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&lp_owner, 999 * SIX_DECIMALS)
+        coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&lp_owner, 999 * ONE_LP)
     }
 
     public fun create_account_with_lp_coins(
@@ -79,16 +97,32 @@ module staking_admin::liq_stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // check pool statistics
-        let (reward_per_sec, acc_reward, last_updated) =
+        let (reward_per_sec, accum_reward, last_updated) =
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
         assert!(reward_per_sec == reward_per_sec_rate, 1);
-        assert!(acc_reward == 0, 1);
+        assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 0, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 0, 1);
+    }
+
+    #[test]
+    public fun test_deposit_reward_coins() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        genesis::setup();
+
+        // mint LIQ coins
+        let liq_coins = mint_liq_coins(@coin_creator, 100);
+
+        // initialize staking pool
+        let reward_per_sec_rate = 10 * 1000000; // 10 LIQ
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        liq_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
     }
 
     #[test]
@@ -97,7 +131,7 @@ module staking_admin::liq_stake_tests {
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
-        let lp_coin_part = coin::extract(&mut lp_coin, 99 * SIX_DECIMALS);
+        let lp_coin_part = coin::extract(&mut lp_coin, 99 * ONE_LP);
 
         // create alice and bob with LP coins
         let (alice_acc, alice_addr) =
@@ -106,7 +140,7 @@ module staking_admin::liq_stake_tests {
             create_account_with_lp_coins(@0x11, lp_coin_part);
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // check empty balances
@@ -115,42 +149,42 @@ module staking_admin::liq_stake_tests {
 
         // stake 500 LP from alice
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 500 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 500 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
-        assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(alice_addr) == 400 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 500 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 500 * SIX_DECIMALS, 1);
+        assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(alice_addr) == 400 * ONE_LP, 1);
+        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 500 * ONE_LP, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 500 * ONE_LP, 1);
 
         // stake 99 LP from bob
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&bob_acc, 99 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&bob_acc, 99 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&bob_acc, coins);
         assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(bob_addr) == 0, 1);
-        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(bob_addr) == 99 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 599 * SIX_DECIMALS, 1);
+        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(bob_addr) == 99 * ONE_LP, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 599 * ONE_LP, 1);
 
         // stake 300 LP more from alice
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 300 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 300 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
-        assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(alice_addr) == 100 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 800 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 899 * SIX_DECIMALS, 1);
+        assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(alice_addr) == 100 * ONE_LP, 1);
+        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 800 * ONE_LP, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 899 * ONE_LP, 1);
 
         // unstake 400 LP from alice
         let coins =
-            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 400 * SIX_DECIMALS);
-        assert!(coin::value(&coins) == 400 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 400 * SIX_DECIMALS, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 499 * SIX_DECIMALS, 1);
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 400 * ONE_LP);
+        assert!(coin::value(&coins) == 400 * ONE_LP, 1);
+        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 400 * ONE_LP, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 499 * ONE_LP, 1);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
 
         // unstake all 99 LP from bob
         let coins =
-            liq_stake::unstake<BTC, USDT, Uncorrelated>(&bob_acc, 99 * SIX_DECIMALS);
-        assert!(coin::value(&coins) == 99 * SIX_DECIMALS, 1);
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&bob_acc, 99 * ONE_LP);
+        assert!(coin::value(&coins) == 99 * ONE_LP, 1);
         assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(bob_addr) == 0, 1);
-        assert!(liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>() == 400 * SIX_DECIMALS, 1);
+        assert!(liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>() == 400 * ONE_LP, 1);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(bob_addr, coins);
     }
 
@@ -160,7 +194,7 @@ module staking_admin::liq_stake_tests {
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
-        let lp_coin_part = coin::extract(&mut lp_coin, 99 * SIX_DECIMALS);
+        let lp_coin_part = coin::extract(&mut lp_coin, 99 * ONE_LP);
 
         // create alice and bob with LP coins
         let (alice_acc, alice_addr) =
@@ -172,12 +206,12 @@ module staking_admin::liq_stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake 100 LP from alice
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
 
         // check stake parameters
@@ -193,34 +227,34 @@ module staking_admin::liq_stake_tests {
         liq_stake::recalculate_user_stake<BTC, USDT, Uncorrelated>(alice_addr);
 
         // check pool parameters
-        let (_, acc_reward, last_updated) =
+        let (_, accum_reward, last_updated) =
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
         // (reward_per_sec_rate * time passed / total_staked) + previous period
-        assert!(acc_reward == 1 * SIX_DECIMALS, 1);
+        assert!(accum_reward == to_u128(1 * ONE_LIQ), 1);
         assert!(last_updated == start_time + 10, 1);
 
         // check alice's stake
         let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
-        assert!(unobtainable_reward == 100 * SIX_DECIMALS, 1);
-        assert!(earned_reward == 100 * SIX_DECIMALS, 1);
+        assert!(unobtainable_reward == to_u128(100 * ONE_LIQ), 1);
+        assert!(earned_reward == 100 * ONE_LIQ, 1);
 
         // stake 50 LP from bob
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&bob_acc, 50 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&bob_acc, 50 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&bob_acc, coins);
 
         // check bob's stake parameters
         let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
-        // stake amount * pool acc_reward
+        // stake amount * pool accum_reward
         // accumulated benefit that does not belong to bob
-        assert!(unobtainable_reward == 50 * SIX_DECIMALS, 1);
+        assert!(unobtainable_reward == to_u128(50 * ONE_LIQ), 1);
         assert!(earned_reward == 0, 1);
 
         // stake 100 LP more from alice
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
 
         // wait 10 seconds
@@ -231,33 +265,33 @@ module staking_admin::liq_stake_tests {
         liq_stake::recalculate_user_stake<BTC, USDT, Uncorrelated>(bob_addr);
 
         // check pool parameters
-        let (_, acc_reward, last_updated) =
+        let (_, accum_reward, last_updated) =
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
-        assert!(acc_reward == 1400000, 1);
+        assert!(accum_reward == 1400000, 1);
         assert!(last_updated == start_time + 20, 1);
 
         // check alice's stake parameters
         let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
-        assert!(unobtainable_reward == 280 * SIX_DECIMALS, 1);
-        assert!(earned_reward == 180 * SIX_DECIMALS, 1);
+        assert!(unobtainable_reward == to_u128(280 * ONE_LIQ), 1);
+        assert!(earned_reward == 180 * ONE_LIQ, 1);
 
         // check bob's stake parameters
         let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
-        assert!(unobtainable_reward == 70 * SIX_DECIMALS, 1);
-        assert!(earned_reward == 20 * SIX_DECIMALS, 1);
+        assert!(unobtainable_reward == to_u128(70 * ONE_LIQ), 1);
+        assert!(earned_reward == 20 * ONE_LIQ, 1);
 
         // unstake 100 LP from alice
         let coins =
-            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 100 * SIX_DECIMALS);
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 100 * ONE_LP);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
 
         // check alice's stake parameters
         let (unobtainable_reward, earned_reward) =
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
-        assert!(unobtainable_reward == 140 * SIX_DECIMALS, 1);
-        assert!(earned_reward == 180 * SIX_DECIMALS, 1);
+        assert!(unobtainable_reward == to_u128(140 * ONE_LIQ), 1);
+        assert!(earned_reward == 180 * ONE_LIQ, 1);
 
         // wait 10 seconds
         timestamp::update_global_time_for_test_secs(start_time + 30);
@@ -267,9 +301,9 @@ module staking_admin::liq_stake_tests {
         liq_stake::recalculate_user_stake<BTC, USDT, Uncorrelated>(bob_addr);
 
         // check pool parameters
-        let (_, acc_reward, last_updated) =
+        let (_, accum_reward, last_updated) =
             liq_stake::get_pool_info<BTC, USDT, Uncorrelated>();
-        assert!(acc_reward == 2066666, 1);
+        assert!(accum_reward == 2066666, 1);
         assert!(last_updated == start_time + 30, 1);
 
         // check alice's stake parameters
@@ -283,6 +317,117 @@ module staking_admin::liq_stake_tests {
             liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
         assert!(unobtainable_reward == 103333300, 1);
         assert!(earned_reward == 53333300, 1);
+    }
+
+    #[test]
+    public fun test_harvest() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // mint LIQ coins
+        let liq_coins = mint_liq_coins(@coin_creator, 300 * ONE_LIQ);
+
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+        let lp_coin_part = coin::extract(&mut lp_coin, 100 * ONE_LP);
+
+        // create alice and bob with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+        let (bob_acc, bob_addr) =
+            create_account_with_lp_coins(@0x11, lp_coin_part);
+
+        coin::register<LIQ>(&alice_acc);
+        coin::register<LIQ>(&bob_acc);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // initialize staking pool with LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        liq_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
+
+        // stake 100 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+
+        // wait 10 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 10);
+
+        // harvest from alice
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+
+        // check amounts
+        let (_, earned_reward) =
+            liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
+        assert!(earned_reward == 0, 1);
+        assert!(coin::value(&coins) == 100 * ONE_LIQ, 1);
+
+        coin::deposit<LIQ>(alice_addr, coins);
+
+        // stake 100 LP from bob
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&bob_acc, 100 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&bob_acc, coins);
+
+        // wait 10 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 20);
+
+        // harvest from alice
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+
+        // check amounts
+        let (_, earned_reward) =
+            liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(alice_addr);
+        assert!(earned_reward == 0, 1);
+        assert!(coin::value(&coins) == 50 * ONE_LIQ, 1);
+
+        coin::deposit<LIQ>(alice_addr, coins);
+
+        // harvest from bob
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&bob_acc);
+
+        // check amounts
+        let (_, earned_reward) =
+            liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
+        assert!(earned_reward == 0, 1);
+        assert!(coin::value(&coins) == 50 * ONE_LIQ, 1);
+
+        coin::deposit<LIQ>(bob_addr, coins);
+
+        // unstake 100 LP from alice
+        let coins =
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc,  100 * ONE_LP);
+        coin::deposit<LP<BTC, USDT, Uncorrelated>>(bob_addr, coins);
+
+        // wait 10 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 30);
+
+        // harvest from bob
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&bob_acc);
+
+        // check amounts
+        let (_, earned_reward) =
+            liq_stake::get_user_stake_info<BTC, USDT, Uncorrelated>(bob_addr);
+        assert!(earned_reward == 0, 1);
+        assert!(coin::value(&coins) == 100 * ONE_LIQ, 1);
+
+        coin::deposit<LIQ>(bob_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_deposit_reward_coins_fails_if_pool_does_not_exist() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // mint LIQ coins
+        let liq_coins = mint_liq_coins(@coin_creator, 100);
+
+        liq_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
     }
 
     #[test]
@@ -314,8 +459,19 @@ module staking_admin::liq_stake_tests {
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_harvest_fails_if_pool_does_not_exist() {
+        let (alice_acc, alice_addr) = create_account(@0x10);
+
+        // harvest from alice
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+        coin::deposit<LIQ>(alice_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pool_total_staked_fails_if_pool_does_not_exist() {
-        liq_stake::get_pool_total_staked<BTC, USDT, Uncorrelated>();
+        liq_stake::get_pool_total_stake<BTC, USDT, Uncorrelated>();
     }
 
     #[test]
@@ -334,7 +490,7 @@ module staking_admin::liq_stake_tests {
         genesis::setup();
 
         // initialize staking pool twice
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
     }
@@ -357,13 +513,31 @@ module staking_admin::liq_stake_tests {
         genesis::setup();
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // unstake from alice
         let coins =
             liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 40);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    public fun test_harvest_fails_if_stake_not_exists() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (alice_acc, alice_addr) = create_account(@0x10);
+
+        genesis::setup();
+
+        // initialize staking pool
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // harvest from alice
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+        coin::deposit<LIQ>(alice_addr, coins);
     }
 
     #[test]
@@ -379,19 +553,19 @@ module staking_admin::liq_stake_tests {
             create_account_with_lp_coins(@0x10, lp_coin);
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake from alice
         let coins =
-            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 999 * SIX_DECIMALS);
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 999 * ONE_LP);
         liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
         assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(alice_addr) == 0, 1);
-        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 999 * SIX_DECIMALS, 1);
+        assert!(liq_stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 999 * ONE_LP, 1);
 
         // unstake more than staked from alice
         let coins =
-            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 1000 * SIX_DECIMALS);
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 1000 * ONE_LP);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
     }
 
@@ -401,7 +575,179 @@ module staking_admin::liq_stake_tests {
         let (alice_acc, _) = create_account(@0x10);
 
         // initialize staking pool
-        let reward_per_sec_rate = 10 * SIX_DECIMALS; // 10 LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
         liq_stake::initialize<BTC, USDT, Uncorrelated>(&alice_acc, reward_per_sec_rate);
+    }
+
+
+    #[test]
+    #[expected_failure(abort_code = 105 /* ERR_NO_PERMISSIONS */)]
+    public fun test_deposit_reward_coins_fails_if_executed_not_by_admin() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (alice_acc, _) = create_account(@0x10);
+
+        genesis::setup();
+
+        // mint LIQ coins
+        let liq_coins = mint_liq_coins(@coin_creator, 100);
+
+        // initialize staking pool twice
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        liq_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&alice_acc, liq_coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 106 /* ERR_NOT_ENOUGH_LIQ_BALANCE */)]
+    public fun test_harvest_fails_if_not_enough_pool_liq_balance() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // create lp coins
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // initialize staking pool
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // stake 100 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+
+        // wait 10 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 10);
+
+        // harvest from alice
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+        coin::deposit<LIQ>(alice_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    public fun test_stake_fails_if_amount_is_zero() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // create lp coins
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, _) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        // initialize staking pool
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // stake 0 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 0);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    public fun test_unstake_fails_if_amount_is_zero() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // create lp coins
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        // initialize staking pool
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 999 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+
+        // unstake 0 LP from alice
+        let coins =
+            liq_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 0);
+        coin::deposit<LP<BTC, USDT, Uncorrelated>>(alice_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
+    public fun test_harvest_fails_if_nothing_to_harvest_1() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // initialize staking pool with LIQ
+        let reward_per_sec_rate = 10 * ONE_LIQ;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // stake 100 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+
+        // harvest from alice at the same second
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+
+        coin::deposit<LIQ>(alice_addr, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
+    public fun test_harvest_fails_if_nothing_to_harvest_2() {
+        let (staking_admin_acc, _) = create_account(@staking_admin);
+
+        // mint LIQ coins
+        let liq_coins = mint_liq_coins(@coin_creator, 300 * ONE_LIQ);
+
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        coin::register<LIQ>(&alice_acc);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // initialize staking pool with LIQ
+        let reward_per_sec_rate = 10 * ONE_LP;
+        liq_stake::initialize<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        liq_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
+
+        // stake 100 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 100 * ONE_LP);
+        liq_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins);
+
+        // wait 10 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 10);
+
+        // harvest from alice twice at the same second
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+        coin::deposit<LIQ>(alice_addr, coins);
+        let coins =
+            liq_stake::harvest<BTC, USDT, Uncorrelated>(&alice_acc);
+        coin::deposit<LIQ>(alice_addr, coins);
     }
 }
