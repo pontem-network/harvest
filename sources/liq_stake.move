@@ -164,7 +164,7 @@ module staking_admin::liq_stake {
             let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
 
             // update earnings
-            update_user_earnings<X, Y, Curve>(pool, user_stake);
+            update_user_earnings(pool, user_stake);
 
             user_stake.amount = user_stake.amount + amount;
 
@@ -259,7 +259,7 @@ module staking_admin::liq_stake {
 
     fun update_user_earnings<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut Stake<X, Y, Curve>) {
         let earned =
-            ((to_u128(user_stake.amount) * pool.accum_reward) / SIX_DECIMALS) - user_stake.unobtainable_reward;
+            (pool.accum_reward * (to_u128(user_stake.amount)) / SIX_DECIMALS) - user_stake.unobtainable_reward;
 
         user_stake.earned_reward = user_stake.earned_reward + to_u64(earned);
         user_stake.unobtainable_reward = user_stake.unobtainable_reward + earned;

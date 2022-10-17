@@ -9,7 +9,7 @@ module coin_creator::liq_tests {
     use coin_creator::liq::{Self, LIQ};
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_COIN */)]
+    #[expected_failure(abort_code = 200 /* ERR_NO_COIN */)]
     fun mint_before_initialize() {
         let creator_acc = account::create_account_for_test(@coin_creator);
 

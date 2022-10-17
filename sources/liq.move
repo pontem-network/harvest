@@ -5,7 +5,7 @@ module coin_creator::liq {
     use aptos_framework::coin::{Self, BurnCapability, MintCapability, Coin};
 
     // coin does not exist
-    const ERR_NO_COIN: u64 = 100;
+    const ERR_NO_COIN: u64 = 200;
 
     struct LIQ {}
 
