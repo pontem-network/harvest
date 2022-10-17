@@ -20,7 +20,7 @@ jobs:
       - name: Get Aptos
         uses: pontem-network/get-aptos@main
         with:
-          version: 0.3.9
+          version: aptos-cli-v0.3.9
           token: ${{ secrets.GITHUB_TOKEN }}
           prover: true
 
