@@ -1,5 +1,5 @@
 #[test_only]
-module coin_creator::dgen_tests {
+module harvest::dgen_tests {
     use std::option;
     use std::signer;
     use std::string;
@@ -7,7 +7,7 @@ module coin_creator::dgen_tests {
     use aptos_framework::account;
     use aptos_framework::coin;
 
-    use coin_creator::dgen::{Self, DGEN};
+    use harvest::dgen::{Self, DGEN};
 
     // multiplier to account six decimal places for DGEN coin
     const ONE_DGEN: u64 = 1000000;
@@ -28,7 +28,7 @@ module coin_creator::dgen_tests {
 
     #[test]
     public fun test_initialize() {
-        let (creator_acc, creator_addr) = create_account(@coin_creator);
+        let (creator_acc, creator_addr) = create_account(@harvest);
 
         // initialize new coin
         dgen::initialize(&creator_acc);
@@ -46,7 +46,7 @@ module coin_creator::dgen_tests {
 
     #[test]
     public fun test_burn() {
-        let (creator_acc, creator_addr) = create_account(@coin_creator);
+        let (creator_acc, creator_addr) = create_account(@harvest);
         let (alice_acc, alice_addr) = create_account(@0x10);
 
         // initialize new coin

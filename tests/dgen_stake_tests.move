@@ -1,5 +1,5 @@
 #[test_only]
-module staking_admin::dgen_stake_tests {
+module harvest::dgen_stake_tests {
     use std::signer;
 
     use aptos_framework::account;
@@ -12,8 +12,8 @@ module staking_admin::dgen_stake_tests {
     use test_coins::coins::{Self, USDT, BTC};
     use test_helpers::test_pool;
 
-    use coin_creator::dgen::{Self, DGEN};
-    use staking_admin::dgen_stake;
+    use harvest::dgen::{Self, DGEN};
+    use harvest::dgen_stake;
 
     // multiplier to account six decimal places for LP coin
     const ONE_LP: u64 = 1000000;
@@ -38,11 +38,9 @@ module staking_admin::dgen_stake_tests {
         (new_acc, new_addr)
     }
 
-    public fun mint_liq_coins(creator_addr: address, amount: u64): Coin<DGEN> {
-        let (coin_creator_acc, _) = create_account(creator_addr);
-
-        dgen::initialize(&coin_creator_acc);
-        coin::withdraw<DGEN>(&coin_creator_acc, amount)
+    public fun mint_dgen_coins(coin_creator_acc: &signer, amount: u64): Coin<DGEN> {
+        dgen::initialize(coin_creator_acc);
+        coin::withdraw<DGEN>(coin_creator_acc, amount)
     }
 
     public fun btc_usdt_pool_with_999_liqudity(): Coin<LP<BTC, USDT, Uncorrelated>> {
@@ -89,7 +87,7 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_initialize() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         dgen_stake::initialize(&staking_admin_acc);
     }
@@ -98,7 +96,7 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_register() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
         let (alice_acc, _) = create_account(@0x10);
 
         // create lp coins for pool to be valid
@@ -124,14 +122,14 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_deposit_reward_coins() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins for pool to be valid
         let lp_coin = btc_usdt_pool_with_999_liqudity();
         let (_, _) = create_account_with_lp_coins(@0x12, lp_coin);
 
         // mint DGEN coins
-        let liq_coins = mint_liq_coins(@coin_creator, 100);
+        let liq_coins = mint_dgen_coins(&staking_admin_acc, 100);
 
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
@@ -143,7 +141,7 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_stake_and_unstake() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -207,7 +205,7 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_reward_calculation() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -339,10 +337,10 @@ module staking_admin::dgen_stake_tests {
 
     #[test]
     public fun test_harvest() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // mint DGEN coins
-        let liq_coins = mint_liq_coins(@coin_creator, 300 * ONE_DGEN);
+        let liq_coins = mint_dgen_coins(&staking_admin_acc, 300 * ONE_DGEN);
 
         let lp_coin = btc_usdt_pool_with_999_liqudity();
         let lp_coin_part = coin::extract(&mut lp_coin, 100 * ONE_LP);
@@ -441,10 +439,10 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_deposit_reward_coins_fails_if_pool_does_not_exist() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // mint DGEN coins
-        let liq_coins = mint_liq_coins(@coin_creator, 100);
+        let liq_coins = mint_dgen_coins(&staking_admin_acc, 100);
 
         dgen_stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
     }
@@ -504,7 +502,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 101 /* ERR_POOL_ALREADY_EXISTS */)]
     public fun test_register_fails_if_pool_already_exists() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins for pool to be valid
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -520,7 +518,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 102 /* ERR_REWARD_CANNOT_BE_ZERO */)]
     public fun test_register_fails_if_reward_is_zero() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // register staking pool with zero reward
         dgen_stake::initialize(&staking_admin_acc);
@@ -530,7 +528,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
     public fun test_unstake_fails_if_stake_not_exists() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
         let (alice_acc, alice_addr) = create_account(@0x10);
 
         // create lp coins for pool to be valid
@@ -551,7 +549,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
     public fun test_harvest_fails_if_stake_not_exists() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
         let (alice_acc, alice_addr) = create_account(@0x10);
 
         // create lp coins for pool to be valid
@@ -572,7 +570,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 104 /* ERR_NOT_ENOUGH_BALANCE */)]
     public fun test_unstake_fails_if_not_enough_balance() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -611,7 +609,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 105 /* ERR_NO_PERMISSIONS */)]
     public fun test_deposit_reward_coins_fails_if_executed_not_by_admin() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
         let (alice_acc, _) = create_account(@0x10);
 
         // create lp coins for pool to be valid
@@ -619,7 +617,7 @@ module staking_admin::dgen_stake_tests {
         let (_, _) = create_account_with_lp_coins(@0x12, lp_coin);
 
         // mint DGEN coins
-        let liq_coins = mint_liq_coins(@coin_creator, 100);
+        let liq_coins = mint_dgen_coins(&staking_admin_acc, 100);
 
         // register staking pool twice
         let reward_per_sec_rate = 10 * ONE_DGEN;
@@ -632,7 +630,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 106 /* ERR_NOT_ENOUGH_DGEN_BALANCE */)]
     public fun test_harvest_fails_if_not_enough_pool_liq_balance() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -666,7 +664,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_stake_fails_if_amount_is_zero() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -689,7 +687,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_unstake_fails_if_amount_is_zero() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // create lp coins
         let lp_coin = btc_usdt_pool_with_999_liqudity();
@@ -717,7 +715,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_1() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         let lp_coin = btc_usdt_pool_with_999_liqudity();
 
@@ -748,10 +746,10 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_2() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // mint DGEN coins
-        let liq_coins = mint_liq_coins(@coin_creator, 300 * ONE_DGEN);
+        let liq_coins = mint_dgen_coins(&staking_admin_acc, 300 * ONE_DGEN);
 
         let lp_coin = btc_usdt_pool_with_999_liqudity();
 
@@ -790,7 +788,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 109 /* ERR_MODULE_NOT_INITIALIZED */)]
     public fun test_register_fails_if_module_not_initialized() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // register staking pool before module initialization
         let reward_per_sec_rate = 10 * ONE_DGEN;
@@ -800,7 +798,7 @@ module staking_admin::dgen_stake_tests {
     #[test]
     #[expected_failure(abort_code = 110 /* ERR_IS_NOT_COIN */)]
     public fun test_register_fails_if_cointype_is_not_coin() {
-        let (staking_admin_acc, _) = create_account(@staking_admin);
+        let (staking_admin_acc, _) = create_account(@harvest);
 
         // register staking pool with undeployed coins
         let reward_per_sec_rate = 10 * ONE_DGEN;

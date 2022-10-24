@@ -1,4 +1,4 @@
-module staking_admin::dgen_stake {
+module harvest::dgen_stake {
     use std::signer;
     use std::string::String;
 
@@ -8,7 +8,7 @@ module staking_admin::dgen_stake {
     use aptos_std::event::{Self, EventHandle};
     use liquidswap_lp::lp_coin::LP;
 
-    use coin_creator::dgen::DGEN;
+    use harvest::dgen::DGEN;
 
     //
     // Errors
@@ -93,10 +93,10 @@ module staking_admin::dgen_stake {
     struct CapabilityStorage has key { signer_cap: SignerCapability }
 
     public entry fun initialize(dgen_stake_admin: &signer) {
-        assert!(signer::address_of(dgen_stake_admin) == @staking_admin, ERR_NO_PERMISSIONS);
+        assert!(signer::address_of(dgen_stake_admin) == @harvest, ERR_NO_PERMISSIONS);
 
         let (_, signer_cap) =
-            account::create_resource_account(dgen_stake_admin, b"staking_admin_account_seed");
+            account::create_resource_account(dgen_stake_admin, b"harvest_account_seed");
 
         move_to(dgen_stake_admin, CapabilityStorage { signer_cap });
         move_to(dgen_stake_admin,
@@ -112,12 +112,12 @@ module staking_admin::dgen_stake {
         reward_per_sec: u64
     ) acquires RegisterEventsStorage, CapabilityStorage {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
-        assert!(exists<RegisterEventsStorage>(@staking_admin), ERR_MODULE_NOT_INITIALIZED);
+        assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
         assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
         assert!(!exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_POOL_ALREADY_EXISTS);
 
         // create account to store pool resource
-        let cap = borrow_global<CapabilityStorage>(@staking_admin);
+        let cap = borrow_global<CapabilityStorage>(@harvest);
         let storage_acc = &account::create_signer_with_capability(&cap.signer_cap);
 
         let pool = StakePool<X, Y, Curve> {
@@ -135,7 +135,7 @@ module staking_admin::dgen_stake {
         move_to(storage_acc, pool);
 
         let lp_symbol = coin::symbol<LP<X, Y, Curve>>();
-        let event_storage = borrow_global_mut<RegisterEventsStorage>(@staking_admin);
+        let event_storage = borrow_global_mut<RegisterEventsStorage>(@harvest);
         event::emit_event<RegisterEvent>(
             &mut event_storage.register_events,
             RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_symbol },
@@ -143,7 +143,7 @@ module staking_admin::dgen_stake {
     }
 
     public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<DGEN>) acquires StakePool {
-        assert!(signer::address_of(pool_admin) == @staking_admin, ERR_NO_PERMISSIONS);
+        assert!(signer::address_of(pool_admin) == @harvest, ERR_NO_PERMISSIONS);
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);

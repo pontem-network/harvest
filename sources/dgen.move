@@ -1,4 +1,4 @@
-module coin_creator::dgen {
+module harvest::dgen {
     use std::signer;
     use std::string;
 
@@ -19,7 +19,7 @@ module coin_creator::dgen {
 
     public entry fun initialize(creator: &signer) {
         let creator_addr = signer::address_of(creator);
-        assert!(creator_addr == @coin_creator, ERR_NO_PERMISSIONS);
+        assert!(creator_addr == @harvest, ERR_NO_PERMISSIONS);
 
         let (burn_cap, freeze_cap, mint_cap) = coin::initialize<DGEN>(
             creator,
@@ -40,10 +40,10 @@ module coin_creator::dgen {
     }
 
     public fun burn(coins: Coin<DGEN>): u64 acquires DGENCapabilities {
-        assert!(exists<DGENCapabilities>(@coin_creator), ERR_NO_COIN);
+        assert!(exists<DGENCapabilities>(@harvest), ERR_NO_COIN);
 
         let amount = coin::value(&coins);
-        let cap = borrow_global<DGENCapabilities>(@coin_creator);
+        let cap = borrow_global<DGENCapabilities>(@harvest);
 
         coin::burn<DGEN>(coins, &cap.burn_cap);
         amount
