@@ -74,7 +74,7 @@ module staking_admin::liq_stake {
         // unstake events
         unstake_events: EventHandle<UnstakeEvent>,
         // deposit events
-        deposit_events: EventHandle<DepositEvent>,
+        deposit_events: EventHandle<DepositRewardEvent>,
         // harvest events
         harvest_events: EventHandle<HarvestEvent>,
     }
@@ -128,9 +128,11 @@ module staking_admin::liq_stake {
             liq_coins: coin::zero(),
             stake_events: account::new_event_handle<StakeEvent>(storage_acc),
             unstake_events: account::new_event_handle<UnstakeEvent>(storage_acc),
-            deposit_events: account::new_event_handle<DepositEvent>(storage_acc),
+            deposit_events: account::new_event_handle<DepositRewardEvent>(storage_acc),
             harvest_events: account::new_event_handle<HarvestEvent>(storage_acc),
         };
+
+        move_to(storage_acc, pool);
 
         let lp_symbol = coin::symbol<LP<X, Y, Curve>>();
         let event_storage = borrow_global_mut<RegisterEventsStorage>(@staking_admin);
@@ -138,8 +140,6 @@ module staking_admin::liq_stake {
             &mut event_storage.register_events,
             RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_symbol },
         );
-
-        move_to(storage_acc, pool);
     }
 
     public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<LIQ>) acquires StakePool {
@@ -148,12 +148,12 @@ module staking_admin::liq_stake {
 
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
-        event::emit_event<DepositEvent>(
-            &mut pool.deposit_events,
-            DepositEvent { amount: coin::value(&coins) },
-        );
-
         coin::merge(&mut pool.liq_coins, coins);
+
+        event::emit_event<DepositRewardEvent>(
+            &mut pool.deposit_events,
+            DepositRewardEvent { amount: coin::value(&coins) },
+        );
     }
 
     //
@@ -215,12 +215,12 @@ module staking_admin::liq_stake {
             user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake.amount)) / SIX_DECIMALS;
         };
 
+        coin::merge(&mut pool.lp_coins, coins);
+
         event::emit_event<StakeEvent>(
             &mut pool.stake_events,
             StakeEvent { user_address, amount },
         );
-
-        coin::merge(&mut pool.lp_coins, coins);
     }
 
     public fun unstake<X, Y, Curve>(user: &signer, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, Stake {
@@ -336,7 +336,7 @@ module staking_admin::liq_stake {
         amount: u64,
     }
 
-    struct DepositEvent has drop, store {
+    struct DepositRewardEvent has drop, store {
         amount: u64,
     }
 
