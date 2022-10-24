@@ -42,7 +42,7 @@ module staking_admin::liq_stake_tests {
         let (coin_creator_acc, _) = create_account(creator_addr);
 
         liq::initialize(&coin_creator_acc);
-        liq::mint(&coin_creator_acc, amount)
+        coin::withdraw<LIQ>(&coin_creator_acc, amount)
     }
 
     public fun btc_usdt_pool_with_999_liqudity(): Coin<LP<BTC, USDT, Uncorrelated>> {

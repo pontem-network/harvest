@@ -147,12 +147,13 @@ module staking_admin::liq_stake {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let amount = coin::value(&coins);
 
         coin::merge(&mut pool.liq_coins, coins);
 
         event::emit_event<DepositRewardEvent>(
             &mut pool.deposit_events,
-            DepositRewardEvent { amount: coin::value(&coins) },
+            DepositRewardEvent { amount },
         );
     }
 
