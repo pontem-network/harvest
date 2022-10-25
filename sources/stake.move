@@ -1,4 +1,4 @@
-module harvest::dgen_stake {
+module harvest::stake {
     use std::signer;
     use std::string::String;
 
@@ -14,50 +14,51 @@ module harvest::dgen_stake {
     // Errors
     //
 
-    // pool does not exist
+    /// pool does not exist
     const ERR_NO_POOL: u64 = 100;
 
-    // pool already exists
+    /// pool already exists
     const ERR_POOL_ALREADY_EXISTS: u64 = 101;
 
-    // pool reward can't be zero
+    /// pool reward can't be zero
     const ERR_REWARD_CANNOT_BE_ZERO: u64 = 102;
 
-    // user has no stake
+    /// user has no stake
     const ERR_NO_STAKE: u64 = 103;
 
-    // not enough LP balance to unstake
+    /// not enough LP balance to unstake
     const ERR_NOT_ENOUGH_LP_BALANCE: u64 = 104;
 
-    // only admin can execute
+    /// only admin can execute
     const ERR_NO_PERMISSIONS: u64 = 105;
 
-    // not enough pool DGEN balance to pay reward
+    /// not enough pool DGEN balance to pay reward
     const ERR_NOT_ENOUGH_DGEN_BALANCE: u64 = 106;
 
-    // amount can't be zero
+    /// amount can't be zero
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
 
-    // nothing to harvest yet
+    /// nothing to harvest yet
     const ERR_NOTHING_TO_HARVEST: u64 = 108;
 
-    // module not initialized
+    /// module not initialized
     const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
 
-    // CoinType is not a coin
+    /// CoinType is not a coin
     const ERR_IS_NOT_COIN: u64 = 110;
 
     //
     // Constants
     //
 
-    // multiplier to account six decimal places for LP and DGEN coins
+    /// multiplier to account six decimal places for LP and DGEN coins
     const SIX_DECIMALS: u128 = 1000000;
 
     //
     // Core data structures
     //
 
+    /// LP stake pool, stores LP, DGEN (reward) coins and related info
     struct StakePool<phantom X, phantom Y, phantom Curve> has key {
         // pool reward DGEN per second
         reward_per_sec: u64,
@@ -79,6 +80,7 @@ module harvest::dgen_stake {
         harvest_events: EventHandle<HarvestEvent>,
     }
 
+    /// stores user stake info
     struct Stake<phantom X, phantom Y, phantom Curve> has key {
         // staked amount
         amount: u64,
@@ -88,10 +90,13 @@ module harvest::dgen_stake {
         earned_reward: u64,
     }
 
+    /// stores events emitted on pool registration under Harvest account
     struct RegisterEventsStorage has key { register_events: EventHandle<RegisterEvent> }
 
+    /// stores resource account signer capability under Harvest account.
     struct CapabilityStorage has key { signer_cap: SignerCapability }
 
+    /// initializes module, creating resource account to store pools
     public entry fun initialize(dgen_stake_admin: &signer) {
         assert!(signer::address_of(dgen_stake_admin) == @harvest, ERR_NO_PERMISSIONS);
 
@@ -107,6 +112,7 @@ module harvest::dgen_stake {
     // Pool config
     //
 
+    /// registering pool for specific LP coin
     public fun register<X, Y, Curve>(
         pool_creator: &signer,
         reward_per_sec: u64
@@ -142,6 +148,7 @@ module harvest::dgen_stake {
         );
     }
 
+    /// depositing DGEN (reward) coins to specific pool
     public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<DGEN>) acquires StakePool {
         assert!(signer::address_of(pool_admin) == @harvest, ERR_NO_PERMISSIONS);
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
@@ -161,12 +168,14 @@ module harvest::dgen_stake {
     // Getter functions
     //
 
+    /// returns current LP amount staked in pool
     public fun get_pool_total_stake<X, Y, Curve>(): u64 acquires StakePool {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         coin::value(&borrow_global<StakePool<X, Y, Curve>>(@staking_storage).lp_coins)
     }
 
+    /// returns current LP amount staked by user in specific pool
     public fun get_user_stake<X, Y, Curve>(user_address: address): u64 acquires Stake {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
@@ -181,6 +190,7 @@ module harvest::dgen_stake {
     // Public functions
     //
 
+    /// stakes user LP coins in pool
     public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>) acquires StakePool, Stake {
         assert!(coin::value(&coins) > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
@@ -224,6 +234,7 @@ module harvest::dgen_stake {
         );
     }
 
+    /// unstakes user LP coins from pool
     public fun unstake<X, Y, Curve>(user: &signer, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, Stake {
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
@@ -256,6 +267,7 @@ module harvest::dgen_stake {
         coin::extract(&mut pool.lp_coins, amount)
     }
 
+    /// harvests user reward, returning DGEN coins
     public fun harvest<X, Y, Curve>(user: &signer): Coin<DGEN> acquires StakePool, Stake {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
@@ -286,6 +298,7 @@ module harvest::dgen_stake {
         coin::extract(&mut pool.dgen_coins, earned)
     }
 
+    /// recalculates pool accumulated reward
     fun update_accum_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>) {
         let current_time = timestamp::now_seconds();
         let seconds_passed = current_time - pool.last_updated;
@@ -301,6 +314,7 @@ module harvest::dgen_stake {
         }
     }
 
+    /// calculates user earnings
     fun update_user_earnings<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut Stake<X, Y, Curve>) {
         let earned =
             (pool.accum_reward * (to_u128(user_stake.amount)) / SIX_DECIMALS) - user_stake.unobtainable_reward;
@@ -347,7 +361,7 @@ module harvest::dgen_stake {
     }
 
     #[test_only]
-    // access user stake fields with no getters
+    /// access user stake fields with no getters
     public fun get_user_stake_info<X, Y, Curve>(user_address: address): (u128, u64) acquires Stake {
         let fields = borrow_global<Stake<X, Y, Curve>>(user_address);
 
@@ -355,7 +369,7 @@ module harvest::dgen_stake {
     }
 
     #[test_only]
-    // access staking pool fields with no getters
+    /// access staking pool fields with no getters
     public fun get_pool_info<X, Y, Curve>(): (u64, u128, u64) acquires StakePool {
         let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_storage);
 
@@ -363,7 +377,7 @@ module harvest::dgen_stake {
     }
 
     #[test_only]
-    // force pool & user stake recalculations
+    /// force pool & user stake recalculations
     public fun recalculate_user_stake<X, Y, Curve>(user_address: address) acquires StakePool, Stake {
         let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
