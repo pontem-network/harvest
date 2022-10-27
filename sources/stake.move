@@ -1,59 +1,66 @@
-module staking_admin::liq_stake {
+module harvest::stake {
     use std::signer;
+    use std::string::String;
 
-    use aptos_std::event::{Self, EventHandle};
-    use aptos_framework::account;
+    use aptos_framework::account::{Self, SignerCapability};
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
-
+    use aptos_std::event::{Self, EventHandle};
     use liquidswap_lp::lp_coin::LP;
 
-    use coin_creator::liq::LIQ;
+    use harvest::dgen::DGEN;
 
     //
     // Errors
     //
 
-    // pool does not exist
+    /// pool does not exist
     const ERR_NO_POOL: u64 = 100;
 
-    // pool already exists
+    /// pool already exists
     const ERR_POOL_ALREADY_EXISTS: u64 = 101;
 
-    // pool reward can't be zero
+    /// pool reward can't be zero
     const ERR_REWARD_CANNOT_BE_ZERO: u64 = 102;
 
-    // user has no stake
+    /// user has no stake
     const ERR_NO_STAKE: u64 = 103;
 
-    // not enough LP balance to unstake
+    /// not enough LP balance to unstake
     const ERR_NOT_ENOUGH_LP_BALANCE: u64 = 104;
 
-    // only admin can execute
+    /// only admin can execute
     const ERR_NO_PERMISSIONS: u64 = 105;
 
-    // not enough pool LIQ balance to pay reward
-    const ERR_NOT_ENOUGH_LIQ_BALANCE: u64 = 106;
+    /// not enough pool DGEN balance to pay reward
+    const ERR_NOT_ENOUGH_DGEN_BALANCE: u64 = 106;
 
-    // amount can't be zero
+    /// amount can't be zero
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
 
-    // nothing to harvest yet
+    /// nothing to harvest yet
     const ERR_NOTHING_TO_HARVEST: u64 = 108;
+
+    /// module not initialized
+    const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
+
+    /// CoinType is not a coin
+    const ERR_IS_NOT_COIN: u64 = 110;
 
     //
     // Constants
     //
 
-    // multiplier to account six decimal places for LP and LIQ coins
+    /// multiplier to account six decimal places for LP and DGEN coins
     const SIX_DECIMALS: u128 = 1000000;
 
     //
     // Core data structures
     //
 
+    /// LP stake pool, stores LP, DGEN (reward) coins and related info
     struct StakePool<phantom X, phantom Y, phantom Curve> has key {
-        // pool reward LIQ per second
+        // pool reward DGEN per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
@@ -61,16 +68,19 @@ module staking_admin::liq_stake {
         last_updated: u64,
         // pool staked LP coins
         lp_coins: Coin<LP<X, Y, Curve>>,
-        // pool reward LIQ coins
-        liq_coins: Coin<LIQ>,
+        // pool reward DGEN coins
+        dgen_coins: Coin<DGEN>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
         // unstake events
         unstake_events: EventHandle<UnstakeEvent>,
+        // deposit events
+        deposit_events: EventHandle<DepositRewardEvent>,
         // harvest events
         harvest_events: EventHandle<HarvestEvent>,
     }
 
+    /// stores user stake info
     struct Stake<phantom X, phantom Y, phantom Curve> has key {
         // staked amount
         amount: u64,
@@ -80,51 +90,94 @@ module staking_admin::liq_stake {
         earned_reward: u64,
     }
 
+    /// stores events emitted on pool registration under Harvest account
+    struct RegisterEventsStorage has key { register_events: EventHandle<RegisterEvent> }
+
+    /// stores resource account signer capability under Harvest account.
+    struct CapabilityStorage has key { signer_cap: SignerCapability }
+
+    /// initializes module, creating resource account to store pools
+    public entry fun initialize(dgen_stake_admin: &signer) {
+        assert!(signer::address_of(dgen_stake_admin) == @harvest, ERR_NO_PERMISSIONS);
+
+        let (_, signer_cap) =
+            account::create_resource_account(dgen_stake_admin, b"harvest_account_seed");
+
+        move_to(dgen_stake_admin, CapabilityStorage { signer_cap });
+        move_to(dgen_stake_admin,
+            RegisterEventsStorage { register_events: account::new_event_handle<RegisterEvent>(dgen_stake_admin) });
+    }
+
     //
     // Pool config
     //
 
-    public entry fun initialize<X, Y, Curve>(pool_admin: &signer, reward_per_sec: u64) {
-        assert!(signer::address_of(pool_admin) == @staking_admin, ERR_NO_PERMISSIONS);
-        assert!(!exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_POOL_ALREADY_EXISTS);
+    /// registering pool for specific LP coin
+    public fun register<X, Y, Curve>(
+        pool_creator: &signer,
+        reward_per_sec: u64
+    ) acquires RegisterEventsStorage, CapabilityStorage {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
+        assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
+        assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
+        assert!(!exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_POOL_ALREADY_EXISTS);
 
-        move_to(
-            pool_admin,
-            StakePool<X, Y, Curve> {
-                reward_per_sec,
-                accum_reward: 0,
-                last_updated: timestamp::now_seconds(),
-                lp_coins: coin::zero(),
-                liq_coins: coin::zero(),
-                stake_events: account::new_event_handle<StakeEvent>(pool_admin),
-                unstake_events: account::new_event_handle<UnstakeEvent>(pool_admin),
-                harvest_events: account::new_event_handle<HarvestEvent>(pool_admin),
-            }
+        // create account to store pool resource
+        let cap = borrow_global<CapabilityStorage>(@harvest);
+        let storage_acc = &account::create_signer_with_capability(&cap.signer_cap);
+
+        let pool = StakePool<X, Y, Curve> {
+            reward_per_sec,
+            accum_reward: 0,
+            last_updated: timestamp::now_seconds(),
+            lp_coins: coin::zero(),
+            dgen_coins: coin::zero(),
+            stake_events: account::new_event_handle<StakeEvent>(storage_acc),
+            unstake_events: account::new_event_handle<UnstakeEvent>(storage_acc),
+            deposit_events: account::new_event_handle<DepositRewardEvent>(storage_acc),
+            harvest_events: account::new_event_handle<HarvestEvent>(storage_acc),
+        };
+
+        move_to(storage_acc, pool);
+
+        let lp_symbol = coin::symbol<LP<X, Y, Curve>>();
+        let event_storage = borrow_global_mut<RegisterEventsStorage>(@harvest);
+        event::emit_event<RegisterEvent>(
+            &mut event_storage.register_events,
+            RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_symbol },
         );
     }
 
-    public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<LIQ>) acquires StakePool {
-        assert!(signer::address_of(pool_admin) == @staking_admin, ERR_NO_PERMISSIONS);
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
+    /// depositing DGEN (reward) coins to specific pool
+    public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<DGEN>) acquires StakePool {
+        assert!(signer::address_of(pool_admin) == @harvest, ERR_NO_PERMISSIONS);
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let amount = coin::value(&coins);
 
-        coin::merge(&mut pool.liq_coins, coins);
+        coin::merge(&mut pool.dgen_coins, coins);
+
+        event::emit_event<DepositRewardEvent>(
+            &mut pool.deposit_events,
+            DepositRewardEvent { amount },
+        );
     }
 
     //
     // Getter functions
     //
 
+    /// returns current LP amount staked in pool
     public fun get_pool_total_stake<X, Y, Curve>(): u64 acquires StakePool {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
-        coin::value(&borrow_global<StakePool<X, Y, Curve>>(@staking_admin).lp_coins)
+        coin::value(&borrow_global<StakePool<X, Y, Curve>>(@staking_storage).lp_coins)
     }
 
+    /// returns current LP amount staked by user in specific pool
     public fun get_user_stake<X, Y, Curve>(user_address: address): u64 acquires Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         if (exists<Stake<X, Y, Curve>>(user_address)) {
             borrow_global<Stake<X, Y, Curve>>(user_address).amount
@@ -137,13 +190,14 @@ module staking_admin::liq_stake {
     // Public functions
     //
 
+    /// stakes user LP coins in pool
     public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>) acquires StakePool, Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
         assert!(coin::value(&coins) > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         let user_address = signer::address_of(user);
         let amount = coin::value(&coins);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -180,12 +234,13 @@ module staking_admin::liq_stake {
         );
     }
 
+    /// unstakes user LP coins from pool
     public fun unstake<X, Y, Curve>(user: &signer, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -212,11 +267,12 @@ module staking_admin::liq_stake {
         coin::extract(&mut pool.lp_coins, amount)
     }
 
-    public fun harvest<X, Y, Curve>(user: &signer): Coin<LIQ> acquires StakePool, Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_admin), ERR_NO_POOL);
+    /// harvests user reward, returning DGEN coins
+    public fun harvest<X, Y, Curve>(user: &signer): Coin<DGEN> acquires StakePool, Stake {
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
 
         let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
         assert!(exists<Stake<X, Y, Curve>>(user_address), ERR_NO_STAKE);
 
@@ -232,16 +288,17 @@ module staking_admin::liq_stake {
         user_stake.earned_reward = 0;
 
         assert!(earned > 0, ERR_NOTHING_TO_HARVEST);
-        assert!(coin::value(&pool.liq_coins) >= earned, ERR_NOT_ENOUGH_LIQ_BALANCE);
+        assert!(coin::value(&pool.dgen_coins) >= earned, ERR_NOT_ENOUGH_DGEN_BALANCE);
 
         event::emit_event<HarvestEvent>(
             &mut pool.harvest_events,
             HarvestEvent { user_address, amount: earned },
         );
 
-        coin::extract(&mut pool.liq_coins, earned)
+        coin::extract(&mut pool.dgen_coins, earned)
     }
 
+    /// recalculates pool accumulated reward
     fun update_accum_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>) {
         let current_time = timestamp::now_seconds();
         let seconds_passed = current_time - pool.last_updated;
@@ -257,6 +314,7 @@ module staking_admin::liq_stake {
         }
     }
 
+    /// calculates user earnings
     fun update_user_earnings<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut Stake<X, Y, Curve>) {
         let earned =
             (pool.accum_reward * (to_u128(user_stake.amount)) / SIX_DECIMALS) - user_stake.unobtainable_reward;
@@ -277,6 +335,12 @@ module staking_admin::liq_stake {
     // Events
     //
 
+    struct RegisterEvent has drop, store {
+        creator_address: address,
+        reward_per_sec: u64,
+        lp_symbol: String,
+    }
+
     struct StakeEvent has drop, store {
         user_address: address,
         amount: u64,
@@ -287,13 +351,17 @@ module staking_admin::liq_stake {
         amount: u64,
     }
 
+    struct DepositRewardEvent has drop, store {
+        amount: u64,
+    }
+
     struct HarvestEvent has drop, store {
         user_address: address,
         amount: u64,
     }
 
     #[test_only]
-    // access user stake fields with no getters
+    /// access user stake fields with no getters
     public fun get_user_stake_info<X, Y, Curve>(user_address: address): (u128, u64) acquires Stake {
         let fields = borrow_global<Stake<X, Y, Curve>>(user_address);
 
@@ -301,17 +369,17 @@ module staking_admin::liq_stake {
     }
 
     #[test_only]
-    // access staking pool fields with no getters
+    /// access staking pool fields with no getters
     public fun get_pool_info<X, Y, Curve>(): (u64, u128, u64) acquires StakePool {
-        let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_storage);
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated)
     }
 
     #[test_only]
-    // force pool & user stake recalculations
+    /// force pool & user stake recalculations
     public fun recalculate_user_stake<X, Y, Curve>(user_address: address) acquires StakePool, Stake {
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_admin);
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
 
         update_accum_reward(pool);
 
