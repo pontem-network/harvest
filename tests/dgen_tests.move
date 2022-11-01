@@ -34,14 +34,24 @@ module harvest::dgen_tests {
         dgen::initialize(&creator_acc);
 
         // check coin parameters
-        assert!(coin::is_coin_initialized<DGEN>(), 1);
+        assert!(coin::is_coin_initialized<DGEN>(), 0);
         assert!(coin::name<DGEN>() == string::utf8(b"Liquidswap DGEN"), 1);
-        assert!(coin::symbol<DGEN>() == string::utf8(b"DGEN"), 1);
-        assert!(coin::decimals<DGEN>() == 6, 1);
+        assert!(coin::symbol<DGEN>() == string::utf8(b"DGEN"), 2);
+        assert!(coin::decimals<DGEN>() == 6, 3);
 
         // check supply and creator balance
-        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(TOTAL_SUPPLY), 1);
-        assert!(coin::balance<DGEN>(creator_addr) == TOTAL_SUPPLY, 1);
+        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(TOTAL_SUPPLY), 4);
+        assert!(coin::balance<DGEN>(creator_addr) == TOTAL_SUPPLY, 5);
+    }
+
+    #[test]
+    #[expected_failure(abort_code=524290)]
+    public fun test_initialize_fails() {
+        let (creator_acc, _creator_addr) = create_account(@harvest);
+
+        // initialize new coin
+        dgen::initialize(&creator_acc);
+        dgen::initialize(&creator_acc);
     }
 
     #[test]
@@ -57,7 +67,7 @@ module harvest::dgen_tests {
         coin::transfer<DGEN>(&creator_acc, alice_addr, 2000000 * ONE_DGEN);
 
         // check balances
-        assert!(coin::balance<DGEN>(creator_addr) == 98000000 * ONE_DGEN, 1);
+        assert!(coin::balance<DGEN>(creator_addr) == 98000000 * ONE_DGEN, 0);
         assert!(coin::balance<DGEN>(alice_addr) == 2000000 * ONE_DGEN, 1);
 
         // burn all from alice
@@ -69,9 +79,9 @@ module harvest::dgen_tests {
         dgen::burn(coins);
 
         // check balances and supply
-        assert!(coin::balance<DGEN>(creator_addr) == 93000000 * ONE_DGEN, 1);
-        assert!(coin::balance<DGEN>(alice_addr) == 0, 1);
-        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(93000000 * ONE_DGEN), 1);
+        assert!(coin::balance<DGEN>(creator_addr) == 93000000 * ONE_DGEN, 2);
+        assert!(coin::balance<DGEN>(alice_addr) == 0, 3);
+        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(93000000 * ONE_DGEN), 4);
     }
 
     #[test]
