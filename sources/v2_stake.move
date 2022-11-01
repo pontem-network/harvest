@@ -72,6 +72,8 @@ module harvest::v2_stake {
     /// precision factor
     const PRECISION_FACTOR: u64 = 1000000000000;
 
+    /// boost precision
+    const BOOST_PRECISION: u64 = 1000000000000;
     //
     // Core data structures
     //
@@ -84,12 +86,24 @@ module harvest::v2_stake {
         lock_start_time: u64,
         lock_end_time: u64,
         user_boosted_share: u64,
+
+        boost_multiplier: u64, // todo: it's from MasterChef contract UserInfo. Find a way to update it (boostContract role)
+        reward_debt: u64,
+
         locked: bool,
         locked_amount: u64,
     }
 
     /// LP stake pool, stores LP, DGEN (reward) coins and related info
     struct StakePool<phantom X, phantom Y, phantom Curve> has key {
+        // DGEN reward per second
+        reward_per_second: u64,
+        // accumulated reward per share
+        acc_reward_per_share: u64,
+        // total boosted share
+        total_boosted_share: u64,
+        // last reward time
+        last_reward_time: u64,
         // total shares
         total_shares: u64,
         // total boost debt
@@ -147,6 +161,10 @@ module harvest::v2_stake {
         let storage_acc = &account::create_signer_with_capability(&cap.signer_cap);
 
         let pool = StakePool<X, Y, Curve> {
+            reward_per_second: 0,
+            acc_reward_per_share: 0,
+            total_boosted_share: 0,
+            last_reward_time: timestamp::now_seconds(),
             total_shares: 0,
             total_boost_debt: 0,
             total_locked_amount: 0,
@@ -195,8 +213,76 @@ module harvest::v2_stake {
     // Public functions
     //
 
+    //     function withdraw(uint256 _pid, uint256 _amount) external nonReentrant {
+    //     PoolInfo memory pool = updatePool(_pid);
+    //     UserInfo storage user = userInfo[_pid][msg.sender];
+    //
+    //     require(user.amount >= _amount, "withdraw: Insufficient");
+    //
+    //     uint256 multiplier = getBoostMultiplier(msg.sender, _pid);
+    //
+    //     settlependingShdw(msg.sender, _pid, multiplier);
+    //
+    //     if (_amount > 0) {
+    //         user.amount = user.amount.sub(_amount);
+    //         lpToken[_pid].safeTransfer(msg.sender, _amount);
+    //     }
+    //
+    //     user.rewardDebt = user.amount.mul(multiplier).div(BOOST_PRECISION).mul(pool.accShdwPerShare).div(
+    //         ACC_SHDW_PRECISION
+    //     );
+    //     poolInfo[_pid].totalBoostedShare = poolInfo[_pid].totalBoostedShare.sub(
+    //         _amount.mul(multiplier).div(BOOST_PRECISION)
+    //     );
+    //
+    //     emit Withdraw(msg.sender, _pid, _amount);
+    // }
+
+    // fun get_avarage_lock() {}
+
+    fun get_boost_multiplier<X, Y, Curve>(user_stake: &mut UserInfo<X, Y, Curve>): u64 {
+            let multiplier = user_stake.boost_multiplier;
+            if (multiplier > BOOST_PRECISION) {
+                multiplier
+            } else {
+                BOOST_PRECISION
+            }
+    }
+
+    fun get_pending_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut UserInfo<X, Y, Curve>): u64 {
+        let acc_reward_per_share = pool.acc_reward_per_share;
+        let lp_supply /* todo: why lp_supply? */ = pool.total_boosted_share;
+        let current_time = timestamp::now_seconds();
+        let last_reward_time = pool.last_reward_time;
+
+        let alloc_point = 1000; // todo: what is it? In MC
+        let total_alloc_point = 100000; // todo: what is it?
+
+        if (current_time > last_reward_time && lp_supply != 0) {
+            let multiplier = current_time - last_reward_time;
+
+            let dgen_reward = (multiplier * pool.reward_per_second * alloc_point) / total_alloc_point;
+
+            acc_reward_per_share = acc_reward_per_share + ((dgen_reward * to_u64(SIX_DECIMALS) / lp_supply));
+        };
+
+        let boosted_amount = (user_stake.locked_amount * get_boost_multiplier(user_stake)) / BOOST_PRECISION;
+        ((boosted_amount * acc_reward_per_share) / to_u64(SIX_DECIMALS)) - user_stake.reward_debt
+    }
+
+    // todo: is it internal func?
+    fun harvest<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut UserInfo<X, Y, Curve>) {
+        let pending_reward = get_pending_reward(pool, user_stake);
+        if (pending_reward > 0) {
+            // shadowchefV2.withdraw(shdwPoolPID, 0);
+
+        };
+    }
+
     public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>, lock_duration: u64) acquires StakePool, UserInfo {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+        // todo: add assert and error
+        // require(_amount > 0 || _lockDuration > 0, "Nothing to deposit");
 
         let user_address = signer::address_of(user);
         let amount = coin::value(&coins);
@@ -212,6 +298,10 @@ module harvest::v2_stake {
                 lock_start_time: 0,
                 lock_end_time: 0,
                 user_boosted_share: 0,
+
+                boost_multiplier: 1, // todo: update it (boostContract role)
+                reward_debt: 0, // todo: updated in MC deposit/withdraw/updateBoost functions
+
                 locked: false,
                 locked_amount: 0,
             };
@@ -220,7 +310,8 @@ module harvest::v2_stake {
 
         let user_stake = borrow_global_mut<UserInfo<X, Y, Curve>>(user_address);
 
-        // when stake first time
+        // if stakes first time user_stake.shares == 0
+        // if stakes more amount > 0
         if (user_stake.shares == 0 || amount > 0) {
             // todo: add according error and test
             assert!(amount >= MIN_STAKE_AMOUNT, 1);
@@ -238,27 +329,29 @@ module harvest::v2_stake {
                 pool.total_locked_amount = pool.total_locked_amount - user_stake.locked_amount;
                 user_stake.locked_amount = 0;
             };
-            // check it later
+            // todo: check it later
+            // prolong stake duration
             total_lock_duration = total_lock_duration + (user_stake.lock_end_time - user_stake.lock_start_time);
         };
+
         // todo: test when amount zero but longer duration etc
         // todo: create according errors and tests
-        // Min lock period check
+        // min lock period check
         assert!(lock_duration == 0 || total_lock_duration >= MIN_STAKE_DURATION, 1);
-        // Max lock period check
+        // max lock period check
         assert!(total_lock_duration <= MAX_STAKE_DURATION, 1);
 
         coin::merge(&mut pool.lp_coins, coins);
 
-        // todo: claim previous revard?
+        // todo: claim previous reward?
         // Harvest tokens from Masterchef.
-        // harvest();
+        harvest(pool, user_stake);
 
         // update user share
         update_stake(pool, user_stake);
 
         // update lock duration
-        // only on first stake or duration+
+        // only on first stake or duration prolongation
         if (lock_duration > 0) {
             if (user_stake.lock_end_time < current_time) {
                 // first stake
@@ -329,6 +422,8 @@ module harvest::v2_stake {
         // Update user info in Boost Contract.
         // updateBoostContractInfo(_user);
 
+        std::debug::print(&user_stake.shares);
+        std::debug::print(&user_stake.locked_amount);
 
         event::emit_event<StakeEvent>(
             &mut pool.stake_events,
