@@ -74,6 +74,12 @@ module harvest::v2_stake {
 
     /// boost precision
     const BOOST_PRECISION: u64 = 1000000000000;
+
+    ///
+    /// uint256 public constant PRECISION_FACTOR_SHARE = 1e28; // precision factor for share.
+    // todo: I'M a wrong value, not 1e28, change me
+    const PRECISION_FACTOR_SHARE: u64 = 1000000000000000000;
+
     //
     // Core data structures
     //
@@ -87,9 +93,6 @@ module harvest::v2_stake {
         lock_end_time: u64,
         user_boosted_share: u64,
 
-        boost_multiplier: u64, // todo: it's from MasterChef contract UserInfo. Find a way to update it (boostContract role)
-        reward_debt: u64,
-
         locked: bool,
         locked_amount: u64,
     }
@@ -98,8 +101,6 @@ module harvest::v2_stake {
     struct StakePool<phantom X, phantom Y, phantom Curve> has key {
         // DGEN reward per second
         reward_per_second: u64,
-        // accumulated reward per share
-        acc_reward_per_share: u64,
         // total boosted share
         total_boosted_share: u64,
         // last reward time
@@ -153,8 +154,8 @@ module harvest::v2_stake {
     ) acquires RegisterEventsStorage, CapabilityStorage {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
-        assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
         assert!(!exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_POOL_ALREADY_EXISTS);
+        assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
 
         // create account to store pool resource
         let cap = borrow_global<CapabilityStorage>(@harvest);
@@ -162,7 +163,7 @@ module harvest::v2_stake {
 
         let pool = StakePool<X, Y, Curve> {
             reward_per_second: 0,
-            acc_reward_per_share: 0,
+            // acc_reward_per_share: 0,
             total_boosted_share: 0,
             last_reward_time: timestamp::now_seconds(),
             total_shares: 0,
@@ -185,7 +186,6 @@ module harvest::v2_stake {
             RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_symbol },
         );
     }
-
 
     //
     // Getter functions
@@ -213,72 +213,6 @@ module harvest::v2_stake {
     // Public functions
     //
 
-    //     function withdraw(uint256 _pid, uint256 _amount) external nonReentrant {
-    //     PoolInfo memory pool = updatePool(_pid);
-    //     UserInfo storage user = userInfo[_pid][msg.sender];
-    //
-    //     require(user.amount >= _amount, "withdraw: Insufficient");
-    //
-    //     uint256 multiplier = getBoostMultiplier(msg.sender, _pid);
-    //
-    //     settlependingShdw(msg.sender, _pid, multiplier);
-    //
-    //     if (_amount > 0) {
-    //         user.amount = user.amount.sub(_amount);
-    //         lpToken[_pid].safeTransfer(msg.sender, _amount);
-    //     }
-    //
-    //     user.rewardDebt = user.amount.mul(multiplier).div(BOOST_PRECISION).mul(pool.accShdwPerShare).div(
-    //         ACC_SHDW_PRECISION
-    //     );
-    //     poolInfo[_pid].totalBoostedShare = poolInfo[_pid].totalBoostedShare.sub(
-    //         _amount.mul(multiplier).div(BOOST_PRECISION)
-    //     );
-    //
-    //     emit Withdraw(msg.sender, _pid, _amount);
-    // }
-
-    // fun get_avarage_lock() {}
-
-    fun get_boost_multiplier<X, Y, Curve>(user_stake: &mut UserInfo<X, Y, Curve>): u64 {
-            let multiplier = user_stake.boost_multiplier;
-            if (multiplier > BOOST_PRECISION) {
-                multiplier
-            } else {
-                BOOST_PRECISION
-            }
-    }
-
-    fun get_pending_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut UserInfo<X, Y, Curve>): u64 {
-        let acc_reward_per_share = pool.acc_reward_per_share;
-        let lp_supply /* todo: why lp_supply? */ = pool.total_boosted_share;
-        let current_time = timestamp::now_seconds();
-        let last_reward_time = pool.last_reward_time;
-
-        let alloc_point = 1000; // todo: what is it? In MC
-        let total_alloc_point = 100000; // todo: what is it?
-
-        if (current_time > last_reward_time && lp_supply != 0) {
-            let multiplier = current_time - last_reward_time;
-
-            let dgen_reward = (multiplier * pool.reward_per_second * alloc_point) / total_alloc_point;
-
-            acc_reward_per_share = acc_reward_per_share + ((dgen_reward * to_u64(SIX_DECIMALS) / lp_supply));
-        };
-
-        let boosted_amount = (user_stake.locked_amount * get_boost_multiplier(user_stake)) / BOOST_PRECISION;
-        ((boosted_amount * acc_reward_per_share) / to_u64(SIX_DECIMALS)) - user_stake.reward_debt
-    }
-
-    // todo: is it internal func?
-    fun harvest<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut UserInfo<X, Y, Curve>) {
-        let pending_reward = get_pending_reward(pool, user_stake);
-        if (pending_reward > 0) {
-            // shadowchefV2.withdraw(shdwPoolPID, 0);
-
-        };
-    }
-
     public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>, lock_duration: u64) acquires StakePool, UserInfo {
         assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
         // todo: add assert and error
@@ -298,10 +232,6 @@ module harvest::v2_stake {
                 lock_start_time: 0,
                 lock_end_time: 0,
                 user_boosted_share: 0,
-
-                boost_multiplier: 1, // todo: update it (boostContract role)
-                reward_debt: 0, // todo: updated in MC deposit/withdraw/updateBoost functions
-
                 locked: false,
                 locked_amount: 0,
             };
@@ -343,9 +273,7 @@ module harvest::v2_stake {
 
         coin::merge(&mut pool.lp_coins, coins);
 
-        // todo: claim previous reward?
-        // Harvest tokens from Masterchef.
-        harvest(pool, user_stake);
+        // harvest(pool, user_stake);
 
         // update user share
         update_stake(pool, user_stake);
@@ -403,7 +331,6 @@ module harvest::v2_stake {
 
             user_stake.locked_amount = user_stake.locked_amount + amount;
             pool.total_locked_amount = pool.total_locked_amount + amount;
-
             // todo: emit lock??
         } else {
             user_stake.shares = user_stake.shares + current_shares;
@@ -418,10 +345,6 @@ module harvest::v2_stake {
             (user_stake.shares * balance_of(pool)) / pool.total_shares - user_stake.user_boosted_share;
         user_stake.last_user_action_time = current_time;
 
-        // todo: what is boostContract?
-        // Update user info in Boost Contract.
-        // updateBoostContractInfo(_user);
-
         std::debug::print(&user_stake.shares);
         std::debug::print(&user_stake.locked_amount);
 
@@ -434,7 +357,8 @@ module harvest::v2_stake {
     fun balance_of<X, Y, Curve>(pool: &StakePool<X, Y, Curve>): u64 {
         // todo: remove this function or add asserts like: exists<pool>
 
-        pool.total_locked_amount + pool.total_boost_debt
+        // pool.total_locked_amount + pool.total_boost_debt
+        coin::value(&pool.lp_coins) + pool.total_boost_debt
     }
 
     fun update_stake<X, Y, Curve>(
@@ -473,36 +397,71 @@ module harvest::v2_stake {
                     user_stake.locked_amount = 0;
                     // todo: emit unlock?
                 }
-
-         // } else if (!freePerformanceFeeUsers[_user]) {
-         //        // Calculate Performance fee.
-         //        uint256 totalAmount = (user.shares * balanceOf()) / totalShares;
-         //        totalShares -= user.shares;
-         //        user.shares = 0;
-         //        uint256 earnAmount = totalAmount - user.shdwAtLastUserAction;
-         //        uint256 feeRate = performanceFee;
-         //        if (_isContract(_user)) {
-         //            feeRate = performanceFeeContract;
-         //        }
-         //        uint256 currentPerformanceFee = (earnAmount * feeRate) / 10000;
-         //        if (currentPerformanceFee > 0) {
-         //            token.safeTransfer(treasury, currentPerformanceFee);
-         //            totalAmount -= currentPerformanceFee;
-         //        }
-
-                // // Recalculate the user's share.
-                // uint256 pool = balanceOf();
-                // uint256 newShares;
-                // if (totalShares != 0) {
-                //     newShares = (totalAmount * totalShares) / (pool - totalAmount);
-                // } else {
-                //     newShares = totalAmount;
-                // }
-                // user.shares = newShares;
-                // totalShares += newShares;
+            // todo: !free performance fee use case
             }
         }
     }
+
+    //     function withdrawOperation(uint256 _shares, uint256 _amount) internal {
+    public fun unstake<X, Y, Curve>(user: &signer, shares: u64, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, UserInfo {
+        let user_address = signer::address_of(user);
+
+        // todo: test
+        assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
+        // todo: test
+        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+        // todo: test
+        assert!(exists<UserInfo<X, Y, Curve>>(user_address), ERR_NO_STAKE);
+
+        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let user_stake = borrow_global_mut<UserInfo<X, Y, Curve>>(user_address);
+        let current_time = timestamp::now_seconds();
+
+        // todo: use existing amount error, use existing test
+        assert!(shares <= user_stake.shares, 1);
+        // todo: create error and test
+        assert!(user_stake.lock_end_time < current_time, 1);
+
+        let current_share;
+        let shares_percent = (shares * PRECISION_FACTOR_SHARE) / user_stake.shares;
+
+        //     harvest();
+
+        update_stake(pool, user_stake);
+
+        if (shares == 0 && amount > 0) {
+            let pool_balance = balance_of(pool);
+            // calculate equivalent shares
+            current_share = (amount * pool.total_shares) / pool_balance;
+            if (current_share > user_stake.shares) {
+              current_share = user_stake.shares;
+            };
+        } else {
+            current_share = (shares_percent * user_stake.shares) / PRECISION_FACTOR_SHARE;
+        };
+
+        let current_amount = (balance_of(pool) * current_share) / pool.total_shares;
+
+        // todo: do we need withdraw fee? It was here btw
+
+        let coins = coin::extract(&mut pool.lp_coins, current_amount);
+
+        if (user_stake.shares > 0) {
+            user_stake.tokens_at_last_user_action = (user_stake.shares * balance_of(pool)) / pool.total_shares;
+        } else {
+            user_stake.tokens_at_last_user_action = 0;
+        };
+
+        user_stake.last_user_action_time = current_time;
+
+        event::emit_event<UnstakeEvent>(
+            &mut pool.unstake_events,
+            UnstakeEvent { user_address, amount },
+        );
+
+        coins
+    }
+
 
     fun to_u64(num: u128): u64 {
         (num as u64)

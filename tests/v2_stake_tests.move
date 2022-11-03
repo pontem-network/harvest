@@ -334,7 +334,39 @@ module harvest::v2_stake_tests {
     //     assert!(unobtainable_reward == 103333300, 1);
     //     assert!(earned_reward == 53333300, 1);
     // }
-    //
+
+    #[test]
+    public fun test_unstake() {
+        let (staking_admin_acc, _) = create_account(@harvest);
+
+        // create lp coins
+        let lp_coin = btc_usdt_pool_with_999_liqudity();
+
+        // create alice with LP coins
+        let (alice_acc, alice_addr) =
+            create_account_with_lp_coins(@0x10, lp_coin);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // register staking pool
+        let reward_per_sec_rate = 10 * ONE_DGEN;
+        v2_stake::initialize(&staking_admin_acc);
+        v2_stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+
+        // stake 500 LP from alice
+        let coins =
+            coin::withdraw<LP<BTC, USDT, Uncorrelated>>(&alice_acc, 500 * ONE_LP);
+        v2_stake::stake<BTC, USDT, Uncorrelated>(&alice_acc, coins, 604800);
+
+        timestamp::update_global_time_for_test_secs(start_time + 604800 + 1);
+
+        let coins = v2_stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc,0, 1);
+        coin::deposit(alice_addr, coins);
+
+
+
+    }
     // #[test]
     // public fun test_harvest() {
     //     let (staking_admin_acc, _) = create_account(@harvest);
