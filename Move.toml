@@ -7,7 +7,6 @@ harvest = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
 staking_storage = "0x2309ea21d352dc9ba02386078d5f0ff5596411fe4b6a1d435fed72531451807f"
 
 # Test addresses.
-
 test_user = "0x13"
 
 [dependencies.Liquidswap]
