@@ -85,7 +85,7 @@ module harvest::v2_stake {
     //
 
     /// User information.
-    struct UserInfo<phantom StakeCoin, phantom RewardCoinn> has store {
+    struct UserInfo has store {
         // shares
         shares: u128,
         tokens_at_last_user_action: u128,
@@ -119,7 +119,7 @@ module harvest::v2_stake {
         // pool reward coins
         reward_coins: Coin<RewardCoin>,
         // Users who stake for pool.
-        users: Table<address, UserInfo<StakeCoin, RewardCoin>>,
+        users: Table<address, UserInfo>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
         // unstake events
@@ -267,7 +267,7 @@ module harvest::v2_stake {
 
         let current_time = timestamp::now_seconds();
 
-        let user_stake = UserInfo<S, R> {
+        let user_stake = UserInfo {
             shares: 0,
             last_deposit_time: 0,
             tokens_at_last_user_action: 0,
