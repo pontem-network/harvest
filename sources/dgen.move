@@ -1,8 +1,11 @@
+/// Liquidswap DGEN coin module.
 module harvest::dgen {
     use std::signer;
     use std::string;
 
     use aptos_framework::coin::{Self, BurnCapability, Coin};
+
+    // Errors.
 
     /// only creator can execute
     const ERR_NO_PERMISSIONS: u64 = 100;
@@ -13,13 +16,18 @@ module harvest::dgen {
     /// 100 millions total DGEN supply
     const TOTAL_SUPPLY: u64 = 100000000000000;
 
+    // Resources.
+
     /// DGEN coin
     struct DGEN {}
 
     /// burn capabilities for DGEN COIN
     struct DGENCapabilities has key { burn_cap: BurnCapability<DGEN> }
 
-    /// initializes DGEN coin, making total supply premint for creator
+    // Functions.
+
+    /// Initializes DGEN coin, making total supply premint for creator.
+    /// * `creator` - deployer of the module.
     public entry fun initialize(creator: &signer) {
         let creator_addr = signer::address_of(creator);
         assert!(creator_addr == @harvest, ERR_NO_PERMISSIONS);
@@ -42,7 +50,9 @@ module harvest::dgen {
         move_to(creator, DGENCapabilities { burn_cap });
     }
 
-    /// burns provided DGEN coins
+    /// Burns provided DGEN coins.
+    /// * `coins` - DGEN coins to burn.
+    /// Returns burned amount of DGEN coins.
     public fun burn(coins: Coin<DGEN>): u64 acquires DGENCapabilities {
         assert!(exists<DGENCapabilities>(@harvest), ERR_NO_COIN);
 
