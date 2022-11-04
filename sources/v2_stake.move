@@ -6,52 +6,50 @@ module harvest::v2_stake {
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
     use aptos_std::event::{Self, EventHandle};
-    use liquidswap_lp::lp_coin::LP;
 
     use aptos_std::type_info;
+    use aptos_std::table::Table;
+    use aptos_std::table;
 
     //
     // Errors
     //
 
-    /// pool does not exist
+    /// Pool does not exist.
     const ERR_NO_POOL: u64 = 100;
 
-    /// pool already exists
+    /// Pool already exists.
     const ERR_POOL_ALREADY_EXISTS: u64 = 101;
 
-    /// pool reward can't be zero
+    /// Pool reward can't be zero.
     const ERR_REWARD_CANNOT_BE_ZERO: u64 = 102;
 
-    /// user has no stake
+    /// User has no stake.
     const ERR_NO_STAKE: u64 = 103;
 
-    /// not enough LP balance to unstake
-    const ERR_NOT_ENOUGH_LP_BALANCE: u64 = 104;
+    /// Not enough coins to stake, less than minimum.
+    const ERR_MIN_STAKE: u64 = 104;
 
-    /// only admin can execute
+    /// Only admin can execute.
     const ERR_NO_PERMISSIONS: u64 = 105;
 
-    /// not enough pool DGEN balance to pay reward
-    const ERR_NOT_ENOUGH_DGEN_BALANCE: u64 = 106;
+    /// `CoinType` is not a coin
+    const ERR_IS_NOT_COIN: u64 = 106;
 
-    /// amount can't be zero
-    const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
+    /// When lock duration is less than minimum.
+    const ERR_MIN_DURATION: u64 = 107;
 
-    /// nothing to harvest yet
-    const ERR_NOTHING_TO_HARVEST: u64 = 108;
+    /// When lock duration is greater than maximum.
+    const ERR_MAX_DURATION: u64 = 108;
 
-    /// module not initialized
-    const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
-
-    /// CoinType is not a coin
-    const ERR_IS_NOT_COIN: u64 = 110;
+    /// When stake exists for user already.
+    const ERR_STAKE_EXISTS: u64 = 109;
 
     //
     // Constants
     //
 
-    /// multiplier to account six decimal places for LP and DGEN coins
+    /// multiplier to account six decimal places for staked and reward coins
     const SIX_DECIMALS: u128 = 1000000;
 
     /// minimum stake period duration (week)
@@ -63,14 +61,16 @@ module harvest::v2_stake {
     /// minimum amount to stake 0.01 LP
     const MIN_STAKE_AMOUNT: u64 = 10000;
 
+    // Constants.
+
     /// 100%
-    const BOOST_WEIGHT: u64 = 1000000000000;
+    const BOOST_WEIGHT: u128 = 100000000;
 
     /// 365 days in seconds
-    const DURATION_FACTOR: u64 = 31536000;
+    const DURATION_FACTOR: u128 = 31536000;
 
     /// precision factor
-    const PRECISION_FACTOR: u64 = 1000000000000;
+    const PRECISION_FACTOR: u128 = 100000000;
 
     /// boost precision
     const BOOST_PRECISION: u64 = 1000000000000;
@@ -84,37 +84,42 @@ module harvest::v2_stake {
     // Core data structures
     //
 
-    struct UserInfo<phantom X, phantom Y, phantom Curve, phantom Reward> has key {
-        shares: u64,
-        last_deposit_time: u64,
-        tokens_at_last_user_action: u64,
+    /// User information.
+    struct UserInfo<phantom StakeCoin, phantom RewardCoinn> has store {
+        // shares
+        shares: u128,
+        tokens_at_last_user_action: u128,
+        user_boosted_share: u128,
+        // time
         last_user_action_time: u64,
+        last_deposit_time: u64,
         lock_start_time: u64,
         lock_end_time: u64,
-        user_boosted_share: u64,
-
-        locked: bool,
+        // amount & locked
         locked_amount: u64,
+        locked: bool,
     }
 
-    /// LP stake pool, stores LP, DGEN (reward) coins and related info
-    struct StakePool<phantom X, phantom Y, phantom Curve, phantom Reward> has key {
+    /// Stakinng pool.
+    struct StakePool<phantom StakeCoin,phantom RewardCoin> has key {
         // DGEN reward per second
         reward_per_second: u64,
         // total boosted share
-        total_boosted_share: u64,
+        total_boosted_share: u128,
         // last reward time
         last_reward_time: u64,
         // total shares
-        total_shares: u64,
+        total_shares: u128,
         // total boost debt
-        total_boost_debt: u64,
+        total_boost_debt: u128,
         // locked amount
         total_locked_amount: u64,
-        // pool staked LP coins
-        lp_coins: Coin<LP<X, Y, Curve>>,
-        // pool reward DGEN coins
-        dgen_coins: Coin<Reward>,
+        // pool staked coins
+        staked_coins: Coin<StakeCoin>,
+        // pool reward coins
+        reward_coins: Coin<RewardCoin>,
+        // Users who stake for pool.
+        users: Table<address, UserInfo<StakeCoin, RewardCoin>>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
         // unstake events
@@ -129,11 +134,11 @@ module harvest::v2_stake {
     struct RegisterEventsStorage has key { register_events: EventHandle<RegisterEvent> }
 
     /// initializes module, creating resource account to store pools
-    public entry fun initialize(dgen_stake_admin: &signer) {
-        assert!(signer::address_of(dgen_stake_admin) == @harvest, ERR_NO_PERMISSIONS);
+    public entry fun initialize(harvest: &signer) {
+        assert!(signer::address_of(harvest) == @harvest, ERR_NO_PERMISSIONS);
 
-        move_to(dgen_stake_admin,
-            RegisterEventsStorage { register_events: account::new_event_handle<RegisterEvent>(dgen_stake_admin) });
+        move_to(harvest,
+            RegisterEventsStorage { register_events: account::new_event_handle<RegisterEvent>(harvest) });
     }
 
     //
@@ -144,23 +149,24 @@ module harvest::v2_stake {
     /// * `pool_creator` - creator of the pool.
     /// * `reward_per_sec` - reward per second that shared between stackers.
     /// * `seed` - seed for creating new resource account.
-    public fun register<X, Y, Curve, Reward>(
+    /// Returns address stores pool.
+    public fun register<S, R>(
         pool_creator: &signer,
         reward_per_sec: u64,
         seed: vector<u8>
     ): address acquires RegisterEventsStorage {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
-        assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
-        assert!(coin::is_coin_initialized<Reward>(), ERR_IS_NOT_COIN);
+        assert!(coin::is_coin_initialized<S>(), ERR_IS_NOT_COIN);
+        assert!(coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
 
         let (rs_signer, _) =
             account::create_resource_account(pool_creator, seed);
 
         let rs_address = signer::address_of(&rs_signer);
 
-        assert!(!exists<StakePool<X, Y, Curve, Reward>>(rs_address), ERR_POOL_ALREADY_EXISTS);
+        assert!(!exists<StakePool<S, R>>(rs_address), ERR_POOL_ALREADY_EXISTS);
 
-        let pool = StakePool<X, Y, Curve, Reward> {
+        let pool = StakePool<S, R> {
             reward_per_second: 0,
             // acc_reward_per_share: 0,
             total_boosted_share: 0,
@@ -168,8 +174,9 @@ module harvest::v2_stake {
             total_shares: 0,
             total_boost_debt: 0,
             total_locked_amount: 0,
-            lp_coins: coin::zero(),
-            dgen_coins: coin::zero(),
+            staked_coins: coin::zero(),
+            reward_coins: coin::zero(),
+            users: table::new(),
             stake_events: account::new_event_handle<StakeEvent>(&rs_signer),
             unstake_events: account::new_event_handle<UnstakeEvent>(&rs_signer),
             deposit_events: account::new_event_handle<DepositRewardEvent>(&rs_signer),
@@ -178,11 +185,18 @@ module harvest::v2_stake {
 
         move_to(&rs_signer, pool);
 
-        let lp_type_name = type_info::type_name<LP<X, Y, Curve>>();
+        let stake_coin_type = type_info::type_name<S>();
+        let reward_coin_type = type_info::type_name<R>();
+
         let event_storage = borrow_global_mut<RegisterEventsStorage>(@harvest);
         event::emit_event<RegisterEvent>(
             &mut event_storage.register_events,
-            RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_type_name },
+            RegisterEvent {
+                resource_address: rs_address,
+                reward_per_sec,
+                stake_coin_type,
+                reward_coin_type
+            },
         );
 
         rs_address
@@ -192,285 +206,382 @@ module harvest::v2_stake {
     // Getter functions
     //
 
-    /// returns current LP amount staked in pool
-    public fun get_pool_total_stake<X, Y, Curve, Reward>(pool_addr: address): u64 acquires StakePool {
-        assert!(exists<StakePool<X, Y, Curve, Reward>>(pool_addr), ERR_NO_POOL);
-        coin::value(&borrow_global<StakePool<X, Y, Curve, Reward>>(pool_addr).lp_coins)
+    /// Aborts if pool doesn't exists.
+    fun assert_pool_exists<S, R>(pool_addr: address) {
+        assert!(pool_exists<S, R>(pool_addr), ERR_NO_POOL);
     }
 
-    /// returns current LP amount staked by user in specific pool
-    public fun get_user_stake<X, Y, Curve, Reward>(user_address: address): u64 acquires UserInfo {
-        assert!(exists<StakePool<X, Y, Curve, Reward>>(@staking_storage), ERR_NO_POOL);
+    /// Determines if pool exists.
+    public fun pool_exists<S, R>(pool_addr: address): bool {
+        exists<StakePool<S, R>>(pool_addr)
+    }
 
-        if (exists<UserInfo<X, Y, Curve, Reward>>(user_address)) {
-            borrow_global<UserInfo<X, Y, Curve, Reward>>(user_address).locked_amount
-        } else {
-            // todo: doesn't exists!
-            0
-        }
+    /// Aborts if user stake doesn't exists.
+    fun assert_user_stake_exists<S, R>(pool_addr: address, user_addr: address) acquires StakePool {
+        assert!(user_stake_exists<S, R>(pool_addr, user_addr), ERR_NO_STAKE);
+    }
+
+    /// Determines if user has/had stakes.
+    public fun user_stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert_pool_exists<S, R>(pool_addr);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        table::contains(&pool.users, user_addr)
+    }
+
+    /// Returns current amount staked in pool.
+    public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert_pool_exists<S, R>(pool_addr);
+        coin::value(&borrow_global<StakePool<S, R>>(pool_addr).staked_coins)
+    }
+
+    /// Returns current amount staked by user in specific pool.
+    public fun get_user_stake<S, R>(pool_addr: address, user_address: address): u64 acquires StakePool {
+        assert_pool_exists<S, R>(pool_addr);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.users, user_address), ERR_NO_STAKE);
+
+        let user_stake = table::borrow(&pool.users, user_address);
+        user_stake.locked_amount
     }
 
     //
     // Public functions
     //
 
-    public fun stake<X, Y, Curve, Reward>(user: &signer, coins: Coin<LP<X, Y, Curve>>, lock_duration: u64) acquires StakePool, UserInfo {
-        assert!(exists<StakePool<X, Y, Curve, Reward>>(@staking_storage), ERR_NO_POOL);
-        // todo: add assert and error
-        // require(_amount > 0 || _lockDuration > 0, "Nothing to deposit");
+    /// When user stakes first time.
+    public fun stake<S, R>(user: &signer, pool_addr: address, to_stake: Coin<S>, lock_duration: u64) acquires StakePool {
+        assert_pool_exists<S, R>(pool_addr);
+
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
         let user_address = signer::address_of(user);
-        let amount = coin::value(&coins);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve, Reward>>(@staking_storage);
+        assert!(!table::contains(&pool.users, user_address), ERR_STAKE_EXISTS);
 
-        // create if not exists
-        if (!exists<UserInfo<X, Y, Curve, Reward>>(user_address)) {
-            let empty_stake = UserInfo<X, Y, Curve, Reward> {
-                shares: 0,
-                last_deposit_time: 0,
-                tokens_at_last_user_action: 0,
-                last_user_action_time: 0,
-                lock_start_time: 0,
-                lock_end_time: 0,
-                user_boosted_share: 0,
-                locked: false,
-                locked_amount: 0,
-            };
-            move_to(user, empty_stake);
-        };
+        let to_stake_val = coin::value(&to_stake);
+        assert!(to_stake_val >= MIN_STAKE_AMOUNT, ERR_MIN_STAKE);
 
-        let user_stake = borrow_global_mut<UserInfo<X, Y, Curve, Reward>>(user_address);
+        assert!(lock_duration >= MIN_STAKE_DURATION, ERR_MIN_DURATION);
+        assert!(lock_duration <= MAX_STAKE_DURATION, ERR_MAX_DURATION);
 
-        // if stakes first time user_stake.shares == 0
-        // if stakes more amount > 0
-        if (user_stake.shares == 0 || amount > 0) {
-            // todo: add according error and test
-            assert!(amount >= MIN_STAKE_AMOUNT, 1);
-        };
-
-        // calculate the total lock duration and check whether the lock duration meets the conditions
         let current_time = timestamp::now_seconds();
-        let total_lock_duration = lock_duration;
 
-        // if something already staked?
-        if (user_stake.lock_end_time >= current_time) {
-            // adding funds during the lock duration is equivalent to re-locking the position, needs to update some variables
-            if (amount > 0) {
-                user_stake.lock_start_time = current_time;
-                pool.total_locked_amount = pool.total_locked_amount - user_stake.locked_amount;
-                user_stake.locked_amount = 0;
-            };
-            // todo: check it later
-            // prolong stake duration
-            total_lock_duration = total_lock_duration + (user_stake.lock_end_time - user_stake.lock_start_time);
+        let user_stake = UserInfo<S, R> {
+            shares: 0,
+            last_deposit_time: 0,
+            tokens_at_last_user_action: 0,
+            last_user_action_time: 0,
+            lock_start_time: 0,
+            lock_end_time: 0,
+            user_boosted_share: 0,
+            locked: false,
+            locked_amount: 0,
         };
 
-        // todo: test when amount zero but longer duration etc
-        // todo: create according errors and tests
-        // min lock period check
-        assert!(lock_duration == 0 || total_lock_duration >= MIN_STAKE_DURATION, 1);
-        // max lock period check
-        assert!(total_lock_duration <= MAX_STAKE_DURATION, 1);
+        user_stake.lock_start_time = current_time;
+        user_stake.lock_end_time = current_time + lock_duration;
 
-        coin::merge(&mut pool.lp_coins, coins);
+        coin::merge(&mut pool.staked_coins, to_stake);
 
-        // harvest(pool, user_stake);
+        let staked_coins_val = (coin::value(&pool.staked_coins) as u128);
 
-        // update user share
-        update_stake(pool, user_stake);
-
-        // update lock duration
-        // only on first stake or duration prolongation
-        if (lock_duration > 0) {
-            if (user_stake.lock_end_time < current_time) {
-                // first stake
-                user_stake.lock_start_time = current_time;
-                user_stake.lock_end_time = current_time + lock_duration;
-            } else {
-                // duration + stake
-                user_stake.lock_end_time = user_stake.lock_end_time + lock_duration;
-            };
-            user_stake.locked = true;
-        };
-
-        let current_shares;
-        let current_amount = amount;
-        let user_current_locked_balance = 0;
-        let pool_balance = balance_of<X, Y, Curve, Reward>(pool);
-
-        // calculate lock funds
-        if (user_stake.shares > 0 && user_stake.locked) {
-            user_current_locked_balance = (pool_balance * user_stake.shares) / pool.total_shares;
-            current_amount = current_amount + user_current_locked_balance;
-            pool.total_shares = pool.total_shares - user_stake.shares;
-            user_stake.shares = 0;
-
-            // update lock amount
-            if (user_stake.lock_start_time == current_time) {
-                user_stake.locked_amount = user_current_locked_balance;
-                pool.total_locked_amount = pool.total_locked_amount + user_stake.locked_amount;
-            }
-        };
-
-        if (pool.total_shares != 0) {
-            current_shares = (current_amount * pool.total_shares) / (pool_balance - user_current_locked_balance);
+        let pool_balance = staked_coins_val + pool.total_boost_debt;
+        let current_shares = if (pool.total_shares != 0) {
+            ((to_stake_val as u128) * pool.total_shares) / pool_balance
         } else {
-            current_shares = current_amount;
+            (to_stake_val as u128)
         };
 
-        if (user_stake.lock_end_time > user_stake.lock_start_time) {
-            let boost_weight =
-                ((user_stake.lock_end_time - user_stake.lock_start_time) * BOOST_WEIGHT) / DURATION_FACTOR;
-            let boost_shares = (boost_weight * current_shares) / PRECISION_FACTOR;
+        aptos_std::debug::print(&current_shares);
 
-            current_shares = current_shares + boost_shares;
-            user_stake.shares = user_stake.shares + current_shares;
+        let boost_weight = ((lock_duration as u128) * BOOST_WEIGHT) / DURATION_FACTOR;
+        aptos_std::debug::print(&boost_weight);
+        let boost_shares = (boost_weight * current_shares) / PRECISION_FACTOR;
 
-            let user_boosted_share = (boost_weight * current_amount) / PRECISION_FACTOR;
-            user_stake.user_boosted_share = user_stake.user_boosted_share + user_boosted_share;
-            pool.total_boost_debt = pool.total_boost_debt + user_boosted_share;
+        current_shares = current_shares + boost_shares;
+        user_stake.shares = user_stake.shares + current_shares;
 
-            user_stake.locked_amount = user_stake.locked_amount + amount;
-            pool.total_locked_amount = pool.total_locked_amount + amount;
-            // todo: emit lock??
-        } else {
-            user_stake.shares = user_stake.shares + current_shares;
-        };
+        let user_boosted_share = (boost_weight * (to_stake_val as u128)) / PRECISION_FACTOR;
+        user_stake.user_boosted_share = user_stake.user_boosted_share + user_boosted_share;
+        pool.total_boost_debt = pool.total_boost_debt + user_boosted_share;
 
-        if (amount > 0 || lock_duration > 0) {
-            user_stake.last_deposit_time = current_time;
-        };
+        user_stake.locked_amount = user_stake.locked_amount + to_stake_val;
+        pool.total_locked_amount = pool.total_locked_amount + to_stake_val;
+
+        user_stake.last_deposit_time = current_time;
         pool.total_shares = pool.total_shares + current_shares;
 
+        pool_balance = staked_coins_val + pool.total_boost_debt;
+
         user_stake.tokens_at_last_user_action =
-            (user_stake.shares * balance_of(pool)) / pool.total_shares - user_stake.user_boosted_share;
+            (user_stake.shares * pool_balance) / pool.total_shares - user_stake.user_boosted_share;
+
         user_stake.last_user_action_time = current_time;
+        user_stake.locked = true;
 
-        std::debug::print(&user_stake.shares);
-        std::debug::print(&user_stake.locked_amount);
+        aptos_std::debug::print(&user_stake);
+        //aptos_std::debug::print(pool);
 
-        event::emit_event<StakeEvent>(
-            &mut pool.stake_events,
-            StakeEvent { user_address, amount, lock_duration /* todo: check duration */ },
-        );
+        table::add(&mut pool.users, user_address, user_stake);
     }
 
-    fun balance_of<X, Y, Curve, Reward>(pool: &StakePool<X, Y, Curve, Reward>): u64 {
-        // todo: remove this function or add asserts like: exists<pool>
+    // Stake `S` coins in the pool.
+    // public fun update_stake_1<S, R>(user: &signer, pool_addr: address, coins: Coin<S>, lock_duration: u64) acquires StakePool {
+    //     assert_pool_exists<S, R>(pool_addr);
+    //
+    //     // todo: add assert and error.
+    //     // require(_amount > 0 || _lockDuration > 0, "Nothing to deposit");
+    //
+    //     let user_address = signer::address_of(user);
+    //     let amount = coin::value(&coins);
+    //
+    //     let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+    //
+    //     // create if not exists
+    //     if (!table::contains(&pool.users, user_address)) {
+    //         let empty_stake = UserInfo<S, R> {
+    //             shares: 0,
+    //             last_deposit_time: 0,
+    //             tokens_at_last_user_action: 0,
+    //             last_user_action_time: 0,
+    //             lock_start_time: 0,
+    //             lock_end_time: 0,
+    //             user_boosted_share: 0,
+    //             locked: false,
+    //             locked_amount: 0,
+    //         };
+    //         table::add(&mut pool.users, user_address, empty_stake);
+    //     };
+    //
+    //     let user_stake = table::borrow_mut(&mut pool.users, user_address);
+    //
+    //     // if stakes first time user_stake.shares == 0
+    //     // if stakes more amount > 0
+    //     if (user_stake.shares == 0 || amount > 0) {
+    //         assert!(amount >= MIN_STAKE_AMOUNT, ERR_MIN_STAKE);
+    //     };
+    //
+    //     // calculate the total lock duration and check whether the lock duration meets the conditions
+    //     let current_time = timestamp::now_seconds();
+    //     let total_lock_duration = lock_duration;
+    //
+    //     // if something already staked and not expired?
+    //     if (user_stake.lock_end_time >= current_time) {
+    //         // adding funds during the lock duration is equivalent to re-locking the position, needs to update some variables.
+    //         if (amount > 0) {
+    //             user_stake.lock_start_time = current_time;
+    //             pool.total_locked_amount = pool.total_locked_amount - user_stake.locked_amount;
+    //             user_stake.locked_amount = 0;
+    //         };
+    //         // todo: check it later
+    //         // prolong stake duration
+    //         total_lock_duration = total_lock_duration + (user_stake.lock_end_time - user_stake.lock_start_time);
+    //     };
+    //
+    //     // todo: test when amount zero but longer duration etc
+    //     // todo: create according errors and tests
+    //     // min lock period check
+    //     assert!(lock_duration == 0 || total_lock_duration >= MIN_STAKE_DURATION, ERR_MIN_DURATION);
+    //     // max lock period check
+    //     assert!(total_lock_duration <= MAX_STAKE_DURATION, ERR_MAX_DURATION);
+    //
+    //     coin::merge(&mut pool.staked_coins, coins);
+    //
+    //     // harvest(pool, user_stake);
+    //
+    //     // update user share
+    //     update_stake(pool, user_stake);
+    //
+    //     // update lock duration
+    //     // only on first stake or duration prolongation
+    //     if (lock_duration > 0) {
+    //         if (user_stake.lock_end_time < current_time) {
+    //             // first stake
+    //             user_stake.lock_start_time = current_time;
+    //             user_stake.lock_end_time = current_time + lock_duration;
+    //         } else {
+    //             // duration + stake
+    //             user_stake.lock_end_time = user_stake.lock_end_time + lock_duration;
+    //         };
+    //         user_stake.locked = true;
+    //     };
+    //
+    //     let current_shares;
+    //     let current_amount = amount;
+    //     let user_current_locked_balance = 0;
+    //     let pool_balance = coin::value(&pool.staked_coins) + pool.total_boost_debt;
+    //
+    //     // calculate lock funds
+    //     if (user_stake.shares > 0 && user_stake.locked) {
+    //         user_current_locked_balance = (pool_balance * user_stake.shares) / pool.total_shares;
+    //         current_amount = current_amount + user_current_locked_balance;
+    //         pool.total_shares = pool.total_shares - user_stake.shares;
+    //         user_stake.shares = 0;
+    //
+    //         // update lock amount
+    //         if (user_stake.lock_start_time == current_time) {
+    //             user_stake.locked_amount = user_current_locked_balance;
+    //             pool.total_locked_amount = pool.total_locked_amount + user_stake.locked_amount;
+    //         }
+    //     };
+    //
+    //     if (pool.total_shares != 0) {
+    //         current_shares = (current_amount * pool.total_shares) / (pool_balance - user_current_locked_balance);
+    //     } else {
+    //         current_shares = current_amount;
+    //     };
+    //
+    //     if (user_stake.lock_end_time > user_stake.lock_start_time) {
+    //         let boost_weight =
+    //             ((user_stake.lock_end_time - user_stake.lock_start_time) * BOOST_WEIGHT) / DURATION_FACTOR;
+    //         let boost_shares = (boost_weight * current_shares) / PRECISION_FACTOR;
+    //
+    //         current_shares = current_shares + boost_shares;
+    //         user_stake.shares = user_stake.shares + current_shares;
+    //
+    //         let user_boosted_share = (boost_weight * current_amount) / PRECISION_FACTOR;
+    //         user_stake.user_boosted_share = user_stake.user_boosted_share + user_boosted_share;
+    //         pool.total_boost_debt = pool.total_boost_debt + user_boosted_share;
+    //
+    //         user_stake.locked_amount = user_stake.locked_amount + amount;
+    //         pool.total_locked_amount = pool.total_locked_amount + amount;
+    //         // todo: emit lock??
+    //     } else {
+    //         user_stake.shares = user_stake.shares + current_shares;
+    //     };
+    //
+    //     if (amount > 0 || lock_duration > 0) {
+    //         user_stake.last_deposit_time = current_time;
+    //     };
+    //     pool.total_shares = pool.total_shares + current_shares;
+    //
+    //     user_stake.tokens_at_last_user_action =
+    //         (user_stake.shares * balance_of(pool)) / pool.total_shares - user_stake.user_boosted_share;
+    //     user_stake.last_user_action_time = current_time;
+    //
+    //     std::debug::print(&user_stake.shares);
+    //     std::debug::print(&user_stake.locked_amount);
+    //
+    //     event::emit_event<StakeEvent>(
+    //         &mut pool.stake_events,
+    //         StakeEvent { user_address, amount, lock_duration /* todo: check duration */ },
+    //     );
+    // }
 
-        // pool.total_locked_amount + pool.total_boost_debt
-        coin::value(&pool.lp_coins) + pool.total_boost_debt
-    }
+    // fun balance_of<S, R>(pool: &StakePool<S, R>): u64 {
+    //     // todo: remove this function or add asserts like: exists<pool>
+    //
+    //     // pool.total_locked_amount + pool.total_boost_debt
+    //     coin::value(&pool.staked_coins) + pool.total_boost_debt
+    // }
 
-    fun update_stake<X, Y, Curve, Reward>(
-        pool: &mut StakePool<X, Y, Curve, Reward>,
-        user_stake: &mut UserInfo<X, Y, Curve, Reward>
-    ) {
-        if (user_stake.shares > 0) {
-            if (user_stake.locked) {
-                // calculate the user's current token amount and update related parameters
-                let pool_balance = balance_of(pool);
-                let current_amount = (pool_balance * user_stake.shares) / pool.total_shares - user_stake.user_boosted_share;
-                pool.total_boost_debt = pool.total_boost_debt - user_stake.user_boosted_share;
-                user_stake.user_boosted_share = 0;
-                pool.total_shares = pool.total_shares - user_stake.shares;
-
-                // todo: overdue fee was here
-
-                // recalculate the user share
-                let current_shares;
-                if (pool.total_shares != 0) {
-                    current_shares = (current_amount * pool.total_shares) / (pool_balance - current_amount);
-                } else {
-                    current_shares = current_amount;
-                };
-
-                user_stake.shares = current_shares;
-                pool.total_shares = pool.total_shares + current_shares;
-
-                // after the lock duration, update related parameters
-                let current_time = timestamp::now_seconds();
-                if (user_stake.lock_end_time < current_time) {
-                    pool.total_locked_amount = pool.total_locked_amount - user_stake.locked_amount;
-                    user_stake.locked = false;
-                    user_stake.lock_start_time = 0;
-                    user_stake.lock_end_time = 0;
-                    user_stake.locked_amount = 0;
-                    // todo: emit unlock?
-                }
-            // todo: !free performance fee use case
-            }
-        }
-    }
+    // fun update_stake<S, R>(
+    //     pool: &mut StakePool<S, R>,
+    //     user_stake: &mut UserInfo<S, R>
+    // ) {
+    //     if (user_stake.shares > 0) {
+    //         if (user_stake.locked) {
+    //             // calculate the user's current token amount and update related parameters
+    //             let pool_balance = balance_of(pool);
+    //             let current_amount = (pool_balance * user_stake.shares) / pool.total_shares - user_stake.user_boosted_share;
+    //             pool.total_boost_debt = pool.total_boost_debt - user_stake.user_boosted_share;
+    //             user_stake.user_boosted_share = 0;
+    //             pool.total_shares = pool.total_shares - user_stake.shares;
+    //
+    //             // todo: overdue fee was here
+    //
+    //             // recalculate the user share
+    //             let current_shares;
+    //             if (pool.total_shares != 0) {
+    //                 current_shares = (current_amount * pool.total_shares) / (pool_balance - current_amount);
+    //             } else {
+    //                 current_shares = current_amount;
+    //             };
+    //
+    //             user_stake.shares = current_shares;
+    //             pool.total_shares = pool.total_shares + current_shares;
+    //
+    //             // after the lock duration, update related parameters
+    //             let current_time = timestamp::now_seconds();
+    //             if (user_stake.lock_end_time < current_time) {
+    //                 pool.total_locked_amount = pool.total_locked_amount - user_stake.locked_amount;
+    //                 user_stake.locked = false;
+    //                 user_stake.lock_start_time = 0;
+    //                 user_stake.lock_end_time = 0;
+    //                 user_stake.locked_amount = 0;
+    //                 // todo: emit unlock?
+    //             }
+    //         // todo: !free performance fee use case
+    //         }
+    //     }
+    // }
 
     //     function withdrawOperation(uint256 _shares, uint256 _amount) internal {
-    public fun unstake<X, Y, Curve, Reward>(user: &signer, shares: u64, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, UserInfo {
-        let user_address = signer::address_of(user);
-
-        // todo: test
-        assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
-        // todo: test
-        assert!(exists<StakePool<X, Y, Curve, Reward>>(@staking_storage), ERR_NO_POOL);
-        // todo: test
-        assert!(exists<UserInfo<X, Y, Curve, Reward>>(user_address), ERR_NO_STAKE);
-
-        let pool = borrow_global_mut<StakePool<X, Y, Curve, Reward>>(@staking_storage);
-        let user_stake = borrow_global_mut<UserInfo<X, Y, Curve, Reward>>(user_address);
-        let current_time = timestamp::now_seconds();
-
-        // todo: use existing amount error, use existing test
-        assert!(shares <= user_stake.shares, 1);
-        // todo: create error and test
-        assert!(user_stake.lock_end_time < current_time, 1);
-
-        let current_share;
-        let shares_percent = (shares * PRECISION_FACTOR_SHARE) / user_stake.shares;
-
-        //     harvest();
-
-        update_stake(pool, user_stake);
-
-        if (shares == 0 && amount > 0) {
-            let pool_balance = balance_of(pool);
-            // calculate equivalent shares
-            current_share = (amount * pool.total_shares) / pool_balance;
-            if (current_share > user_stake.shares) {
-              current_share = user_stake.shares;
-            };
-        } else {
-            current_share = (shares_percent * user_stake.shares) / PRECISION_FACTOR_SHARE;
-        };
-
-        let current_amount = (balance_of(pool) * current_share) / pool.total_shares;
-
-        // todo: do we need withdraw fee? It was here btw
-
-        let coins = coin::extract(&mut pool.lp_coins, current_amount);
-
-        if (user_stake.shares > 0) {
-            user_stake.tokens_at_last_user_action = (user_stake.shares * balance_of(pool)) / pool.total_shares;
-        } else {
-            user_stake.tokens_at_last_user_action = 0;
-        };
-
-        user_stake.last_user_action_time = current_time;
-
-        event::emit_event<UnstakeEvent>(
-            &mut pool.unstake_events,
-            UnstakeEvent { user_address, amount },
-        );
-
-        coins
-    }
+    // public fun unstake<S, R>(user: &signer, pool_addr: address, shares: u64, amount: u64): Coin<S> acquires StakePool {
+    //     assert_pool_exists<S, R>(pool_addr);
+    //
+    //     let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+    //     let user_address = signer::address_of(user);
+    //
+    //     assert!(table::contains(&pool.users, user_address), ERR_NO_STAKE);
+    //
+    //     let user_stake = table::borrow_mut(&mut pool.users, user_address);
+    //     let current_time = timestamp::now_seconds();
+    //
+    //     // todo: use existing amount error, use existing test
+    //     assert!(shares <= user_stake.shares, 1);
+    //     // todo: create error and test
+    //     assert!(user_stake.lock_end_time < current_time, 1);
+    //
+    //     let current_share;
+    //     let shares_percent = (shares * PRECISION_FACTOR_SHARE) / user_stake.shares;
+    //
+    //     //     harvest();
+    //     update_stake(pool, user_stake);
+    //
+    //     if (shares == 0 && amount > 0) {
+    //         let pool_balance = balance_of(pool);
+    //         // calculate equivalent shares
+    //         current_share = (amount * pool.total_shares) / pool_balance;
+    //         if (current_share > user_stake.shares) {
+    //           current_share = user_stake.shares;
+    //         };
+    //     } else {
+    //         current_share = (shares_percent * user_stake.shares) / PRECISION_FACTOR_SHARE;
+    //     };
+    //
+    //     let current_amount = (balance_of(pool) * current_share) / pool.total_shares;
+    //
+    //     // todo: do we need withdraw fee? It was here btw
+    //
+    //     let coins = coin::extract(&mut pool.staked_coins, current_amount);
+    //
+    //     if (user_stake.shares > 0) {
+    //         user_stake.tokens_at_last_user_action = (user_stake.shares * balance_of(pool)) / pool.total_shares;
+    //     } else {
+    //         user_stake.tokens_at_last_user_action = 0;
+    //     };
+    //
+    //     user_stake.last_user_action_time = current_time;
+    //
+    //     event::emit_event<UnstakeEvent>(
+    //         &mut pool.unstake_events,
+    //         UnstakeEvent { user_address, amount },
+    //     );
+    //
+    //     coins
+    // }
 
     //
     // Events
     //
 
     struct RegisterEvent has drop, store {
-        creator_address: address,
+        resource_address: address,
         reward_per_sec: u64,
-        lp_type_name: String,
+        stake_coin_type: String,
+        reward_coin_type: String,
     }
 
     struct StakeEvent has drop, store {

@@ -2,7 +2,6 @@
 module harvest::v2_stake_tests {
     use std::signer;
 
-    use aptos_framework::coin;
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
     use liquidswap::curves::Uncorrelated;
@@ -10,6 +9,9 @@ module harvest::v2_stake_tests {
 
     use harvest::v2_stake;
     use harvest::staking_test_helpers::{create_account, initialize_btc_usdt_coins, mint_coins, BTC, USDT, create_pool_with_liquidity};
+    use harvest::dgen::DGEN;
+    use harvest::dgen;
+    use aptos_framework::coin;
 
     #[test(harvest = @harvest)]
     public fun test_initialize(harvest: &signer) {
@@ -19,17 +21,22 @@ module harvest::v2_stake_tests {
         v2_stake::initialize(harvest);
     }
 
-    #[test(harvest = @harvest, test_user = @test_user)]
-    public fun test_register(harvest: &signer, test_user: &signer) {
+    #[test(harvest = @harvest, test_user = @test_user, test_user_2 = @0x14, test_user_3 = @0x15)]
+    public fun test_register(harvest: &signer, test_user: &signer, test_user_2: &signer, test_user_3: &signer) {
         genesis::setup();
 
         let harvest_addr = signer::address_of(harvest);
         let test_user_addr = signer::address_of(test_user);
+        let test_user_addr_2 = signer::address_of(test_user_2);
+        let test_user_addr_3 = signer::address_of(test_user_3);
 
         create_account(harvest_addr);
         create_account(test_user_addr);
+        create_account(test_user_addr_2);
+        create_account(test_user_addr_3);
 
         initialize_btc_usdt_coins(harvest);
+        dgen::initialize(harvest);
 
         let btc_coins_liq = mint_coins<BTC>(100000000);
         let usdt_coins_liq = mint_coins<USDT>(10000000000);
@@ -39,15 +46,49 @@ module harvest::v2_stake_tests {
             btc_coins_liq,
             usdt_coins_liq,
         );
-        coin::register<LP<BTC, USDT, Uncorrelated>>(test_user);
-        coin::deposit(test_user_addr, lps);
 
         let start_time = 682981200;
         timestamp::fast_forward_seconds(start_time);
 
         let reward_per_sec_rate = 10000000;
         v2_stake::initialize(harvest);
-        v2_stake::register<BTC, USDT, Uncorrelated>(test_user, reward_per_sec_rate);
+
+        let pool_addr = v2_stake::register<LP<BTC, USDT, Uncorrelated>, DGEN>(
+            test_user,
+            reward_per_sec_rate,
+            b"test"
+        );
+
+        let lp_1 = coin::extract(&mut lps, 100000000);
+        v2_stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(
+            test_user,
+            pool_addr,
+            lp_1,
+            604800,
+        );
+
+        timestamp::fast_forward_seconds(3600);
+
+        let lp_2 = coin::extract(&mut lps, 100000000);
+        v2_stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(
+            test_user_2,
+            pool_addr,
+            lp_2,
+            604800,
+        );
+
+        let lp_3 = coin::extract(&mut lps, 100000000);
+        v2_stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(
+            test_user_3,
+            pool_addr,
+            lp_3,
+            604800,
+        );
+
+        coin::register<LP<BTC, USDT, Uncorrelated>>(test_user);
+        coin::deposit(test_user_addr, lps);
+
+        // [debug] (&) { 51442909, 66456266, 1917808, 682984800, 682984800, 682984800, 683589600, 100000000, true }
 
         //
         // // create lp coins for pool to be valid
