@@ -1,15 +1,11 @@
 [package]
-name = 'LiquidswapStaking'
+name = 'Staking'
 version = '1.0.0'
 
 [addresses]
 harvest = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
-staking_storage = "0x2309ea21d352dc9ba02386078d5f0ff5596411fe4b6a1d435fed72531451807f"
 
-[dependencies.Liquidswap]
-git = 'https://github.com/pontem-network/liquidswap.git'
-rev = 'v0.4.0'
-
-[dependencies.TestCoins]
-git = 'https://github.com/pontem-network/test-coins.git'
-rev = 'v0.1.2'
+[dependencies.AptosFramework]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'main'
+subdir = 'aptos-move/framework/aptos-framework'

@@ -1,14 +1,11 @@
 module harvest::stake {
     use std::signer;
-    use std::string::String;
 
-    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_std::event::{Self, EventHandle};
+    use aptos_std::table;
+    use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
-    use aptos_std::event::{Self, EventHandle};
-    use liquidswap_lp::lp_coin::LP;
-
-    use harvest::dgen::DGEN;
 
     //
     // Errors
@@ -33,7 +30,7 @@ module harvest::stake {
     const ERR_NO_PERMISSIONS: u64 = 105;
 
     /// not enough pool DGEN balance to pay reward
-    const ERR_NOT_ENOUGH_DGEN_BALANCE: u64 = 106;
+    const ERR_NOT_ENOUGH_REWARDS: u64 = 106;
 
     /// amount can't be zero
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
@@ -59,7 +56,7 @@ module harvest::stake {
     //
 
     /// LP stake pool, stores LP, DGEN (reward) coins and related info
-    struct StakePool<phantom X, phantom Y, phantom Curve> has key {
+    struct StakePool<phantom S, phantom R> has key {
         // pool reward DGEN per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
@@ -67,9 +64,9 @@ module harvest::stake {
         // last accum_reward & reward_per_sec update time
         last_updated: u64,
         // pool staked LP coins
-        lp_coins: Coin<LP<X, Y, Curve>>,
+        stake_coins: Coin<S>,
         // pool reward DGEN coins
-        dgen_coins: Coin<DGEN>,
+        reward_coins: Coin<R>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
         // unstake events
@@ -80,8 +77,12 @@ module harvest::stake {
         harvest_events: EventHandle<HarvestEvent>,
     }
 
+    struct UserStakeTable<phantom S, phantom R> has key {
+        items: table::Table<address, UserStake>
+    }
+
     /// stores user stake info
-    struct Stake<phantom X, phantom Y, phantom Curve> has key {
+    struct UserStake has store {
         // staked amount
         amount: u64,
         // contains the value of rewards that cannot be harvested by the user
@@ -90,73 +91,41 @@ module harvest::stake {
         earned_reward: u64,
     }
 
-    /// stores events emitted on pool registration under Harvest account
-    struct RegisterEventsStorage has key { register_events: EventHandle<RegisterEvent> }
-
-    /// stores resource account signer capability under Harvest account.
-    struct CapabilityStorage has key { signer_cap: SignerCapability }
-
-    /// initializes module, creating resource account to store pools
-    public entry fun initialize(dgen_stake_admin: &signer) {
-        assert!(signer::address_of(dgen_stake_admin) == @harvest, ERR_NO_PERMISSIONS);
-
-        let (_, signer_cap) =
-            account::create_resource_account(dgen_stake_admin, b"harvest_account_seed");
-
-        move_to(dgen_stake_admin, CapabilityStorage { signer_cap });
-        move_to(dgen_stake_admin,
-            RegisterEventsStorage { register_events: account::new_event_handle<RegisterEvent>(dgen_stake_admin) });
-    }
-
     //
     // Pool config
     //
 
     /// registering pool for specific LP coin
-    public fun register<X, Y, Curve>(
-        pool_creator: &signer,
-        reward_per_sec: u64
-    ) acquires RegisterEventsStorage, CapabilityStorage {
+    public fun register_pool<S, R>(owner: &signer, reward_per_sec: u64) {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
-        assert!(exists<RegisterEventsStorage>(@harvest), ERR_MODULE_NOT_INITIALIZED);
-        assert!(coin::is_coin_initialized<LP<X, Y, Curve>>(), ERR_IS_NOT_COIN);
-        assert!(!exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_POOL_ALREADY_EXISTS);
+        assert!(coin::is_coin_initialized<S>(), ERR_IS_NOT_COIN);
 
-        // create account to store pool resource
-        let cap = borrow_global<CapabilityStorage>(@harvest);
-        let storage_acc = &account::create_signer_with_capability(&cap.signer_cap);
-
-        let pool = StakePool<X, Y, Curve> {
+        let pool = StakePool<S, R> {
             reward_per_sec,
             accum_reward: 0,
             last_updated: timestamp::now_seconds(),
-            lp_coins: coin::zero(),
-            dgen_coins: coin::zero(),
-            stake_events: account::new_event_handle<StakeEvent>(storage_acc),
-            unstake_events: account::new_event_handle<UnstakeEvent>(storage_acc),
-            deposit_events: account::new_event_handle<DepositRewardEvent>(storage_acc),
-            harvest_events: account::new_event_handle<HarvestEvent>(storage_acc),
+            stake_coins: coin::zero(),
+            reward_coins: coin::zero(),
+            stake_events: account::new_event_handle<StakeEvent>(owner),
+            unstake_events: account::new_event_handle<UnstakeEvent>(owner),
+            deposit_events: account::new_event_handle<DepositRewardEvent>(owner),
+            harvest_events: account::new_event_handle<HarvestEvent>(owner),
         };
+        move_to(owner, pool);
 
-        move_to(storage_acc, pool);
-
-        let lp_symbol = coin::symbol<LP<X, Y, Curve>>();
-        let event_storage = borrow_global_mut<RegisterEventsStorage>(@harvest);
-        event::emit_event<RegisterEvent>(
-            &mut event_storage.register_events,
-            RegisterEvent { creator_address: signer::address_of(pool_creator), reward_per_sec, lp_symbol },
-        );
+        let user_stake_table = UserStakeTable<S, R> { items: table::new() };
+        move_to(owner, user_stake_table);
     }
 
     /// depositing DGEN (reward) coins to specific pool
-    public fun deposit_reward_coins<X, Y, Curve>(pool_admin: &signer, coins: Coin<DGEN>) acquires StakePool {
-        assert!(signer::address_of(pool_admin) == @harvest, ERR_NO_PERMISSIONS);
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+    public fun deposit_reward_coins<S, R>(pool_owner: &signer, coins: Coin<R>) acquires StakePool {
+        let pool_addr = signer::address_of(pool_owner);
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         let amount = coin::value(&coins);
 
-        coin::merge(&mut pool.dgen_coins, coins);
+        coin::merge(&mut pool.reward_coins, coins);
 
         event::emit_event<DepositRewardEvent>(
             &mut pool.deposit_events,
@@ -169,18 +138,19 @@ module harvest::stake {
     //
 
     /// returns current LP amount staked in pool
-    public fun get_pool_total_stake<X, Y, Curve>(): u64 acquires StakePool {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+    public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        coin::value(&borrow_global<StakePool<X, Y, Curve>>(@staking_storage).lp_coins)
+        coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
     }
 
     /// returns current LP amount staked by user in specific pool
-    public fun get_user_stake<X, Y, Curve>(user_address: address): u64 acquires Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+    public fun get_user_stake<S, R>(pool_addr: address, user_addr: address): u64 acquires UserStakeTable {
+        assert!(exists<UserStakeTable<S, R>>(pool_addr), ERR_NO_POOL);
 
-        if (exists<Stake<X, Y, Curve>>(user_address)) {
-            borrow_global<Stake<X, Y, Curve>>(user_address).amount
+        let user_stake_table = borrow_global<UserStakeTable<S, R>>(pool_addr);
+        if (table::contains(&user_stake_table.items, user_addr)) {
+            table::borrow(&user_stake_table.items, user_addr).amount
         } else {
             0
         }
@@ -191,31 +161,35 @@ module harvest::stake {
     //
 
     /// stakes user LP coins in pool
-    public fun stake<X, Y, Curve>(user: &signer, coins: Coin<LP<X, Y, Curve>>) acquires StakePool, Stake {
+    public fun stake<S, R>(
+        user: &signer,
+        pool_addr: address,
+        coins: Coin<S>
+    ) acquires StakePool, UserStakeTable {
         assert!(coin::value(&coins) > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        let user_address = signer::address_of(user);
+        let user_addr = signer::address_of(user);
         let amount = coin::value(&coins);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
 
         let accum_reward = pool.accum_reward;
 
-        if (!exists<Stake<X, Y, Curve>>(user_address)) {
-            let new_stake = Stake<X, Y, Curve> {
+        let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);
+        if (!table::contains(&user_stake_table.items, user_addr)) {
+            let new_stake = UserStake {
                 amount,
                 unobtainable_reward: 0,
                 earned_reward: 0
             };
             // calculate unobtainable reward for new stake
             new_stake.unobtainable_reward = (accum_reward * to_u128(amount)) / SIX_DECIMALS;
-
-            move_to(user, new_stake);
+            table::add(&mut user_stake_table.items, user_addr, new_stake);
         } else {
-            let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+            let user_stake = table::borrow_mut(&mut user_stake_table.items, user_addr);
 
             // update earnings
             update_user_earnings(pool, user_stake);
@@ -226,28 +200,33 @@ module harvest::stake {
             user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake.amount)) / SIX_DECIMALS;
         };
 
-        coin::merge(&mut pool.lp_coins, coins);
+        coin::merge(&mut pool.stake_coins, coins);
 
         event::emit_event<StakeEvent>(
             &mut pool.stake_events,
-            StakeEvent { user_address, amount },
+            StakeEvent { user_address: user_addr, amount },
         );
     }
 
     /// unstakes user LP coins from pool
-    public fun unstake<X, Y, Curve>(user: &signer, amount: u64): Coin<LP<X, Y, Curve>> acquires StakePool, Stake {
+    public fun unstake<S, R>(
+        user: &signer,
+        pool_addr: address,
+        amount: u64
+    ): Coin<S> acquires StakePool, UserStakeTable {
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let user_addr = signer::address_of(user);
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
 
-        assert!(exists<Stake<X, Y, Curve>>(user_address), ERR_NO_STAKE);
+        let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);
+        assert!(table::contains(&user_stake_table.items, user_addr), ERR_NO_STAKE);
 
-        let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+        let user_stake = table::borrow_mut(&mut user_stake_table.items, user_addr);
 
         // update earnings
         update_user_earnings(pool, user_stake);
@@ -261,25 +240,26 @@ module harvest::stake {
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
-            UnstakeEvent { user_address, amount },
+            UnstakeEvent { user_address: user_addr, amount },
         );
 
-        coin::extract(&mut pool.lp_coins, amount)
+        coin::extract(&mut pool.stake_coins, amount)
     }
 
-    /// harvests user reward, returning DGEN coins
-    public fun harvest<X, Y, Curve>(user: &signer): Coin<DGEN> acquires StakePool, Stake {
-        assert!(exists<StakePool<X, Y, Curve>>(@staking_storage), ERR_NO_POOL);
+    /// harvests user reward, returning R coins
+    public fun harvest<S, R>(user: &signer, pool_addr: address): Coin<R> acquires StakePool, UserStakeTable {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        let user_address = signer::address_of(user);
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+        let user_addr = signer::address_of(user);
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
-        assert!(exists<Stake<X, Y, Curve>>(user_address), ERR_NO_STAKE);
+        let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);
+        assert!(table::contains(&user_stake_table.items, user_addr), ERR_NO_STAKE);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
 
-        let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+        let user_stake = table::borrow_mut(&mut user_stake_table.items, user_addr);
 
         // update earnings
         update_user_earnings(pool, user_stake);
@@ -288,21 +268,21 @@ module harvest::stake {
         user_stake.earned_reward = 0;
 
         assert!(earned > 0, ERR_NOTHING_TO_HARVEST);
-        assert!(coin::value(&pool.dgen_coins) >= earned, ERR_NOT_ENOUGH_DGEN_BALANCE);
+        assert!(coin::value(&pool.reward_coins) >= earned, ERR_NOT_ENOUGH_REWARDS);
 
         event::emit_event<HarvestEvent>(
             &mut pool.harvest_events,
-            HarvestEvent { user_address, amount: earned },
+            HarvestEvent { user_address: user_addr, amount: earned },
         );
 
-        coin::extract(&mut pool.dgen_coins, earned)
+        coin::extract(&mut pool.reward_coins, earned)
     }
 
     /// recalculates pool accumulated reward
-    fun update_accum_reward<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>) {
+    fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
         let current_time = timestamp::now_seconds();
         let seconds_passed = current_time - pool.last_updated;
-        let total_stake = coin::value(&pool.lp_coins);
+        let total_stake = coin::value(&pool.stake_coins);
 
         pool.last_updated = current_time;
 
@@ -315,7 +295,7 @@ module harvest::stake {
     }
 
     /// calculates user earnings
-    fun update_user_earnings<X, Y, Curve>(pool: &mut StakePool<X, Y, Curve>, user_stake: &mut Stake<X, Y, Curve>) {
+    fun update_user_earnings<S, R>(pool: &mut StakePool<S, R>, user_stake: &mut UserStake) {
         let earned =
             (pool.accum_reward * (to_u128(user_stake.amount)) / SIX_DECIMALS) - user_stake.unobtainable_reward;
 
@@ -335,11 +315,11 @@ module harvest::stake {
     // Events
     //
 
-    struct RegisterEvent has drop, store {
-        creator_address: address,
-        reward_per_sec: u64,
-        lp_symbol: String,
-    }
+    // struct RegisterEvent has drop, store {
+    //     creator_address: address,
+    //     reward_per_sec: u64,
+    //     lp_symbol: String,
+    // }
 
     struct StakeEvent has drop, store {
         user_address: address,
@@ -362,28 +342,30 @@ module harvest::stake {
 
     #[test_only]
     /// access user stake fields with no getters
-    public fun get_user_stake_info<X, Y, Curve>(user_address: address): (u128, u64) acquires Stake {
-        let fields = borrow_global<Stake<X, Y, Curve>>(user_address);
+    public fun get_user_stake_info<S, R>(pool_addr: address, user_addr: address): (u128, u64) acquires UserStakeTable {
+        let user_stake_table = borrow_global<UserStakeTable<S, R>>(pool_addr);
+        let fields = table::borrow(&user_stake_table.items, user_addr);
 
         (fields.unobtainable_reward, fields.earned_reward)
     }
 
     #[test_only]
     /// access staking pool fields with no getters
-    public fun get_pool_info<X, Y, Curve>(): (u64, u128, u64) acquires StakePool {
-        let pool = borrow_global<StakePool<X, Y, Curve>>(@staking_storage);
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64) acquires StakePool {
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated)
     }
 
     #[test_only]
     /// force pool & user stake recalculations
-    public fun recalculate_user_stake<X, Y, Curve>(user_address: address) acquires StakePool, Stake {
-        let pool = borrow_global_mut<StakePool<X, Y, Curve>>(@staking_storage);
+    public fun recalculate_user_stake<S, R>(pool_addr: address, user_addr: address) acquires StakePool, UserStakeTable {
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
         update_accum_reward(pool);
 
-        let user_stake = borrow_global_mut<Stake<X, Y, Curve>>(user_address);
+        let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);
+        let user_stake = table::borrow_mut(&mut user_stake_table.items, user_addr);
 
         update_user_earnings(pool, user_stake);
     }

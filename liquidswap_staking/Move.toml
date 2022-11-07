@@ -1,0 +1,13 @@
+[package]
+name = 'LiquidswapStaking'
+version = '1.0.0'
+
+[addresses]
+dgen_owner = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
+
+[dependencies.Staking]
+local = ".."
+
+[dependencies.Liquidswap]
+git = 'https://github.com/pontem-network/liquidswap.git'
+rev = 'v0.4.3'
