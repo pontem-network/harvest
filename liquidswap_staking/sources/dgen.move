@@ -1,5 +1,5 @@
 /// Liquidswap DGEN coin module.
-module harvest::dgen {
+module dgen_owner::dgen {
     use std::signer;
     use std::string;
 
@@ -23,7 +23,7 @@ module harvest::dgen {
     /// Initializes DGEN coin, making total supply premint for creator.
     public entry fun initialize(creator: &signer) {
         let creator_addr = signer::address_of(creator);
-        assert!(creator_addr == @harvest, ERR_NO_PERMISSIONS);
+        assert!(creator_addr == @dgen_owner, ERR_NO_PERMISSIONS);
 
         let (burn_cap, freeze_cap, mint_cap) = coin::initialize<DGEN>(
             creator,
@@ -45,10 +45,10 @@ module harvest::dgen {
 
     /// Burns provided DGEN coins.
     public fun burn(coins: Coin<DGEN>): u64 acquires DGENCapabilities {
-        assert!(exists<DGENCapabilities>(@harvest), ERR_NO_COIN);
+        assert!(exists<DGENCapabilities>(@dgen_owner), ERR_NO_COIN);
 
         let amount = coin::value(&coins);
-        let cap = borrow_global<DGENCapabilities>(@harvest);
+        let cap = borrow_global<DGENCapabilities>(@dgen_owner);
 
         coin::burn<DGEN>(coins, &cap.burn_cap);
         amount

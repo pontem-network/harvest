@@ -1,18 +1,18 @@
 #[test_only]
-module harvest::stake_tests {
+module dgen_owner::stake_tests {
     use std::signer;
 
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
+
+    use dgen_owner::dgen::{Self, DGEN};
     use liquidswap::curves::Uncorrelated;
     use liquidswap::liquidity_pool;
     use liquidswap_lp::lp_coin::LP;
     use test_coins::coins::{Self, USDT, BTC};
     use test_helpers::test_pool;
-
-    use harvest::dgen::{Self, DGEN};
     use harvest::stake;
 
     // multiplier to account six decimal places for LP coin
@@ -109,7 +109,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&alice_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&alice_acc, reward_per_sec_rate);
 
         // check pool statistics
         let (reward_per_sec, accum_reward, last_updated) =
@@ -134,7 +134,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
     }
@@ -156,7 +156,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // check empty balances
         assert!(stake::get_user_stake<BTC, USDT, Uncorrelated>(alice_addr) == 0, 1);
@@ -223,7 +223,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake 100 LP from alice
         let coins =
@@ -360,7 +360,7 @@ module harvest::stake_tests {
         // register staking pool with DGEN
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
 
         // stake 100 LP from alice
@@ -417,7 +417,7 @@ module harvest::stake_tests {
 
         // unstake 100 LP from alice
         let coins =
-            stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc,  100 * ONE_LP);
+            stake::unstake<BTC, USDT, Uncorrelated>(&alice_acc, 100 * ONE_LP);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(bob_addr, coins);
 
         // wait 10 seconds
@@ -511,8 +511,8 @@ module harvest::stake_tests {
         // register staking pool twice
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
     }
 
     #[test]
@@ -522,7 +522,7 @@ module harvest::stake_tests {
 
         // register staking pool with zero reward
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, 0);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, 0);
     }
 
     #[test]
@@ -538,7 +538,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // unstake from alice
         let coins =
@@ -559,7 +559,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // harvest from alice
         let coins =
@@ -582,7 +582,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake from alice
         let coins =
@@ -622,7 +622,7 @@ module harvest::stake_tests {
         // register staking pool twice
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&alice_acc, liq_coins);
     }
@@ -645,7 +645,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake 100 LP from alice
         let coins =
@@ -676,7 +676,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake 0 LP from alice
         let coins =
@@ -699,7 +699,7 @@ module harvest::stake_tests {
         // register staking pool
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake from alice
         let coins =
@@ -729,7 +729,7 @@ module harvest::stake_tests {
         // register staking pool with DGEN
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
 
         // stake 100 LP from alice
         let coins =
@@ -765,7 +765,7 @@ module harvest::stake_tests {
         // register staking pool with DGEN
         let reward_per_sec_rate = 10 * ONE_LP;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<BTC, USDT, Uncorrelated>(&staking_admin_acc, liq_coins);
 
         // stake 100 LP from alice
@@ -792,7 +792,7 @@ module harvest::stake_tests {
 
         // register staking pool before module initialization
         let reward_per_sec_rate = 10 * ONE_DGEN;
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
     }
 
     #[test]
@@ -803,6 +803,6 @@ module harvest::stake_tests {
         // register staking pool with undeployed coins
         let reward_per_sec_rate = 10 * ONE_DGEN;
         stake::initialize(&staking_admin_acc);
-        stake::register<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
+        stake::register_pool<BTC, USDT, Uncorrelated>(&staking_admin_acc, reward_per_sec_rate);
     }
 }
