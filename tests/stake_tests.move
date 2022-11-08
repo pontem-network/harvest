@@ -418,6 +418,133 @@ module harvest::stake_tests {
         // assert!(total_rewards == total_earned, 1);
     }
 
+    #[test(harvest = @harvest, alice = @alice)]
+    public fun test_reward_calculation_works_well_when_pool_is_empty(harvest: &signer, alice: &signer) {
+        genesis::setup();
+
+        let (harvest_acc, harvest_addr) = create_account(harvest);
+        let (alice_acc, alice_addr) = create_account(alice);
+
+        // create coins for pool
+        initialize_reward_coin(&harvest_acc, 6);
+        initialize_stake_coin(&harvest_acc, 6);
+
+        // mint StakeCoins coins for alice
+        let stake_coins = mint_coins<StakeCoin>(100000000);
+        coin::register<StakeCoin>(&alice_acc);
+        coin::deposit(alice_addr, stake_coins);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // register staking pool
+        let reward_per_sec_rate = 10000000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+
+        // wait one week with empty pool
+        timestamp::update_global_time_for_test_secs(start_time + WEEK_IN_SECONDS);
+
+        // check pool parameters
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == start_time, 1);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // check stake parameters
+        let (unobtainable_reward, earned_reward, _) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unobtainable_reward == 0, 1);
+        assert!(earned_reward == 0, 1);
+
+        // check pool parameters
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == start_time + WEEK_IN_SECONDS, 1);
+
+        // wait one week with stake
+        timestamp::update_global_time_for_test_secs(start_time + (WEEK_IN_SECONDS * 2));
+
+        // synthetic recalculate
+        stake::recalculate_user_stake<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+
+        // check stake parameters, here we count on that user receives reward for one week only
+        let (unobtainable_reward, earned_reward, _) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        // 604800 seconds * 10 rew_per_second, all coins belong to user
+        assert!(unobtainable_reward == 6048000000000, 1);
+        assert!(earned_reward == 6048000000000, 1);
+
+        // check pool parameters
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        // 604800 seconds * 10 rew_per_second / 100 total_staked
+        assert!(accum_reward == 60480000000, 1);
+        assert!(last_updated == start_time + (WEEK_IN_SECONDS * 2), 1);
+
+        // unstake from alice
+        let coins
+            = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, 100000000);
+        coin::deposit(alice_addr, coins);
+
+        // check stake parameters
+        let (unobtainable_reward, earned_reward, _) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        // 604800 seconds * 10 rew_per_second, all coins belong to user
+        assert!(unobtainable_reward == 0, 1);
+        assert!(earned_reward == 6048000000000, 1);
+
+        // check pool parameters
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        // 604800 seconds * 10 rew_per_second / 100 total_staked
+        assert!(accum_reward == 60480000000, 1);
+        assert!(last_updated == start_time + (WEEK_IN_SECONDS * 2), 1);
+
+        // wait few more weeks with empty pool
+        timestamp::update_global_time_for_test_secs(start_time + (WEEK_IN_SECONDS * 5));
+
+        // stake again from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // check stake parameters, user should not be able to claim rewards for period after unstake
+        let (unobtainable_reward, earned_reward, _) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unobtainable_reward == 6048000000000, 1);
+        assert!(earned_reward == 6048000000000, 1);
+
+        // check pool parameters, pool should not accumulate rewards when no stakes in it
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        assert!(accum_reward == 60480000000, 1);
+        assert!(last_updated == start_time + (WEEK_IN_SECONDS * 5), 1);
+
+        // wait one week after stake
+        timestamp::update_global_time_for_test_secs(start_time + (WEEK_IN_SECONDS * 6));
+
+        // synthetic recalculate
+        stake::recalculate_user_stake<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+
+        // check stake parameters, user should not be able to claim rewards for period after unstake
+        let (unobtainable_reward, earned_reward, _) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unobtainable_reward == 12096000000000, 1);
+        assert!(earned_reward == 12096000000000, 1);
+
+        // check pool parameters, pool should not accumulate rewards when no stakes in it
+        let (_, accum_reward, last_updated, _) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(harvest_addr);
+        assert!(accum_reward == 120960000000, 1);
+        assert!(last_updated == start_time + (WEEK_IN_SECONDS * 6), 1);
+    }
+
     #[test(harvest = @harvest, alice = @alice, bob = @bob)]
     public fun test_harvest(harvest: &signer, alice: &signer, bob: &signer) {
         genesis::setup();
