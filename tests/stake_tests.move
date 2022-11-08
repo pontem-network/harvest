@@ -12,7 +12,6 @@ module harvest::stake_tests {
 
     // todo: add test of registration two different pools at same time from different users
 
-    // todo: deposit reward coins on pool register?
     #[test(harvest = @harvest, alice = @alice)]
     public fun test_register(harvest: &signer, alice: &signer) {
         genesis::setup();
@@ -41,7 +40,6 @@ module harvest::stake_tests {
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(alice_addr) == 0, 1);
     }
 
-    // todo: deposit reward coins on pool register?
     #[test(harvest = @harvest, alice = @alice)]
     public fun test_deposit_reward_coins(harvest: &signer, alice: &signer) {
         genesis::setup();
@@ -451,7 +449,6 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        // todo: only admin can deposit rewards in pool?
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest_acc, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -689,31 +686,8 @@ module harvest::stake_tests {
         coin::deposit<StakeCoin>(alice_addr, coins);
     }
 
-    // todo: only admin can deposit rewards in pool?
-    // #[test(harvest = @harvest, alice = @alice)]
-    // #[expected_failure(abort_code = 105 /* ERR_NO_PERMISSIONS */)]
-    // public fun test_deposit_reward_coins_fails_if_executed_not_by_admin(harvest: &signer, alice: &signer) {
-    //     genesis::setup();
-    //
-    //     let (harvest_acc, _) = create_account(harvest);
-    //     let (alice_acc, _) = create_account(alice);
-    //
-    //     // create coins for pool
-    //     initialize_reward_coin(&harvest_acc, 6);
-    //     initialize_stake_coin(&harvest_acc, 6);
-    //
-    //     // mint reward coins
-    //     let reward_coins = mint_coins<RewardCoin>(1000000000);
-    //
-    //     // register staking pool
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
-    //
-    //     // deposit reward coins from non admin account
-    //     stake::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, reward_coins);
-    // }
-
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 106 /* ERR_NOT_ENOUGH_REWARDS */)]
+    #[expected_failure(abort_code = 105 /* ERR_NOT_ENOUGH_REWARDS */)]
     public fun test_harvest_fails_if_not_enough_pool_reward_balance(harvest: &signer, alice: &signer) {
         genesis::setup();
 
@@ -751,7 +725,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest)]
-    #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_stake_fails_if_amount_is_zero(harvest: &signer) {
         genesis::setup();
 
@@ -772,7 +746,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest)]
-    #[expected_failure(abort_code = 107 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_unstake_fails_if_amount_is_zero(harvest: &signer) {
         genesis::setup();
 
@@ -792,7 +766,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
+    #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_1(harvest: &signer, alice: &signer) {
         genesis::setup();
 
@@ -818,7 +792,6 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        // todo: only admin can deposit rewards in pool?
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest_acc, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -833,7 +806,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 108 /* ERR_NOTHING_TO_HARVEST */)]
+    #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_2(harvest: &signer, alice: &signer) {
         genesis::setup();
 
@@ -859,7 +832,6 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        // todo: only admin can deposit rewards in pool?
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest_acc, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -880,7 +852,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest)]
-    #[expected_failure(abort_code = 110 /* ERR_IS_NOT_COIN */)]
+    #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
     public fun test_register_fails_if_stake_coin_is_not_coin(harvest: &signer) {
         genesis::setup();
 
@@ -894,7 +866,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest)]
-    #[expected_failure(abort_code = 110 /* ERR_IS_NOT_COIN */)]
+    #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
     public fun test_register_fails_if_reward_coin_is_not_coin(harvest: &signer) {
         genesis::setup();
 
@@ -908,7 +880,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 111 /* ERR_EARLY_UNSTAKE */)]
+    #[expected_failure(abort_code = 109 /* ERR_TOO_EARLY_UNSTAKE */)]
     public fun test_unstake_fails_if_executed_before_lockup_end(harvest: &signer, alice: &signer) {
         genesis::setup();
 

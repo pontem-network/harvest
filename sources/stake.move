@@ -11,8 +11,6 @@ module harvest::stake {
     // Errors
     //
 
-    // todo: recheck errors usage
-
     /// Pool does not exist.
     const ERR_NO_POOL: u64 = 100;
 
@@ -28,33 +26,26 @@ module harvest::stake {
     /// Not enough S balance to unstake
     const ERR_NOT_ENOUGH_S_BALANCE: u64 = 104;
 
-    /// Only admin can execute.
-    const ERR_NO_PERMISSIONS: u64 = 105;
-
     /// Not enough balance to pay reward.
-    const ERR_NOT_ENOUGH_REWARDS: u64 = 106;
+    const ERR_NOT_ENOUGH_REWARDS: u64 = 105;
 
     /// Amount can't be zero.
-    const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
+    const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 106;
 
     /// Nothing to harvest yet.
-    const ERR_NOTHING_TO_HARVEST: u64 = 108;
-
-    // todo: remove error 109, update numeration
-    /// Module not initialized.
-    const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
+    const ERR_NOTHING_TO_HARVEST: u64 = 107;
 
     /// CoinType is not a coin.
-    const ERR_IS_NOT_COIN: u64 = 110;
+    const ERR_IS_NOT_COIN: u64 = 108;
 
-    // todo: rename error
-    /// Early unstake.
-    const ERR_EARLY_UNSTAKE: u64 = 111;
+    /// Cannot unstake before lockup period end.
+    const ERR_TOO_EARLY_UNSTAKE: u64 = 109;
 
     //
     // Constants
     //
 
+    // todo: now S and R coins could be with any decimals value. do something
     /// Multiplier to account six decimal places.
     const SIX_DECIMALS: u128 = 1000000;
 
@@ -244,7 +235,7 @@ module harvest::stake {
         let current_time = timestamp::now_seconds();
 
         // check unlock timestamp
-        assert!(current_time >= user_stake.unlock_time, ERR_EARLY_UNSTAKE);
+        assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
