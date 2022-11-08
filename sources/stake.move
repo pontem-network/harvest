@@ -47,12 +47,19 @@ module harvest::stake {
     /// CoinType is not a coin.
     const ERR_IS_NOT_COIN: u64 = 110;
 
+    // todo: rename error
+    /// Early unstake.
+    const ERR_EARLY_UNSTAKE: u64 = 111;
+
     //
     // Constants
     //
 
     /// Multiplier to account six decimal places.
     const SIX_DECIMALS: u128 = 1000000;
+
+    /// Week in seconds, lockup period.
+    const WEEK_IN_SECONDS: u64 = 604800;
 
     //
     // Core data structures
@@ -92,6 +99,8 @@ module harvest::stake {
         unobtainable_reward: u128,
         // reward earned by current stake
         earned_reward: u64,
+        // unlock time
+        unlock_time: u64,
     }
 
     //
@@ -173,6 +182,7 @@ module harvest::stake {
         assert!(coin::value(&coins) > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
+        let current_time = timestamp::now_seconds();
         let user_addr = signer::address_of(user);
         let amount = coin::value(&coins);
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
@@ -187,7 +197,8 @@ module harvest::stake {
             let new_stake = UserStake {
                 amount,
                 unobtainable_reward: 0,
-                earned_reward: 0
+                earned_reward: 0,
+                unlock_time: current_time + WEEK_IN_SECONDS,
             };
             // calculate unobtainable reward for new stake
             new_stake.unobtainable_reward = (accum_reward * to_u128(amount)) / SIX_DECIMALS;
@@ -202,6 +213,8 @@ module harvest::stake {
 
             // recalculate unobtainable reward after stake amount changed
             user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake.amount)) / SIX_DECIMALS;
+
+            user_stake.unlock_time =  current_time + WEEK_IN_SECONDS;
         };
 
         coin::merge(&mut pool.stake_coins, coins);
@@ -223,14 +236,18 @@ module harvest::stake {
 
         let user_addr = signer::address_of(user);
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-
-        // update pool accum_reward and timestamp
-        update_accum_reward(pool);
-
         let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);
+
         assert!(table::contains(&user_stake_table.items, user_addr), ERR_NO_STAKE);
 
         let user_stake = table::borrow_mut(&mut user_stake_table.items, user_addr);
+        let current_time = timestamp::now_seconds();
+
+        // check unlock timestamp
+        assert!(current_time >= user_stake.unlock_time, ERR_EARLY_UNSTAKE);
+
+        // update pool accum_reward and timestamp
+        update_accum_reward(pool);
 
         // update earnings
         update_user_earnings(pool, user_stake);
@@ -340,11 +357,14 @@ module harvest::stake {
 
     #[test_only]
     /// Access user stake fields with no getters.
-    public fun get_user_stake_info<S, R>(pool_addr: address, user_addr: address): (u128, u64) acquires UserStakeTable {
+    public fun get_user_stake_info<S, R>(
+        pool_addr: address,
+        user_addr: address
+    ): (u128, u64, u64) acquires UserStakeTable {
         let user_stake_table = borrow_global<UserStakeTable<S, R>>(pool_addr);
         let fields = table::borrow(&user_stake_table.items, user_addr);
 
-        (fields.unobtainable_reward, fields.earned_reward)
+        (fields.unobtainable_reward, fields.earned_reward, fields.unlock_time)
     }
 
     #[test_only]
