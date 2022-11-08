@@ -141,6 +141,114 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest, alice = @alice, bob = @bob)]
+    public fun test_stake_lockup_period(harvest: &signer, alice: &signer, bob: &signer) {
+        genesis::setup();
+
+        let (harvest_acc, harvest_addr) = create_account(harvest);
+        let (alice_acc, alice_addr) = create_account(alice);
+        let (bob_acc, bob_addr) = create_account(bob);
+
+        // create coins for pool
+        initialize_reward_coin(&harvest_acc, 6);
+        initialize_stake_coin(&harvest_acc, 6);
+
+        // mint StakeCoins coins for alice, bob and carol
+        let stake_coins_1 = mint_coins<StakeCoin>(1000000);
+        let stake_coins_2 = mint_coins<StakeCoin>(1000000);
+        coin::register<StakeCoin>(&alice_acc);
+        coin::register<StakeCoin>(&bob_acc);
+        coin::deposit(alice_addr, stake_coins_1);
+        coin::deposit(bob_addr, stake_coins_2);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // check alice stake unlock time
+        let (_, _, unlock_time) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unlock_time == start_time + WEEK_IN_SECONDS, 1);
+
+        // wait 100 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 100);
+
+        // stake from bob
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, harvest_addr, coins);
+
+        // check bob stake unlock time
+        let (_, _, unlock_time) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, bob_addr);
+        assert!(unlock_time == start_time + WEEK_IN_SECONDS + 100, 1);
+
+        // stake more from alice before lockup period end
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // check alice stake unlock time updated
+        let (_, _, unlock_time) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unlock_time == start_time + WEEK_IN_SECONDS + 100, 1);
+
+        // wait one week
+        timestamp::update_global_time_for_test_secs(start_time + 100 + WEEK_IN_SECONDS);
+
+        // unstake from alice after lockup period end
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, 1000000);
+        coin::deposit(alice_addr, coins);
+
+        // wait 100 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 200 + WEEK_IN_SECONDS);
+
+        // partial unstake from bob after lockup period end
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, harvest_addr, 250000);
+        coin::deposit(bob_addr, coins);
+
+        // wait 100 seconds
+        timestamp::update_global_time_for_test_secs(start_time + 300 + WEEK_IN_SECONDS);
+
+        // stake more from bob after lockup period end
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, harvest_addr, coins);
+
+        // check bob stake unlock time updated
+        let (_, _, unlock_time) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, bob_addr);
+        assert!(unlock_time == start_time + WEEK_IN_SECONDS + 300 + WEEK_IN_SECONDS, 1);
+
+        // wait 1 year
+        timestamp::update_global_time_for_test_secs(start_time + 31536000);
+
+        // unstake from bob almost year after lockup period end
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, harvest_addr, 250000);
+        coin::deposit(bob_addr, coins);
+
+        // stake from alice after year of rest
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // check alice stake unlock time
+        let (_, _, unlock_time) =
+            stake::get_user_stake_info<StakeCoin, RewardCoin>(harvest_addr, alice_addr);
+        assert!(unlock_time == start_time + 31536000 + WEEK_IN_SECONDS, 1);
+    }
+
+
+    #[test(harvest = @harvest, alice = @alice, bob = @bob)]
     public fun test_reward_calculation(harvest: &signer, alice: &signer, bob: &signer) {
         genesis::setup();
 
