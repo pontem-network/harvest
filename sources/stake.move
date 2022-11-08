@@ -122,8 +122,7 @@ module harvest::stake {
     }
 
     /// Depositing reward coins to specific pool.
-    public fun deposit_reward_coins<S, R>(pool_owner: &signer, coins: Coin<R>) acquires StakePool {
-        let pool_addr = signer::address_of(pool_owner);
+    public fun deposit_reward_coins<S, R>(pool_addr: address, coins: Coin<R>) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
