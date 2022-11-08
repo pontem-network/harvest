@@ -5,6 +5,11 @@ version = '1.0.0'
 [addresses]
 harvest = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
 
+# Test addresses.
+alice = "0x10"
+bob = "0x11"
+carol = "0x12"
+
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'
 rev = 'main'

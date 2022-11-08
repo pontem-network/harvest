@@ -11,6 +11,8 @@ module harvest::stake {
     // Errors
     //
 
+    // todo: recheck errors usage
+
     /// pool does not exist
     const ERR_NO_POOL: u64 = 100;
 
@@ -38,6 +40,7 @@ module harvest::stake {
     /// nothing to harvest yet
     const ERR_NOTHING_TO_HARVEST: u64 = 108;
 
+    // todo: remove error 109, update numeration
     /// module not initialized
     const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
 
@@ -98,7 +101,9 @@ module harvest::stake {
     /// registering pool for specific LP coin
     public fun register_pool<S, R>(owner: &signer, reward_per_sec: u64) {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
+        assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>(), ERR_IS_NOT_COIN);
+        assert!(coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -351,10 +356,10 @@ module harvest::stake {
 
     #[test_only]
     /// access staking pool fields with no getters
-    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64) acquires StakePool {
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        (pool.reward_per_sec, pool.accum_reward, pool.last_updated)
+        (pool.reward_per_sec, pool.accum_reward, pool.last_updated, coin::value<R>(&pool.reward_coins))
     }
 
     #[test_only]
