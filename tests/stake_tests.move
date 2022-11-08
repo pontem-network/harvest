@@ -152,7 +152,7 @@ module harvest::stake_tests {
         initialize_reward_coin(&harvest_acc, 6);
         initialize_stake_coin(&harvest_acc, 6);
 
-        // mint StakeCoins coins for alice, bob and carol
+        // mint StakeCoins coins for alice and bob
         let stake_coins_1 = mint_coins<StakeCoin>(1000000);
         let stake_coins_2 = mint_coins<StakeCoin>(1000000);
         coin::register<StakeCoin>(&alice_acc);
@@ -905,5 +905,46 @@ module harvest::stake_tests {
 
         // register staking pool without reward coin
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+    }
+
+    #[test(harvest = @harvest, alice = @alice)]
+    #[expected_failure(abort_code = 111 /* ERR_EARLY_UNSTAKE */)]
+    public fun test_unstake_fails_if_executed_before_lockup_end(harvest: &signer, alice: &signer) {
+        genesis::setup();
+
+        let (harvest_acc, harvest_addr) = create_account(harvest);
+        let (alice_acc, alice_addr) = create_account(alice);
+
+        // create coins for pool
+        initialize_reward_coin(&harvest_acc, 6);
+        initialize_stake_coin(&harvest_acc, 6);
+
+        // mint StakeCoins coins for alice
+        let stake_coins_1 = mint_coins<StakeCoin>(1000000);
+        coin::register<StakeCoin>(&alice_acc);
+        coin::deposit(alice_addr, stake_coins_1);
+
+        // mint RewardCoins for pool
+        let reward_coins = mint_coins<RewardCoin>(30000000000000);
+
+        let start_time = 682981200;
+        timestamp::update_global_time_for_test_secs(start_time);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest_acc, reward_coins);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, coins);
+
+        // wait almost a week
+        timestamp::update_global_time_for_test_secs(start_time + WEEK_IN_SECONDS - 1);
+
+        // unstake from alice
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, harvest_addr, 1000000);
+        coin::deposit(alice_addr, coins);
     }
 }
