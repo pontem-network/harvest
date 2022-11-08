@@ -504,7 +504,7 @@ module harvest::stake_tests {
     }
 
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 104 /* ERR_NOT_ENOUGH_BALANCE */)]
+    #[expected_failure(abort_code = 104 /* ERR_NOT_ENOUGH_S_BALANCE */)]
     public fun test_unstake_fails_if_not_enough_balance(harvest: &signer, alice: &signer) {
         genesis::setup();
 
@@ -561,8 +561,8 @@ module harvest::stake_tests {
     // }
 
     #[test(harvest = @harvest, alice = @alice)]
-    #[expected_failure(abort_code = 106 /* ERR_NOT_ENOUGH_DGEN_BALANCE */)]
-    public fun test_harvest_fails_if_not_enough_pool_liq_balance(harvest: &signer, alice: &signer) {
+    #[expected_failure(abort_code = 106 /* ERR_NOT_ENOUGH_REWARDS */)]
+    public fun test_harvest_fails_if_not_enough_pool_reward_balance(harvest: &signer, alice: &signer) {
         genesis::setup();
 
         let (harvest_acc, harvest_addr) = create_account(harvest);

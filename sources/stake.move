@@ -13,62 +13,62 @@ module harvest::stake {
 
     // todo: recheck errors usage
 
-    /// pool does not exist
+    /// Pool does not exist.
     const ERR_NO_POOL: u64 = 100;
 
-    /// pool already exists
+    /// Pool already exists.
     const ERR_POOL_ALREADY_EXISTS: u64 = 101;
 
-    /// pool reward can't be zero
+    /// Pool reward can't be zero.
     const ERR_REWARD_CANNOT_BE_ZERO: u64 = 102;
 
-    /// user has no stake
+    /// User has no stake.
     const ERR_NO_STAKE: u64 = 103;
 
-    /// not enough LP balance to unstake
-    const ERR_NOT_ENOUGH_LP_BALANCE: u64 = 104;
+    /// Not enough S balance to unstake
+    const ERR_NOT_ENOUGH_S_BALANCE: u64 = 104;
 
-    /// only admin can execute
+    /// Only admin can execute.
     const ERR_NO_PERMISSIONS: u64 = 105;
 
-    /// not enough pool DGEN balance to pay reward
+    /// Not enough balance to pay reward.
     const ERR_NOT_ENOUGH_REWARDS: u64 = 106;
 
-    /// amount can't be zero
+    /// Amount can't be zero.
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 107;
 
-    /// nothing to harvest yet
+    /// Nothing to harvest yet.
     const ERR_NOTHING_TO_HARVEST: u64 = 108;
 
     // todo: remove error 109, update numeration
-    /// module not initialized
+    /// Module not initialized.
     const ERR_MODULE_NOT_INITIALIZED: u64 = 109;
 
-    /// CoinType is not a coin
+    /// CoinType is not a coin.
     const ERR_IS_NOT_COIN: u64 = 110;
 
     //
     // Constants
     //
 
-    /// multiplier to account six decimal places for LP and DGEN coins
+    /// Multiplier to account six decimal places.
     const SIX_DECIMALS: u128 = 1000000;
 
     //
     // Core data structures
     //
 
-    /// LP stake pool, stores LP, DGEN (reward) coins and related info
+    /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key {
-        // pool reward DGEN per second
+        // pool reward coins per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
         // last accum_reward & reward_per_sec update time
         last_updated: u64,
-        // pool staked LP coins
+        // pool staked coins
         stake_coins: Coin<S>,
-        // pool reward DGEN coins
+        // pool reward coins
         reward_coins: Coin<R>,
         // stake events
         stake_events: EventHandle<StakeEvent>,
@@ -84,7 +84,7 @@ module harvest::stake {
         items: table::Table<address, UserStake>
     }
 
-    /// stores user stake info
+    /// Stores user stake info.
     struct UserStake has store {
         // staked amount
         amount: u64,
@@ -98,12 +98,11 @@ module harvest::stake {
     // Pool config
     //
 
-    /// registering pool for specific LP coin
+    /// Registering pool for specific coin.
     public fun register_pool<S, R>(owner: &signer, reward_per_sec: u64) {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
-        assert!(coin::is_coin_initialized<S>(), ERR_IS_NOT_COIN);
-        assert!(coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
+        assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -122,7 +121,7 @@ module harvest::stake {
         move_to(owner, user_stake_table);
     }
 
-    /// depositing DGEN (reward) coins to specific pool
+    /// Depositing reward coins to specific pool.
     public fun deposit_reward_coins<S, R>(pool_owner: &signer, coins: Coin<R>) acquires StakePool {
         let pool_addr = signer::address_of(pool_owner);
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
@@ -142,14 +141,14 @@ module harvest::stake {
     // Getter functions
     //
 
-    /// returns current LP amount staked in pool
+    /// Returns current staked amount in pool.
     public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
     }
 
-    /// returns current LP amount staked by user in specific pool
+    /// Returns current amount staked by user in specific pool.
     public fun get_user_stake<S, R>(pool_addr: address, user_addr: address): u64 acquires UserStakeTable {
         assert!(exists<UserStakeTable<S, R>>(pool_addr), ERR_NO_POOL);
 
@@ -165,7 +164,7 @@ module harvest::stake {
     // Public functions
     //
 
-    /// stakes user LP coins in pool
+    /// Stakes user coins in pool.
     public fun stake<S, R>(
         user: &signer,
         pool_addr: address,
@@ -213,7 +212,7 @@ module harvest::stake {
         );
     }
 
-    /// unstakes user LP coins from pool
+    /// Unstakes user coins from pool.
     public fun unstake<S, R>(
         user: &signer,
         pool_addr: address,
@@ -236,7 +235,7 @@ module harvest::stake {
         // update earnings
         update_user_earnings(pool, user_stake);
 
-        assert!(amount <= user_stake.amount, ERR_NOT_ENOUGH_LP_BALANCE);
+        assert!(amount <= user_stake.amount, ERR_NOT_ENOUGH_S_BALANCE);
 
         user_stake.amount = user_stake.amount - amount;
 
@@ -251,7 +250,7 @@ module harvest::stake {
         coin::extract(&mut pool.stake_coins, amount)
     }
 
-    /// harvests user reward, returning R coins
+    /// Harvests user reward, returning R coins.
     public fun harvest<S, R>(user: &signer, pool_addr: address): Coin<R> acquires StakePool, UserStakeTable {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
@@ -283,7 +282,7 @@ module harvest::stake {
         coin::extract(&mut pool.reward_coins, earned)
     }
 
-    /// recalculates pool accumulated reward
+    /// Recalculates pool accumulated reward.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
         let current_time = timestamp::now_seconds();
         let seconds_passed = current_time - pool.last_updated;
@@ -299,7 +298,7 @@ module harvest::stake {
         }
     }
 
-    /// calculates user earnings
+    /// Calculates user earnings.
     fun update_user_earnings<S, R>(pool: &mut StakePool<S, R>, user_stake: &mut UserStake) {
         let earned =
             (pool.accum_reward * (to_u128(user_stake.amount)) / SIX_DECIMALS) - user_stake.unobtainable_reward;
@@ -319,12 +318,6 @@ module harvest::stake {
     //
     // Events
     //
-
-    // struct RegisterEvent has drop, store {
-    //     creator_address: address,
-    //     reward_per_sec: u64,
-    //     lp_symbol: String,
-    // }
 
     struct StakeEvent has drop, store {
         user_address: address,
@@ -346,7 +339,7 @@ module harvest::stake {
     }
 
     #[test_only]
-    /// access user stake fields with no getters
+    /// Access user stake fields with no getters.
     public fun get_user_stake_info<S, R>(pool_addr: address, user_addr: address): (u128, u64) acquires UserStakeTable {
         let user_stake_table = borrow_global<UserStakeTable<S, R>>(pool_addr);
         let fields = table::borrow(&user_stake_table.items, user_addr);
@@ -355,7 +348,7 @@ module harvest::stake {
     }
 
     #[test_only]
-    /// access staking pool fields with no getters
+    /// Access staking pool fields with no getters.
     public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
@@ -363,7 +356,7 @@ module harvest::stake {
     }
 
     #[test_only]
-    /// force pool & user stake recalculations
+    /// Force pool & user stake recalculations.
     public fun recalculate_user_stake<S, R>(pool_addr: address, user_addr: address) acquires StakePool, UserStakeTable {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
