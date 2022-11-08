@@ -258,10 +258,9 @@ module harvest::stake {
     }
 
     /// Harvests user reward, returning R coins.
-    public fun harvest<S, R>(user: &signer, pool_addr: address): Coin<R> acquires StakePool, UserStakeTable {
+    public fun harvest<S, R>(user_addr: address, pool_addr: address): Coin<R> acquires StakePool, UserStakeTable {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
-        let user_addr = signer::address_of(user);
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
         let user_stake_table = borrow_global_mut<UserStakeTable<S, R>>(pool_addr);

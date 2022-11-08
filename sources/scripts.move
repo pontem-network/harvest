@@ -18,16 +18,17 @@ module harvest::scripts {
         coin::deposit(signer::address_of(user), coins);
     }
 
-    public entry fun harvest<S, R>(user: &signer, pool_addr: address) {
-        let rewards = stake::harvest<S, R>(user, pool_addr);
-
-        let user_addr = signer::address_of(user);
-        if (!coin::is_account_registered<R>(user_addr)) {
-            coin::register<R>(user);
-        };
-
-        coin::deposit(user_addr, rewards);
-    }
+    // todo: harvest<S, R>(user_addr: address, pool_addr: address) - new func signature
+    // public entry fun harvest<S, R>(user: &signer, pool_addr: address) {
+    //     let rewards = stake::harvest<S, R>(user, pool_addr);
+    //
+    //     let user_addr = signer::address_of(user);
+    //     if (!coin::is_account_registered<R>(user_addr)) {
+    //         coin::register<R>(user);
+    //     };
+    //
+    //     coin::deposit(user_addr, rewards);
+    // }
 
     // public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, amount: u64) {
     //     let reward_coins = coin::withdraw<R>(depositor, amount);
