@@ -1,6 +1,5 @@
 #[test_only]
-module harvest::staking_test_helpers {
-    use std::signer;
+module harvest::stake_test_helpers {
     use std::string::{String, utf8};
 
     use aptos_framework::account;
@@ -57,6 +56,11 @@ module harvest::staking_test_helpers {
         );
     }
 
+    public fun initialize_coins(coin_admin: &signer) {
+        initialize_stake_coin(coin_admin, 6);
+        initialize_reward_coin(coin_admin, 6);
+    }
+
     public fun mint_coins<CoinType>(amount: u64): Coin<CoinType> acquires Capabilities {
         let caps = borrow_global<Capabilities<CoinType>>(@harvest);
         coin::mint(amount, &caps.mint_cap)
@@ -64,11 +68,17 @@ module harvest::staking_test_helpers {
 
     // Accounts.
 
-    public fun create_account(sig: &signer): (signer, address) {
-        let new_addr = signer::address_of(sig);
-        let new_acc = account::create_account_for_test(new_addr);
+    public fun new_account(account_addr: address): signer {
+        let account = account::create_account_for_test(account_addr);
+        account
+    }
 
-        (new_acc, new_addr)
+    public fun account_with_stake(account_addr: address, amount: u64): signer acquires Capabilities {
+        let account = account::create_account_for_test(account_addr);
+        let stake_coins = mint_coins<StakeCoin>(amount);
+        coin::register<StakeCoin>(&account);
+        coin::deposit(account_addr, stake_coins);
+        account
     }
 
     // Math.
