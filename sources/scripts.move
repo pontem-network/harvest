@@ -18,20 +18,20 @@ module harvest::scripts {
         coin::deposit(signer::address_of(user), coins);
     }
 
-    // todo: harvest<S, R>(user_addr: address, pool_addr: address) - new func signature
-    // public entry fun harvest<S, R>(user: &signer, pool_addr: address) {
-    //     let rewards = stake::harvest<S, R>(user, pool_addr);
-    //
-    //     let user_addr = signer::address_of(user);
-    //     if (!coin::is_account_registered<R>(user_addr)) {
-    //         coin::register<R>(user);
-    //     };
-    //
-    //     coin::deposit(user_addr, rewards);
-    // }
+    public entry fun harvest<S, R>(user: &signer, pool_addr: address) {
+        let user_addr = signer::address_of(user);
+        let rewards = stake::harvest<S, R>(user_addr, pool_addr);
 
-    // public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, amount: u64) {
-    //     let reward_coins = coin::withdraw<R>(depositor, amount);
-    //     stake::deposit_reward_coins<S, R>(depositor, reward_coins);
-    // }
+        let user_addr = signer::address_of(user);
+        if (!coin::is_account_registered<R>(user_addr)) {
+            coin::register<R>(user);
+        };
+
+        coin::deposit(user_addr, rewards);
+    }
+
+    public entry fun deposit_reward_coins<S, R>(account: &signer, pool_addr: address, amount: u64) {
+        let reward_coins = coin::withdraw<R>(account, amount);
+        stake::deposit_reward_coins<S, R>(pool_addr, reward_coins);
+    }
 }
