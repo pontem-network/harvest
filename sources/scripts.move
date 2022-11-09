@@ -1,8 +1,10 @@
 /// Collection of entrypoints to handle staking pools.
 module harvest::scripts {
-    use harvest::stake;
-    use aptos_framework::coin;
     use std::signer;
+
+    use aptos_framework::coin;
+
+    use harvest::stake;
 
     /// Register new staking pool with staking coin `S` and reward coin `R`.
     ///     * `pool_owner` - account which will be used as a pool storage,
@@ -58,7 +60,7 @@ module harvest::scripts {
     /// Deposit more `Coin<R>` rewards to the pool.
     ///     * `depositor` - account with the `R` reward coins in the balance,
     ///     * `pool_addr` - address of the pool,
-    ///     * `amount` - amount of the reward coin `R` to deposit. 
+    ///     * `amount` - amount of the reward coin `R` to deposit.
     public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, amount: u64) {
         let reward_coins = coin::withdraw<R>(depositor, amount);
         stake::deposit_reward_coins<S, R>(pool_addr, reward_coins);
