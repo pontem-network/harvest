@@ -1,93 +1,68 @@
 #[test_only]
 module dgen_owner::dgen_tests {
     use std::option;
-    use std::signer;
     use std::string;
 
-    use aptos_framework::account;
     use aptos_framework::coin;
 
     use dgen_owner::dgen::{Self, DGEN};
+    use dgen_owner::lovely_helpers::{create_account, to_u128};
 
-    // multiplier to account six decimal places for DGEN coin
-    const ONE_DGEN: u64 = 1000000;
-
-    // 100 millions total DGEN supply
+    // 100 millions total DGEN supply.
     const TOTAL_SUPPLY: u64 = 100000000000000;
 
-    fun to_u128(num: u64): u128 {
-        (num as u128)
-    }
-
-    public fun create_account(account_address: address): (signer, address) {
-        let new_acc = account::create_account_for_test(account_address);
-        let new_addr = signer::address_of(&new_acc);
-
-        (new_acc, new_addr)
-    }
-
-    #[test]
-    public fun test_initialize() {
-        let (creator_acc, creator_addr) = create_account(@dgen_owner);
+    #[test(dgen_owner = @dgen_owner)]
+    public fun test_initialize(dgen_owner: &signer) {
+        let (dgen_owner_acc, dgen_owner_addr) = create_account(dgen_owner);
 
         // initialize new coin
-        dgen::initialize(&creator_acc);
+        dgen::initialize(&dgen_owner_acc);
 
         // check coin parameters
-        assert!(coin::is_coin_initialized<DGEN>(), 0);
+        assert!(coin::is_coin_initialized<DGEN>(), 1);
         assert!(coin::name<DGEN>() == string::utf8(b"Liquidswap DGEN"), 1);
-        assert!(coin::symbol<DGEN>() == string::utf8(b"DGEN"), 2);
-        assert!(coin::decimals<DGEN>() == 6, 3);
+        assert!(coin::symbol<DGEN>() == string::utf8(b"DGEN"), 1);
+        assert!(coin::decimals<DGEN>() == 6, 1);
 
         // check supply and creator balance
-        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(TOTAL_SUPPLY), 4);
-        assert!(coin::balance<DGEN>(creator_addr) == TOTAL_SUPPLY, 5);
+        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(TOTAL_SUPPLY), 1);
+        assert!(coin::balance<DGEN>(dgen_owner_addr) == TOTAL_SUPPLY, 1);
     }
 
-    #[test]
-    #[expected_failure(abort_code=524290)]
-    public fun test_initialize_fails() {
-        let (creator_acc, _creator_addr) = create_account(@dgen_owner);
+    #[test(dgen_owner = @dgen_owner, alice = @alice)]
+    public fun test_burn(dgen_owner: &signer, alice: &signer) {
+        let (dgen_owner_acc, dgen_owner_addr) = create_account(dgen_owner);
+        let (alice_acc, alice_addr) = create_account(alice);
 
         // initialize new coin
-        dgen::initialize(&creator_acc);
-        dgen::initialize(&creator_acc);
-    }
-
-    #[test]
-    public fun test_burn() {
-        let (creator_acc, creator_addr) = create_account(@dgen_owner);
-        let (alice_acc, alice_addr) = create_account(@0x10);
-
-        // initialize new coin
-        dgen::initialize(&creator_acc);
+        dgen::initialize(&dgen_owner_acc);
 
         // send 2 million coins to alice
         coin::register<DGEN>(&alice_acc);
-        coin::transfer<DGEN>(&creator_acc, alice_addr, 2000000 * ONE_DGEN);
+        coin::transfer<DGEN>(&dgen_owner_acc, alice_addr, 2000000000000);
 
         // check balances
-        assert!(coin::balance<DGEN>(creator_addr) == 98000000 * ONE_DGEN, 0);
-        assert!(coin::balance<DGEN>(alice_addr) == 2000000 * ONE_DGEN, 1);
+        assert!(coin::balance<DGEN>(dgen_owner_addr) == 98000000000000, 1);
+        assert!(coin::balance<DGEN>(alice_addr) == 2000000000000, 1);
 
         // burn all from alice
-        let coins = coin::withdraw<DGEN>(&alice_acc,2000000 * ONE_DGEN);
+        let coins = coin::withdraw<DGEN>(&alice_acc, 2000000000000);
         dgen::burn(coins);
 
         // burn some from creator
-        let coins = coin::withdraw<DGEN>(&creator_acc,5000000 * ONE_DGEN);
+        let coins = coin::withdraw<DGEN>(&dgen_owner_acc, 5000000000000);
         dgen::burn(coins);
 
         // check balances and supply
-        assert!(coin::balance<DGEN>(creator_addr) == 93000000 * ONE_DGEN, 2);
-        assert!(coin::balance<DGEN>(alice_addr) == 0, 3);
-        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(93000000 * ONE_DGEN), 4);
+        assert!(coin::balance<DGEN>(dgen_owner_addr) == 93000000000000, 1);
+        assert!(coin::balance<DGEN>(alice_addr) == 0, 1);
+        assert!(option::extract(&mut coin::supply<DGEN>()) == to_u128(93000000000000), 1);
     }
 
-    #[test]
+    #[test(alice = @alice)]
     #[expected_failure(abort_code = 100 /* ERR_NO_PERMISSIONS */)]
-    public fun test_initialize_fails_if_executed_not_by_coin_creator() {
-        let alice_acc = account::create_account_for_test(@0x10);
+    public fun test_initialize_fails_if_executed_not_by_coin_owner(alice: &signer) {
+        let (alice_acc, _) = create_account(alice);
 
         // initialize coin from wrong account
         dgen::initialize(&alice_acc);
@@ -98,5 +73,15 @@ module dgen_owner::dgen_tests {
     public fun test_burn_fails_if_executed_before_initialization() {
         // burn before initialization
         dgen::burn(coin::zero<DGEN>());
+    }
+
+    #[test(dgen_owner = @dgen_owner)]
+    #[expected_failure(abort_code=524290)]
+    public fun test_initialize_fails_if_executed_twice(dgen_owner: &signer) {
+        let (dgen_owner_acc, _) = create_account(dgen_owner);
+
+        // initialize new coin
+        dgen::initialize(&dgen_owner_acc);
+        dgen::initialize(&dgen_owner_acc);
     }
 }

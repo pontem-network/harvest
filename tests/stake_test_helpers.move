@@ -1,10 +1,10 @@
 #[test_only]
 module harvest::staking_test_helpers {
+    use std::signer;
     use std::string::{String, utf8};
 
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin, MintCapability, BurnCapability};
-    use std::signer;
 
     // Coins.
 
@@ -61,14 +61,6 @@ module harvest::staking_test_helpers {
         let caps = borrow_global<Capabilities<CoinType>>(@harvest);
         coin::mint(amount, &caps.mint_cap)
     }
-
-    // public fun burn_coins<CoinType>(to_burn: Coin<CoinType>): u64 acquires Capabilities {
-    //     let caps = borrow_global<Capabilities<CoinType>>(@harvest);
-    //     let val = coin::value(&to_burn);
-    //     coin::burn(to_burn, &caps.burn_cap);
-    //
-    //     val
-    // }
 
     // Accounts.
 
