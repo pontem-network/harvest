@@ -5,7 +5,7 @@ module harvest::stake_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_coins, StakeCoin, RewardCoin, initialize_coins, new_account_with_stake_coins};
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_coins, StakeCoin, RewardCoin, initialize_default_stake_reward_coins, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -68,7 +68,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 900000000);
         let bob_acc = new_account_with_stake_coins(@bob, 99000000);
@@ -132,7 +132,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 1000000);
         let bob_acc = new_account_with_stake_coins(@bob, 1000000);
@@ -229,7 +229,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 900000000);
         let bob_acc = new_account_with_stake_coins(@bob, 99000000);
@@ -391,7 +391,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -511,7 +511,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
         let bob_acc = new_account_with_stake_coins(@bob, 100000000);
@@ -713,7 +713,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
@@ -730,7 +730,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 99000000);
 
@@ -760,7 +760,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -832,7 +832,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -865,7 +865,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -932,7 +932,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let alice_acc = new_account_with_stake_coins(@alice, 1000000);
 

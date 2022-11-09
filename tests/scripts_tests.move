@@ -5,7 +5,7 @@ module harvest::scripts_tests {
 
     use harvest::scripts;
     use harvest::stake;
-    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_coins, new_account_with_stake_coins, mint_coins};
+    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_default_stake_reward_coins, new_account_with_stake_coins, mint_coins};
     use aptos_framework::genesis;
 
     const ONE_COIN: u64 = 1000000;
@@ -17,7 +17,7 @@ module harvest::scripts_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        initialize_coins(&harvest_acc);
+        initialize_default_stake_reward_coins(&harvest_acc);
 
         let pool_address = @harvest;
 

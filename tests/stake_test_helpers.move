@@ -16,14 +16,14 @@ module harvest::stake_test_helpers {
         burn_cap: BurnCapability<CoinType>,
     }
 
-    fun initialize_coin<CoinType>(
-        account: &signer,
+    public fun initialize_coin<CoinType>(
+        admin: &signer,
         name: String,
         symbol: String,
         decimals: u8,
     ) {
         let (b, f, m) = coin::initialize<CoinType>(
-            account,
+            admin,
             name,
             symbol,
             decimals,
@@ -32,7 +32,7 @@ module harvest::stake_test_helpers {
 
         coin::destroy_freeze_cap(f);
 
-        move_to(account, Capabilities<CoinType> {
+        move_to(admin, Capabilities<CoinType> {
             mint_cap: m,
             burn_cap: b,
         });
@@ -56,7 +56,7 @@ module harvest::stake_test_helpers {
         );
     }
 
-    public fun initialize_coins(coin_admin: &signer) {
+    public fun initialize_default_stake_reward_coins(coin_admin: &signer) {
         initialize_stake_coin(coin_admin, 6);
         initialize_reward_coin(coin_admin, 6);
     }

@@ -5,12 +5,9 @@ version = '1.0.0'
 [addresses]
 dgen_owner = "0xc42b764ca81b34c59d792c2ca875d82f7dfbb5f2905bd3c771cccf0ff20078c4"
 
-# Test addresses.
-alice = "0x10"
-
 [dependencies.Staking]
 local = ".."
 
 [dependencies.Liquidswap]
 git = 'https://github.com/pontem-network/liquidswap.git'
-rev = 'v0.4.4'
+rev = 'v0.4.3'
