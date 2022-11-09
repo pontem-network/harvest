@@ -5,7 +5,7 @@ module harvest::stake_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_coins, StakeCoin, RewardCoin};
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_coins, StakeCoin, RewardCoin, initialize_coins, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -68,20 +68,10 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
-        let bob_acc = new_account(@bob);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice and bob
-        let stake_coins_1 = mint_coins<StakeCoin>(900000000);
-        let stake_coins_2 = mint_coins<StakeCoin>(99000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::register<StakeCoin>(&bob_acc);
-        coin::deposit(@alice, stake_coins_1);
-        coin::deposit(@bob, stake_coins_2);
+        let alice_acc = new_account_with_stake_coins(@alice, 900000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 99000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -142,20 +132,10 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
-        let bob_acc = new_account(@bob);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice and bob
-        let stake_coins_1 = mint_coins<StakeCoin>(1000000);
-        let stake_coins_2 = mint_coins<StakeCoin>(1000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::register<StakeCoin>(&bob_acc);
-        coin::deposit(@alice, stake_coins_1);
-        coin::deposit(@bob, stake_coins_2);
+        let alice_acc = new_account_with_stake_coins(@alice, 1000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 1000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -244,26 +224,15 @@ module harvest::stake_tests {
         assert!(unlock_time == start_time + 31536000 + WEEK_IN_SECONDS, 1);
     }
 
-
     #[test]
     public fun test_reward_calculation() {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
-        let bob_acc = new_account(@bob);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice and bob
-        let stake_coins_1 = mint_coins<StakeCoin>(900000000);
-        let stake_coins_2 = mint_coins<StakeCoin>(99000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::register<StakeCoin>(&bob_acc);
-        coin::deposit(@alice, stake_coins_1);
-        coin::deposit(@bob, stake_coins_2);
+        let alice_acc = new_account_with_stake_coins(@alice, 900000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 99000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -422,16 +391,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins = mint_coins<StakeCoin>(100000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -549,20 +511,10 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
-        let bob_acc = new_account(@bob);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice and bob
-        let stake_coins_1 = mint_coins<StakeCoin>(100000000);
-        let stake_coins_2 = mint_coins<StakeCoin>(100000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::register<StakeCoin>(&bob_acc);
-        coin::deposit(@alice, stake_coins_1);
-        coin::deposit(@bob, stake_coins_2);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 100000000);
 
         // mint RewardCoins for pool
         let reward_coins = mint_coins<RewardCoin>(30000000000000);
@@ -761,10 +713,7 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
+        initialize_coins(&harvest_acc);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
@@ -781,16 +730,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins = mint_coins<StakeCoin>(99000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins);
+        let alice_acc = new_account_with_stake_coins(@alice, 99000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -818,16 +760,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins = mint_coins<StakeCoin>(100000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -897,16 +832,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins = mint_coins<StakeCoin>(100000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         // mint RewardCoins for pool
         let reward_coins = mint_coins<RewardCoin>(300000000);
@@ -937,16 +865,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins = mint_coins<StakeCoin>(100000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         // mint RewardCoins for pool
         let reward_coins = mint_coins<RewardCoin>(300000000);
@@ -1011,16 +932,9 @@ module harvest::stake_tests {
         genesis::setup();
 
         let harvest_acc = new_account(@harvest);
-        let alice_acc = new_account(@alice);
+        initialize_coins(&harvest_acc);
 
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
-
-        // mint StakeCoins coins for alice
-        let stake_coins_1 = mint_coins<StakeCoin>(1000000);
-        coin::register<StakeCoin>(&alice_acc);
-        coin::deposit(@alice, stake_coins_1);
+        let alice_acc = new_account_with_stake_coins(@alice, 1000000);
 
         // mint RewardCoins for pool
         let reward_coins = mint_coins<RewardCoin>(30000000000000);

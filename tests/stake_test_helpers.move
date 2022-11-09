@@ -73,7 +73,7 @@ module harvest::stake_test_helpers {
         account
     }
 
-    public fun account_with_stake(account_addr: address, amount: u64): signer acquires Capabilities {
+    public fun new_account_with_stake_coins(account_addr: address, amount: u64): signer acquires Capabilities {
         let account = account::create_account_for_test(account_addr);
         let stake_coins = mint_coins<StakeCoin>(amount);
         coin::register<StakeCoin>(&account);
