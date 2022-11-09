@@ -7,6 +7,13 @@ module harvest::scripts {
         stake::register_pool<S, R>(pool_owner, reward_per_sec);
     }
 
+    public entry fun register_pool_with_rewards<S, R>(pool_owner: &signer, reward_per_sec: u64, rewards_amount: u64) {
+        register_pool<S, R>(pool_owner, reward_per_sec);
+
+        let pool_addr = signer::address_of(pool_owner);
+        deposit_reward_coins<S, R>(pool_owner, pool_addr, rewards_amount);
+    }
+
     public entry fun stake<S, R>(user: &signer, pool_addr: address, amount: u64) {
         let coins = coin::withdraw<S>(user, amount);
         stake::stake<S, R>(user, pool_addr, coins);
@@ -22,7 +29,6 @@ module harvest::scripts {
         let user_addr = signer::address_of(user);
         let rewards = stake::harvest<S, R>(user_addr, pool_addr);
 
-        let user_addr = signer::address_of(user);
         if (!coin::is_account_registered<R>(user_addr)) {
             coin::register<R>(user);
         };

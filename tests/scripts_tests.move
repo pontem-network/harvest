@@ -1,12 +1,12 @@
 #[test_only]
 module harvest::scripts_tests {
     use aptos_framework::coin;
+    use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
     use harvest::scripts;
     use harvest::stake;
     use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_default_stake_reward_coins, new_account_with_stake_coins, mint_coins};
-    use aptos_framework::genesis;
 
     const ONE_COIN: u64 = 1000000;
 
@@ -24,13 +24,15 @@ module harvest::scripts_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 10);
-
         let reward_coins = mint_coins<RewardCoin>(1000 * ONE_COIN);
         coin::register<RewardCoin>(&harvest_acc);
         coin::deposit(@harvest, reward_coins);
 
-        scripts::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest_acc, @harvest, 1000 * ONE_COIN);
+        scripts::register_pool_with_rewards<StakeCoin, RewardCoin>(
+            &harvest_acc,
+            10,
+            1000 * ONE_COIN
+        );
 
         let (reward_per_sec, accum_reward, last_updated, reward_coin_amount) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
