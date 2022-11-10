@@ -725,4 +725,14 @@ module harvest::stake_decimals_tests {
         let losed_rewards =  total_rewards - total_earned;
         assert!(losed_rewards == 1, 1);
     }
+
+    #[test]
+    // todo: where to place it?
+    fun test_pow_10() {
+        assert!(stake::calc_pow_10(0) == 1, 1);
+        assert!(stake::calc_pow_10(1) == 10, 2);
+        assert!(stake::calc_pow_10(2) == 100, 3);
+        assert!(stake::calc_pow_10(5) == 100000, 4);
+        assert!(stake::calc_pow_10(10) == 10000000000, 5);
+    }
 }

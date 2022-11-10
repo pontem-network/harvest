@@ -368,9 +368,8 @@ module harvest::stake {
         (num as u128)
     }
 
-    // todo: move it or use from another module
     /// Returns 10^degree.
-    public fun pow_10(degree: u8): u64 {
+    fun pow_10(degree: u8): u64 {
         let res = 1;
         let i = 0;
         while ({
@@ -438,5 +437,11 @@ module harvest::stake {
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
         update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
+    }
+
+    #[test_only]
+    /// Access pow_10 func.
+    public fun calc_pow_10(n: u8): u64 {
+        pow_10(n)
     }
 }
