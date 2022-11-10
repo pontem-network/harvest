@@ -68,5 +68,12 @@ module harvest::scripts_tests {
         scripts::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         assert!(coin::balance<RewardCoin>(@alice) == 6048000, 1);
+
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
+        assert!(coin::balance<StakeCoin>(@alice) == 100 * ONE_COIN, 1);
     }
 }
