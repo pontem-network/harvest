@@ -1,5 +1,5 @@
 #[test_only]
-module dgen_owner::lp_pool_tests {
+module dgen_owner::lp_staking_tests {
     use std::string::utf8;
 
     use aptos_framework::genesis;
