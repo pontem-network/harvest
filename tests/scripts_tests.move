@@ -6,7 +6,7 @@ module harvest::scripts_tests {
 
     use harvest::scripts;
     use harvest::stake;
-    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_default_stake_reward_coins, new_account_with_stake_coins, mint_coins};
+    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_default_stake_reward_coins, new_account_with_stake_coins, mint_default_coins};
 
     const ONE_COIN: u64 = 1000000;
 
@@ -24,7 +24,7 @@ module harvest::scripts_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        let reward_coins = mint_coins<RewardCoin>(1000 * ONE_COIN);
+        let reward_coins = mint_default_coins<RewardCoin>(1000 * ONE_COIN);
         coin::register<RewardCoin>(&harvest_acc);
         coin::deposit(@harvest, reward_coins);
 

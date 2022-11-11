@@ -5,7 +5,7 @@ module harvest::stake_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_coins, StakeCoin, RewardCoin, initialize_default_stake_reward_coins, new_account_with_stake_coins};
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_default_coins, StakeCoin, RewardCoin, initialize_default_stake_reward_coins, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -56,7 +56,7 @@ module harvest::stake_tests {
         initialize_stake_coin(&harvest_acc, 6);
 
         // mint reward coins
-        let reward_coins = mint_coins<RewardCoin>(1000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(1000000000);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
@@ -519,7 +519,7 @@ module harvest::stake_tests {
         let bob_acc = new_account_with_stake_coins(@bob, 100000000);
 
         // mint RewardCoins for pool
-        let reward_coins = mint_coins<RewardCoin>(30000000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(30000000000000);
         coin::register<RewardCoin>(&alice_acc);
         coin::register<RewardCoin>(&bob_acc);
 
@@ -611,7 +611,7 @@ module harvest::stake_tests {
 
         // mint reward coins
         initialize_reward_coin(&harvest_acc, 6);
-        let reward_coins = mint_coins<RewardCoin>(100);
+        let reward_coins = mint_default_coins<RewardCoin>(100);
 
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
     }
@@ -623,7 +623,7 @@ module harvest::stake_tests {
 
         // mint stake coins
         initialize_stake_coin(&harvest_acc, 6);
-        let stake_coins = mint_coins<StakeCoin>(100);
+        let stake_coins = mint_default_coins<StakeCoin>(100);
 
         // stake when no pool
         stake::stake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, stake_coins);
@@ -839,7 +839,7 @@ module harvest::stake_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         // mint RewardCoins for pool
-        let reward_coins = mint_coins<RewardCoin>(300000000);
+        let reward_coins = mint_default_coins<RewardCoin>(300000000);
         coin::register<RewardCoin>(&alice_acc);
 
         let start_time = 682981200;
@@ -872,7 +872,7 @@ module harvest::stake_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
         // mint RewardCoins for pool
-        let reward_coins = mint_coins<RewardCoin>(300000000);
+        let reward_coins = mint_default_coins<RewardCoin>(300000000);
         coin::register<RewardCoin>(&alice_acc);
 
         let start_time = 682981200;
@@ -939,7 +939,7 @@ module harvest::stake_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1000000);
 
         // mint RewardCoins for pool
-        let reward_coins = mint_coins<RewardCoin>(30000000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(30000000000000);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);

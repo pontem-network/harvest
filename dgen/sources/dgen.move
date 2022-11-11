@@ -28,12 +28,12 @@ module dgen_admin::dgen {
 
     /// Initializes DGEN coin, making total supply premint for owner.
     /// * `dgen_owner` - deployer of the module.
-    public entry fun initialize(dgen_owner: &signer) {
-        let dgen_owner_addr = signer::address_of(dgen_owner);
-        assert!(dgen_owner_addr == @dgen_admin, ERR_NO_PERMISSIONS);
+    public entry fun initialize(dgen_admin: &signer) {
+        let dgen_admin_addr = signer::address_of(dgen_admin);
+        assert!(dgen_admin_addr == @dgen_admin, ERR_NO_PERMISSIONS);
 
         let (burn_cap, freeze_cap, mint_cap) = coin::initialize<DGEN>(
-            dgen_owner,
+            dgen_admin,
             string::utf8(b"Liquidswap DGEN"),
             string::utf8(b"DGEN"),
             6,
@@ -41,13 +41,13 @@ module dgen_admin::dgen {
         );
 
         let pre_mint_coins = coin::mint(TOTAL_SUPPLY, &mint_cap);
-        coin::register<DGEN>(dgen_owner);
-        coin::deposit(dgen_owner_addr, pre_mint_coins);
+        coin::register<DGEN>(dgen_admin);
+        coin::deposit(dgen_admin_addr, pre_mint_coins);
 
         coin::destroy_freeze_cap(freeze_cap);
         coin::destroy_mint_cap(mint_cap);
 
-        move_to(dgen_owner, DGENCapabilities { burn_cap });
+        move_to(dgen_admin, DGENCapabilities { burn_cap });
     }
 
     /// Burns provided DGEN coins.

@@ -5,7 +5,7 @@ module harvest::stake_decimals_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -31,7 +31,7 @@ module harvest::stake_decimals_tests {
         let reward_per_sec_rate = 5;
 
         // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_coins<RewardCoin>(10000000);
+        let reward_coins = mint_default_coins<RewardCoin>(10000000);
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
@@ -210,7 +210,7 @@ module harvest::stake_decimals_tests {
         let reward_per_sec_rate = 200000000;
 
         // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_coins<RewardCoin>(1000000000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(1000000000000000);
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
@@ -389,7 +389,7 @@ module harvest::stake_decimals_tests {
         let reward_per_sec_rate = 10000000000;
 
         // register staking pool, deposit 100 000 RewardCoins
-        let reward_coins = mint_coins<RewardCoin>(10000000000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(10000000000000000);
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
@@ -568,7 +568,7 @@ module harvest::stake_decimals_tests {
         let reward_per_sec_rate = 350;
 
         // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_coins<RewardCoin>(1000000000);
+        let reward_coins = mint_default_coins<RewardCoin>(1000000000);
         stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
