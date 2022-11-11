@@ -38,6 +38,11 @@ Or LP staking module:
 
     cd liquidswap_staking
     aptos move compile
+    
+Or DGEN:
+
+    cd DGEN
+    aptos move compile
 
 ### Test
 
@@ -46,6 +51,11 @@ Or LP staking module:
 Or LP staking module:
 
     cd liquidswap_staking
+    aptos move test
+
+Or DGEN:
+
+    cd DGEN
     aptos move test
 
 
