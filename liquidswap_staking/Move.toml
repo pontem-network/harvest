@@ -3,7 +3,7 @@ name = 'LiquidswapStaking'
 version = '1.0.0'
 
 [addresses]
-dgen_owner = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05074e469d55d"
+lp_staking_admin = "0xc42b764ca81b34c59d792c2ca875d82f7dfbb5f2905bd3c771cccf0ff20078c5"
 
 [dependencies.Staking]
 local = ".."
@@ -11,3 +11,6 @@ local = ".."
 [dependencies.Liquidswap]
 git = 'https://github.com/pontem-network/liquidswap.git'
 rev = 'v0.4.3'
+
+[dependencies.DGENCoin]
+local = "../dgen"
