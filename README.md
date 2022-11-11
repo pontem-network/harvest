@@ -15,10 +15,16 @@ Supported features:
 
 ## DGEN coin
 
-The `DGEN` coin is currently placed in [LiquidswapStaking](./liquidswap_staking) module.
+The `DGEN` coin is currently placed in [DGEN](./DGEN) module.
 
 It's our community genesis generation coin which we are going to airdrop and reward
 early adopters, also it will be used in our staking pools as a reward.
+
+## Liquidswap Staking
+
+Scripts/routes that uses our Liquidswap LP coin as staked coin for staking.
+
+Placed in [LiquidswapStaking](liquidswap_staking) module.
 
 ---
 
