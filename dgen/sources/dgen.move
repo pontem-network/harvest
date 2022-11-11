@@ -1,5 +1,5 @@
 /// Liquidswap DGEN coin module.
-module dgen_owner::dgen {
+module dgen_admin::dgen {
     use std::signer;
     use std::string;
 
@@ -30,7 +30,7 @@ module dgen_owner::dgen {
     /// * `dgen_owner` - deployer of the module.
     public entry fun initialize(dgen_owner: &signer) {
         let dgen_owner_addr = signer::address_of(dgen_owner);
-        assert!(dgen_owner_addr == @dgen_owner, ERR_NO_PERMISSIONS);
+        assert!(dgen_owner_addr == @dgen_admin, ERR_NO_PERMISSIONS);
 
         let (burn_cap, freeze_cap, mint_cap) = coin::initialize<DGEN>(
             dgen_owner,
@@ -54,10 +54,10 @@ module dgen_owner::dgen {
     /// * `coins` - DGEN coins to burn.
     /// Returns burned amount of DGEN coins.
     public fun burn(coins: Coin<DGEN>): u64 acquires DGENCapabilities {
-        assert!(exists<DGENCapabilities>(@dgen_owner), ERR_NO_COIN);
+        assert!(exists<DGENCapabilities>(@dgen_admin), ERR_NO_COIN);
 
         let amount = coin::value(&coins);
-        let cap = borrow_global<DGENCapabilities>(@dgen_owner);
+        let cap = borrow_global<DGENCapabilities>(@dgen_admin);
 
         coin::burn<DGEN>(coins, &cap.burn_cap);
         amount
