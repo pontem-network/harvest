@@ -45,6 +45,6 @@ jobs:
         run: aptos move compile
         working-directory: ./liquidswap_staking
 
-      - name: Test ./dgen
+      - name: Test ./liquidswap_staking
         run: aptos move test
         working-directory: ./liquidswap_staking
