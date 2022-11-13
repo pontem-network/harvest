@@ -20,7 +20,7 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 0);
         initialize_reward_coin(&harvest_acc, 0);
 
-        let emergency_admin = new_account(@emergency_admin);
+        let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins
@@ -202,7 +202,7 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 2);
         initialize_reward_coin(&harvest_acc, 8);
 
-        let emergency_admin = new_account(@emergency_admin);
+        let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins
@@ -384,7 +384,7 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 6);
         initialize_reward_coin(&harvest_acc, 10);
 
-        let emergency_admin = new_account(@emergency_admin);
+        let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins
@@ -566,7 +566,7 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 8);
         initialize_reward_coin(&harvest_acc, 2);
 
-        let emergency_admin = new_account(@emergency_admin);
+        let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins

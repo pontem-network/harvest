@@ -23,7 +23,7 @@ module harvest::stake_tests {
         initialize_reward_coin(&harvest, 6);
         initialize_stake_coin(&harvest, 6);
 
-        let emergency_admin = new_account(@emergency_admin);
+        let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
         (harvest, emergency_admin)
     }
