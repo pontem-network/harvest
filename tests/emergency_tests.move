@@ -1,10 +1,12 @@
 #[test_only]
 module harvest::emergency_tests {
 
-    use harvest::stake_tests::initialize_test;
-    use harvest::stake_test_helpers::{new_account_with_stake_coins, RewardCoin, StakeCoin};
-    use harvest::stake;
     use aptos_framework::coin;
+
+    use harvest::stake;
+    use harvest::stake_config;
+    use harvest::stake_test_helpers::{new_account_with_stake_coins, RewardCoin, StakeCoin};
+    use harvest::stake_tests::initialize_test;
 
     /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
     const ONE_COIN: u64 = 1000000;
@@ -46,6 +48,58 @@ module harvest::emergency_tests {
     #[expected_failure(abort_code = 110)]
     fun test_cannot_harvest_with_emergency() {
         let (harvest, _) = initialize_test();
+
+        let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest, @harvest);
+
+        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+        coin::deposit(@alice, reward_coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 110)]
+    fun test_cannot_stake_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        stake_config::enable_global_emergency_lock(&emergency_admin);
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest, @harvest);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 110)]
+    fun test_cannot_unstake_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        stake_config::enable_global_emergency_lock(&emergency_admin);
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest, @harvest);
+
+        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100);
+        coin::deposit(@alice, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 110)]
+    fun test_cannot_harvest_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        stake_config::enable_global_emergency_lock(&emergency_admin);
 
         let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
