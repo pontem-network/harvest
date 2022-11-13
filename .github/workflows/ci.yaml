@@ -7,8 +7,8 @@ on:
 
 jobs:
 
-  test-root:
-    name: test-root
+  tests:
+    name: Test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -25,58 +25,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           prover: true
 
-      - name: Build
+      - name: Build .
         run: aptos move compile
+        working-directory: .
 
       - name: Test
         run: aptos move test
+        working-directory: .
 
-  test-dgen:
-    name: test-dgen
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+      - name: Build ./dgen
+        run: aptos move compile
         working-directory: ./dgen
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Get Aptos
-        uses: pontem-network/get-aptos@main
-        with:
-          version: aptos-cli-v0.3.9
-          token: ${{ secrets.GITHUB_TOKEN }}
-          prover: true
-
-      - name: Build
-        run: aptos move compile
-
-      - name: Test
+      - name: Test ./dgen
         run: aptos move test
+        working-directory: ./dgen
 
-  test-liquidswap-staking:
-    name: test-liquidswap-staking
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+      - name: Build ./liquidswap_staking
+        run: aptos move compile
         working-directory: ./liquidswap_staking
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Get Aptos
-        uses: pontem-network/get-aptos@main
-        with:
-          version: aptos-cli-v0.3.9
-          token: ${{ secrets.GITHUB_TOKEN }}
-          prover: true
-
-      - name: Build
-        run: aptos move compile
-
-      - name: Test
+      - name: Test ./dgen
         run: aptos move test
+        working-directory: ./liquidswap_staking
