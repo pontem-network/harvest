@@ -6,6 +6,7 @@ module harvest::stake_decimals_tests {
 
     use harvest::stake;
     use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use harvest::stake_config;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -18,6 +19,9 @@ module harvest::stake_decimals_tests {
 
         initialize_stake_coin(&harvest_acc, 0);
         initialize_reward_coin(&harvest_acc, 0);
+
+        let emergency_admin = new_account(@emergency_admin);
+        stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins
         let alice_acc = new_account_with_stake_coins(@alice, 30);
@@ -198,6 +202,9 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 2);
         initialize_reward_coin(&harvest_acc, 8);
 
+        let emergency_admin = new_account(@emergency_admin);
+        stake_config::initialize(&emergency_admin);
+
         // 30 StakeCoins
         let alice_acc = new_account_with_stake_coins(@alice, 3000);
 
@@ -377,6 +384,9 @@ module harvest::stake_decimals_tests {
         initialize_stake_coin(&harvest_acc, 6);
         initialize_reward_coin(&harvest_acc, 10);
 
+        let emergency_admin = new_account(@emergency_admin);
+        stake_config::initialize(&emergency_admin);
+
         // 30 StakeCoins
         let alice_acc = new_account_with_stake_coins(@alice, 30000000);
 
@@ -555,6 +565,9 @@ module harvest::stake_decimals_tests {
 
         initialize_stake_coin(&harvest_acc, 8);
         initialize_reward_coin(&harvest_acc, 2);
+
+        let emergency_admin = new_account(@emergency_admin);
+        stake_config::initialize(&emergency_admin);
 
         // 30 StakeCoins
         let alice_acc = new_account_with_stake_coins(@alice, 3000000000);

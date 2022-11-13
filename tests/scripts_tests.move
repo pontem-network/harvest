@@ -1,12 +1,12 @@
 #[test_only]
 module harvest::scripts_tests {
     use aptos_framework::coin;
-    use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
     use harvest::scripts;
     use harvest::stake;
-    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account, initialize_default_stake_reward_coins, new_account_with_stake_coins, mint_default_coins};
+    use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account_with_stake_coins, mint_default_coins};
+    use harvest::stake_tests::initialize_test;
 
     const ONE_COIN: u64 = 1000000;
 
@@ -14,10 +14,7 @@ module harvest::scripts_tests {
 
     #[test]
     fun test_scripts_end_to_end() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let pool_address = @harvest;
 
@@ -25,11 +22,11 @@ module harvest::scripts_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         let reward_coins = mint_default_coins<RewardCoin>(1000 * ONE_COIN);
-        coin::register<RewardCoin>(&harvest_acc);
+        coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
 
         scripts::register_pool_with_rewards<StakeCoin, RewardCoin>(
-            &harvest_acc,
+            &harvest,
             10,
             1000 * ONE_COIN
         );
@@ -69,7 +66,7 @@ module harvest::scripts_tests {
 
         assert!(coin::balance<RewardCoin>(@alice) == 6048000, 1);
 
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&harvest, @harvest);
         scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);

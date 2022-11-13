@@ -6,6 +6,7 @@ module harvest::stake {
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
+    use harvest::stake_config;
 
     //
     // Errors
@@ -118,6 +119,7 @@ module harvest::stake {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
+        assert!(!stake_config::is_global_emergency_locked(), ERR_EMERGENCY);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -134,7 +136,6 @@ module harvest::stake {
             deposit_events: account::new_event_handle<DepositRewardEvent>(owner),
             harvest_events: account::new_event_handle<HarvestEvent>(owner),
         };
-
         move_to(owner, pool);
     }
 
@@ -143,7 +144,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         let amount = coin::value(&coins);
 
@@ -197,7 +198,7 @@ module harvest::stake {
         let amount = coin::value(&coins);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -248,7 +249,7 @@ module harvest::stake {
 
         let user_addr = signer::address_of(user);
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
@@ -284,7 +285,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
@@ -315,7 +316,7 @@ module harvest::stake {
         assert!(signer::address_of(admin) == @harvest, ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         pool.emergency_locked = true;
     }
@@ -324,7 +325,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(pool.emergency_locked, ERR_NO_EMERGENCY);
+        assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
 
         let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
@@ -333,6 +334,16 @@ module harvest::stake {
         let UserStake { amount, unobtainable_reward: _, earned_reward: _, unlock_time: _ } = user_stake;
 
         coin::extract(&mut pool.stake_coins, amount)
+    }
+
+    public fun is_emergency<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        is_emergency_inner(pool)
+    }
+
+    fun is_emergency_inner<S, R>(pool: &StakePool<S, R>): bool {
+        pool.emergency_locked || stake_config::is_global_emergency_locked()
     }
 
     /// Recalculates pool accumulated reward.

@@ -5,7 +5,8 @@ module harvest::stake_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_default_coins, StakeCoin, RewardCoin, initialize_default_stake_reward_coins, new_account_with_stake_coins};
+    use harvest::stake_config;
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_default_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -14,17 +15,24 @@ module harvest::stake_tests {
     const ONE_COIN: u64 = 1000000;
 
     // todo: add test of registration two different pools at same time from different users
+    public fun initialize_test(): (signer, signer) {
+        genesis::setup();
+
+        let harvest = new_account(@harvest);
+        // create coins for pool to be valid
+        initialize_reward_coin(&harvest, 6);
+        initialize_stake_coin(&harvest, 6);
+
+        let emergency_admin = new_account(@emergency_admin);
+        stake_config::initialize(&emergency_admin);
+        (harvest, emergency_admin)
+    }
 
     #[test]
     public fun test_register() {
-        genesis::setup();
+        initialize_test();
 
-        let harvest_acc = new_account(@harvest);
         let alice_acc = new_account(@alice);
-
-        // create coins for pool to be valid
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
 
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
@@ -47,19 +55,13 @@ module harvest::stake_tests {
 
     #[test]
     public fun test_deposit_reward_coins() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
+        let (harvest, _) = initialize_test();
 
         // mint reward coins
         let reward_coins = mint_default_coins<RewardCoin>(1000000000);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // deposit reward coins
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
@@ -70,10 +72,7 @@ module harvest::stake_tests {
 
     #[test]
     public fun test_stake_and_unstake() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 900000000);
         let bob_acc = new_account_with_stake_coins(@bob, 99000000);
@@ -82,7 +81,7 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // check empty balances
         assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -134,10 +133,7 @@ module harvest::stake_tests {
 
     #[test]
     public fun test_stake_lockup_period() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 1000000);
         let bob_acc = new_account_with_stake_coins(@bob, 1000000);
@@ -146,7 +142,7 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // stake from alice
         let coins =
@@ -231,10 +227,7 @@ module harvest::stake_tests {
 
     #[test]
     public fun test_reward_calculation() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 900000000);
         let bob_acc = new_account_with_stake_coins(@bob, 99000000);
@@ -244,7 +237,7 @@ module harvest::stake_tests {
 
         // register staking pool
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -383,17 +376,14 @@ module harvest::stake_tests {
         // 0.0001 RewardCoin lost during calculations
         let total_rewards = (30 + WEEK_IN_SECONDS) * reward_per_sec_rate;
         let total_earned = earned_reward1 + earned_reward2;
-        let losed_rewards =  total_rewards - total_earned;
+        let losed_rewards = total_rewards - total_earned;
 
         assert!(losed_rewards == 100, 1);
     }
 
     #[test]
     public fun test_reward_calculation_works_well_when_pool_is_empty() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -402,7 +392,7 @@ module harvest::stake_tests {
 
         // register staking pool
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
 
         // wait one week with empty pool
         timestamp::update_global_time_for_test_secs(start_time + WEEK_IN_SECONDS);
@@ -510,10 +500,7 @@ module harvest::stake_tests {
 
     #[test]
     public fun test_harvest() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
         let bob_acc = new_account_with_stake_coins(@bob, 100000000);
@@ -528,7 +515,7 @@ module harvest::stake_tests {
 
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -607,10 +594,10 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_deposit_reward_coins_fails_if_pool_does_not_exist() {
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // mint reward coins
-        initialize_reward_coin(&harvest_acc, 6);
+        initialize_reward_coin(&harvest, 6);
         let reward_coins = mint_default_coins<RewardCoin>(100);
 
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
@@ -619,24 +606,24 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_stake_fails_if_pool_does_not_exist() {
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // mint stake coins
-        initialize_stake_coin(&harvest_acc, 6);
+        initialize_stake_coin(&harvest, 6);
         let stake_coins = mint_default_coins<StakeCoin>(100);
 
         // stake when no pool
-        stake::stake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, stake_coins);
+        stake::stake<StakeCoin, RewardCoin>(&harvest, @harvest, stake_coins);
     }
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_unstake_fails_if_pool_does_not_exist() {
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // unstake when no pool
         let coins =
-            stake::unstake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, 12345);
+            stake::unstake<StakeCoin, RewardCoin>(&harvest, @harvest, 12345);
         coin::deposit<StakeCoin>(@harvest, coins);
     }
 
@@ -666,14 +653,9 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 101 /* ERR_POOL_ALREADY_EXISTS */)]
     public fun test_register_fails_if_pool_already_exists() {
-        genesis::setup();
+        initialize_test();
 
-        let harvest_acc = new_account(@harvest);
         let alice_acc = new_account(@alice);
-
-        // create coins for pool to be valid
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
 
         // register staking pool twice
         stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, 1000000);
@@ -683,42 +665,33 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 102 /* ERR_REWARD_CANNOT_BE_ZERO */)]
     public fun test_register_fails_if_reward_is_zero() {
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // register staking pool with zero reward
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 0);
     }
 
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
     public fun test_unstake_fails_if_stake_not_exists() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
+        let (harvest, _) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // unstake when stake not exists
         let coins =
-            stake::unstake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, 12345);
+            stake::unstake<StakeCoin, RewardCoin>(&harvest, @harvest, 12345);
         coin::deposit<StakeCoin>(@harvest, coins);
     }
 
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
     public fun test_harvest_fails_if_stake_not_exists() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // harvest when stake not exists
         let coins =
@@ -729,10 +702,7 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 104 /* ERR_NOT_ENOUGH_S_BALANCE */)]
     public fun test_unstake_fails_if_not_enough_balance() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 99000000);
 
@@ -740,7 +710,7 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // stake 99 StakeCoins from alice
         let coins =
@@ -759,10 +729,7 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 105 /* ERR_NOT_ENOUGH_REWARDS */)]
     public fun test_harvest_fails_if_not_enough_pool_reward_balance() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -771,7 +738,7 @@ module harvest::stake_tests {
 
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -790,51 +757,36 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_stake_fails_if_amount_is_zero() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
+        let (harvest, _) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // stake 0 StakeCoins
-        coin::register<StakeCoin>(&harvest_acc);
+        coin::register<StakeCoin>(&harvest);
         let coins =
-            coin::withdraw<StakeCoin>(&harvest_acc, 0);
-        stake::stake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, coins);
+            coin::withdraw<StakeCoin>(&harvest, 0);
+        stake::stake<StakeCoin, RewardCoin>(&harvest, @harvest, coins);
     }
 
     #[test]
     #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_unstake_fails_if_amount_is_zero() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-
-        // create coins for pool
-        initialize_reward_coin(&harvest_acc, 6);
-        initialize_stake_coin(&harvest_acc, 6);
+        let (harvest, _) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // unstake 0 StakeCoin
         let coins =
-            stake::unstake<StakeCoin, RewardCoin>(&harvest_acc, @harvest, 0);
+            stake::unstake<StakeCoin, RewardCoin>(&harvest, @harvest, 0);
         coin::deposit<StakeCoin>(@harvest, coins);
     }
 
     #[test]
     #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_1() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -847,7 +799,7 @@ module harvest::stake_tests {
 
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -864,10 +816,7 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_2() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
 
@@ -880,7 +829,7 @@ module harvest::stake_tests {
 
         // register staking pool with rewards
         let reward_per_sec_rate = 10000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_per_sec_rate);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 100 StakeCoins from alice
@@ -905,13 +854,13 @@ module harvest::stake_tests {
     public fun test_register_fails_if_stake_coin_is_not_coin() {
         genesis::setup();
 
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // create only reward coin
-        initialize_reward_coin(&harvest_acc, 6);
+        initialize_reward_coin(&harvest, 6);
 
         // register staking pool without stake coin
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
     }
 
     #[test]
@@ -919,22 +868,19 @@ module harvest::stake_tests {
     public fun test_register_fails_if_reward_coin_is_not_coin() {
         genesis::setup();
 
-        let harvest_acc = new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // create only stake coin
-        initialize_stake_coin(&harvest_acc, 6);
+        initialize_stake_coin(&harvest, 6);
 
         // register staking pool without reward coin
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
     }
 
     #[test]
     #[expected_failure(abort_code = 109 /* ERR_TOO_EARLY_UNSTAKE */)]
     public fun test_unstake_fails_if_executed_before_lockup_end() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
+        let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 1000000);
 
@@ -945,7 +891,7 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake from alice
@@ -960,141 +906,5 @@ module harvest::stake_tests {
         let coins =
             stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 1000000);
         coin::deposit(@alice, coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 110)]
-    fun test_cannot_stake_with_emergency() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 110)]
-    fun test_cannot_unstake_with_emergency() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-
-        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100);
-        coin::deposit(@alice, coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 110)]
-    fun test_cannot_harvest_with_emergency() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-
-        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
-        coin::deposit(@alice, reward_coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 112)]
-    fun test_cannot_enable_emergency_with_non_admin_account() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 110)]
-    fun test_cannot_enable_emergency_twice() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-    }
-
-    #[test]
-    fun test_unstake_everything_in_case_of_emergency() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
-
-        stake::enable_emergency<StakeCoin, RewardCoin>(&harvest_acc, @harvest);
-
-        let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
-        coin::deposit(@alice, coins);
-
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 3);
-    }
-
-    #[test]
-    fun test_emergency_is_local_to_a_pool() {
-        genesis::setup();
-
-        let harvest_acc = new_account(@harvest);
-        initialize_default_stake_reward_coins(&harvest_acc);
-
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-
-        // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, 1 * ONE_COIN);
-        stake::register_pool<RewardCoin, StakeCoin>(&harvest_acc, 1 * ONE_COIN);
-
-        stake::enable_emergency<RewardCoin, StakeCoin>(&harvest_acc, @harvest);
-
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 3);
     }
 }
