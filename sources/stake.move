@@ -149,6 +149,20 @@ module harvest::stake {
     // Getter functions
     //
 
+    /// Returns true if pool exists.
+    public fun pool_exists<S, R>(pool_addr: address): bool {
+        exists<StakePool<S, R>>(pool_addr)
+    }
+
+    /// Returns true if stake exists.
+    public fun stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        if (!exists<StakePool<S, R>>(pool_addr)) {
+            return false
+        };
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        table::contains(&pool.stakes, user_addr)
+    }
+
     /// Returns current staked amount in pool.
     public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);

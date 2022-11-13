@@ -592,6 +592,49 @@ module harvest::stake_tests {
     }
 
     #[test]
+    public fun test_pool_exists() {
+        let (harvest, _) = initialize_test();
+
+        // check pool exists before register
+        let exists = stake::pool_exists<StakeCoin, RewardCoin>(@harvest);
+        assert!(exists == false, 1);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 12345);
+
+        // check pool exists after register
+        let exists = stake::pool_exists<StakeCoin, RewardCoin>(@harvest);
+        assert!(exists == true, 1);
+    }
+
+    #[test]
+    public fun test_stake_exists() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 12345);
+
+        // check stake exists before pool register
+        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(exists == false, 1);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 12345);
+
+        // check stake exists before alice stake
+        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(exists == false, 1);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 12345);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // check stake exists after alice stake
+        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(exists == true, 1);
+    }
+
+    #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_deposit_reward_coins_fails_if_pool_does_not_exist() {
         let harvest = new_account(@harvest);
