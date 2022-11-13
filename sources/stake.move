@@ -2,10 +2,12 @@ module harvest::stake {
     use std::signer;
 
     use aptos_std::event::{Self, EventHandle};
+    use aptos_std::math64::pow;
     use aptos_std::table;
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
+
     use harvest::stake_config;
 
     //
@@ -64,22 +66,17 @@ module harvest::stake {
 
     /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key {
-        // pool reward coins per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
-        // last accum_reward & reward_per_sec update time
+        // last accum_reward update time
         last_updated: u64,
-        // user stake list
+
         stakes: table::Table<address, UserStake>,
-        // pool staked coins
         stake_coins: Coin<S>,
-        // pool reward coins
         reward_coins: Coin<R>,
 
-        // decimals multiplier for stake coins
         stake_scale: u64,
-        // decimals multiplier for reward coins
         // todo: we don't use it at all, remove?
         reward_scale: u64,
 
@@ -87,25 +84,18 @@ module harvest::stake {
         /// * only `emergency_unstake()` operation is available in the state of emergency
         emergency_locked: bool,
 
-        // stake events
         stake_events: EventHandle<StakeEvent>,
-        // unstake events
         unstake_events: EventHandle<UnstakeEvent>,
-        // deposit events
         deposit_events: EventHandle<DepositRewardEvent>,
-        // harvest events
         harvest_events: EventHandle<HarvestEvent>,
     }
 
     /// Stores user stake info.
     struct UserStake has store {
-        // staked amount
         amount: u64,
         // contains the value of rewards that cannot be harvested by the user
         unobtainable_reward: u128,
-        // reward earned by current stake
         earned_reward: u64,
-        // unlock time
         unlock_time: u64,
     }
 
@@ -127,8 +117,8 @@ module harvest::stake {
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins: coin::zero(),
-            stake_scale: pow_10(coin::decimals<S>()),
-            reward_scale: pow_10(coin::decimals<R>()),
+            stake_scale: pow(10, (coin::decimals<S>() as u64)),
+            reward_scale: pow(10, (coin::decimals<R>() as u64)),
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
@@ -387,23 +377,6 @@ module harvest::stake {
         (num as u128)
     }
 
-    /// Returns 10^degree.
-    fun pow_10(degree: u8): u64 {
-        let res = 1;
-        let i = 0;
-        while ({
-            spec {
-                invariant res == spec_pow(10, i);
-                invariant 0 <= i && i <= degree;
-            };
-            i < degree
-        }) {
-            res = res * 10;
-            i = i + 1;
-        };
-        res
-    }
-
     //
     // Events
     //
@@ -456,11 +429,5 @@ module harvest::stake {
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
         update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
-    }
-
-    #[test_only]
-    /// Access pow_10 func.
-    public fun calc_pow_10(n: u8): u64 {
-        pow_10(n)
     }
 }
