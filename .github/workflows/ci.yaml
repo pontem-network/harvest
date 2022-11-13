@@ -6,6 +6,7 @@ on:
       - master
 
 jobs:
+
   tests:
     name: Test
     runs-on: ubuntu-latest
@@ -24,8 +25,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           prover: true
 
-      - name: Build
+      - name: Build .
         run: aptos move compile
+        working-directory: .
 
       - name: Test
         run: aptos move test
+        working-directory: .
+
+      - name: Build ./dgen
+        run: aptos move compile
+        working-directory: ./dgen
+
+      - name: Test ./dgen
+        run: aptos move test
+        working-directory: ./dgen
+
+      - name: Build ./liquidswap_staking
+        run: aptos move compile
+        working-directory: ./liquidswap_staking
+
+      - name: Test ./liquidswap_staking
+        run: aptos move test
+        working-directory: ./liquidswap_staking
