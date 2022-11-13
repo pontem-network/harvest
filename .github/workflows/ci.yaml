@@ -6,12 +6,63 @@ on:
       - master
 
 jobs:
-  tests:
-    name: Test
+
+  test-root:
+    name: test-root
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get Aptos
+        uses: pontem-network/get-aptos@main
+        with:
+          version: aptos-cli-v0.3.9
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prover: true
+
+      - name: Build
+        run: aptos move compile
+
+      - name: Test
+        run: aptos move test
+
+  test-dgen:
+    name: test-dgen
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./dgen
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get Aptos
+        uses: pontem-network/get-aptos@main
+        with:
+          version: aptos-cli-v0.3.9
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prover: true
+
+      - name: Build
+        run: aptos move compile
+
+      - name: Test
+        run: aptos move test
+
+  test-liquidswap-staking:
+    name: test-liquidswap-staking
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./liquidswap_staking
 
     steps:
       - name: Checkout repository
