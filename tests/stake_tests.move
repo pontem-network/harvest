@@ -84,8 +84,8 @@ module harvest::stake_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
         // check no stakes
-        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice) == false, 1);
-        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @bob) == false, 1);
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @bob), 1);
 
         // stake 500 StakeCoins from alice
         let coins =
@@ -591,14 +591,14 @@ module harvest::stake_tests {
 
         // check pool exists before register
         let exists = stake::pool_exists<StakeCoin, RewardCoin>(@harvest);
-        assert!(exists == false, 1);
+        assert!(!exists, 1);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 12345);
 
         // check pool exists after register
         let exists = stake::pool_exists<StakeCoin, RewardCoin>(@harvest);
-        assert!(exists == true, 1);
+        assert!(exists, 1);
     }
 
     #[test]
@@ -609,14 +609,14 @@ module harvest::stake_tests {
 
         // check stake exists before pool register
         let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(exists == false, 1);
+        assert!(!exists, 1);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 12345);
 
         // check stake exists before alice stake
         let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(exists == false, 1);
+        assert!(!exists, 1);
 
         // stake from alice
         let coins =
@@ -625,7 +625,7 @@ module harvest::stake_tests {
 
         // check stake exists after alice stake
         let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(exists == true, 1);
+        assert!(exists, 1);
     }
 
     #[test]
