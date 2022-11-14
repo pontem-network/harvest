@@ -2,7 +2,7 @@ module harvest::stake {
     use std::signer;
 
     use aptos_std::event::{Self, EventHandle};
-    use aptos_std::math64::pow;
+    use aptos_std::math64;
     use aptos_std::table;
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
@@ -117,8 +117,8 @@ module harvest::stake {
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins: coin::zero(),
-            stake_scale: pow(10, (coin::decimals<S>() as u64)),
-            reward_scale: pow(10, (coin::decimals<R>() as u64)),
+            stake_scale: math64::pow(10, (coin::decimals<S>() as u64)),
+            reward_scale: math64::pow(10, (coin::decimals<R>() as u64)),
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
