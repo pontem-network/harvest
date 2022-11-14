@@ -190,7 +190,27 @@ module harvest::stake {
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
-        table::borrow(&pool.stakes, user_addr).earned_reward
+        let current_time = timestamp::now_seconds();
+        let seconds_passed = current_time - pool.last_updated;
+        let total_stake = coin::value(&pool.stake_coins);
+        let stake_scale = pool.stake_scale;
+        let accum_reward = pool.accum_reward;
+        let earned_reward = table::borrow(&pool.stakes, user_addr).earned_reward;
+        let staked_amount = table::borrow(&pool.stakes, user_addr).amount;
+        let unobtainable_reward = table::borrow(&pool.stakes, user_addr).unobtainable_reward;
+
+        // calculate user reward without update
+        if (total_stake != 0) {
+            let total_reward = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(stake_scale);
+            let new_accum_rewards = total_reward / to_u128(total_stake);
+
+            accum_reward = accum_reward + new_accum_rewards;
+        };
+
+        let earned =
+            (accum_reward * (to_u128(staked_amount)) / to_u128(stake_scale)) - unobtainable_reward;
+
+        earned_reward + to_u64(earned)
     }
 
     //
