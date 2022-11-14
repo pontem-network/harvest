@@ -87,7 +87,7 @@ module lp_staking_admin::lp_staking_tests {
         // harvest from alice
         let coins =
             stake::harvest<LP<BTC, USDT, Uncorrelated>, DGEN>(@alice, @harvest);
-        assert!(stake::get_user_earned<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
+        assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
         // 6047.999951 DGEN coins
         assert!(coin::value(&coins) == 6047999951, 1);
         coin::deposit(@alice, coins);
