@@ -42,9 +42,9 @@ module harvest::scripts_tests {
 
         let alice_acc = new_account_with_stake_coins(@alice, 100 * ONE_COIN);
 
-        // check empty balances
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(pool_address, @alice) == 0, 1);
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(pool_address, @bob) == 0, 1);
+        // check no stakes
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(pool_address, @alice) == false, 1);
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(pool_address, @bob) == false, 1);
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, pool_address, 10 * ONE_COIN);
 
@@ -69,7 +69,8 @@ module harvest::scripts_tests {
         scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
+        // todo: note, on usual unstake stake still exists. Should we destroy it on emergency unstake?
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice) == false, 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
         assert!(coin::balance<StakeCoin>(@alice) == 100 * ONE_COIN, 1);
     }

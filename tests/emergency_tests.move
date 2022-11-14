@@ -165,7 +165,8 @@ module harvest::emergency_tests {
         assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         coin::deposit(@alice, coins);
 
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 3);
+        // todo: note, on usual unstake stake still exists. Should we destroy it on emergency unstake?
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice) == false, 3);
     }
 
     #[test]

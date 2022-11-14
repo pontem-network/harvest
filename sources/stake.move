@@ -160,6 +160,7 @@ module harvest::stake {
             return false
         };
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
         table::contains(&pool.stakes, user_addr)
     }
 
@@ -176,11 +177,9 @@ module harvest::stake {
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        if (table::contains(&pool.stakes, user_addr)) {
-            table::borrow(&pool.stakes, user_addr).amount
-        } else {
-            0
-        }
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        table::borrow(&pool.stakes, user_addr).amount
     }
 
     //

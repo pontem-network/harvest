@@ -83,9 +83,9 @@ module harvest::stake_tests {
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
 
-        // check empty balances
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @bob) == 0, 1);
+        // check no stakes
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice) == false, 1);
+        assert!(stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @bob) == false, 1);
 
         // stake 500 StakeCoins from alice
         let coins =
@@ -712,6 +712,17 @@ module harvest::stake_tests {
 
         // register staking pool with zero reward
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    public fun test_get_user_stake_fails_if_stake_does_not_exist() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
+
+        stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]
