@@ -5,9 +5,9 @@ module harvest::stake_config {
 
     const ERR_NOT_INITIALIZED: u64 = 202;
 
-    const ERR_NOT_GLOBAL_LOCKED: u64 = 203;
+    const ERR_NO_GLOBAL_EMERGENCY: u64 = 203;
 
-    const ERR_NOT_GLOBAL_UNLOCKED: u64 = 204;
+    const ERR_GLOBAL_EMERGENCY: u64 = 204;
 
     struct GlobalConfig has key {
         emergency_admin_address: address,
@@ -41,30 +41,18 @@ module harvest::stake_config {
         global_config.emergency_admin_address
     }
 
-    public fun enable_global_emergency_lock(emergency_admin: &signer) acquires GlobalConfig {
+    public fun enable_global_emergency(emergency_admin: &signer) acquires GlobalConfig {
         assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
         let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
         assert!(
             signer::address_of(emergency_admin) == global_config.emergency_admin_address,
             ERR_NOT_AN_EMERGENCY_ADMIN
         );
-        assert!(!global_config.global_emergency_locked, ERR_NOT_GLOBAL_UNLOCKED);
+        assert!(!global_config.global_emergency_locked, ERR_GLOBAL_EMERGENCY);
         global_config.global_emergency_locked = true;
     }
 
-    public fun disable_global_emergency_lock(emergency_admin: &signer) acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
-        assert!(
-            signer::address_of(emergency_admin) == global_config.emergency_admin_address,
-            ERR_NOT_AN_EMERGENCY_ADMIN
-        );
-        assert!(global_config.global_emergency_locked, ERR_NOT_INITIALIZED);
-        assert!(global_config.global_emergency_locked, ERR_NOT_GLOBAL_LOCKED);
-        global_config.global_emergency_locked = false;
-    }
-
-    public fun is_global_emergency_locked(): bool acquires GlobalConfig {
+    public fun is_global_emergency(): bool acquires GlobalConfig {
         assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
         let global_config = borrow_global<GlobalConfig>(@stake_emergency_admin);
         global_config.global_emergency_locked

@@ -85,7 +85,6 @@ module harvest::stake {
 
         /// This field set to `true` only in case of emergency:
         /// * only `emergency_unstake()` operation is available in the state of emergency
-        /// * emergency admin is hardcoded to `@harvest` address
         emergency_locked: bool,
 
         // stake events
@@ -119,7 +118,7 @@ module harvest::stake {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
-        assert!(!stake_config::is_global_emergency_locked(), ERR_EMERGENCY);
+        assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -313,7 +312,10 @@ module harvest::stake {
 
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-        assert!(signer::address_of(admin) == @harvest, ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY);
+        assert!(
+            signer::address_of(admin) == stake_config::get_emergency_admin_address(),
+            ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY
+        );
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
@@ -342,8 +344,14 @@ module harvest::stake {
         is_emergency_inner(pool)
     }
 
+    public fun is_local_emergency<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.emergency_locked
+    }
+
     fun is_emergency_inner<S, R>(pool: &StakePool<S, R>): bool {
-        pool.emergency_locked || stake_config::is_global_emergency_locked()
+        pool.emergency_locked || stake_config::is_global_emergency()
     }
 
     /// Recalculates pool accumulated reward.
