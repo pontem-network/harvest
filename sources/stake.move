@@ -182,6 +182,17 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
+    /// Returns current reward amount earned by user in specific pool.
+    public fun get_user_earned<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        table::borrow(&pool.stakes, user_addr).earned_reward
+    }
+
     //
     // Public functions
     //
@@ -418,11 +429,11 @@ module harvest::stake {
     public fun get_user_stake_info<S, R>(
         pool_addr: address,
         user_addr: address
-    ): (u128, u64, u64) acquires StakePool {
+    ): (u128, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
         let fields = table::borrow(&pool.stakes, user_addr);
 
-        (fields.unobtainable_reward, fields.earned_reward, fields.unlock_time)
+        (fields.unobtainable_reward, fields.unlock_time)
     }
 
     #[test_only]
