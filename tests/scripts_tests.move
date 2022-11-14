@@ -14,7 +14,7 @@ module harvest::scripts_tests {
 
     #[test]
     fun test_scripts_end_to_end() {
-        let (harvest, _) = initialize_test();
+        let (harvest, emergency_admin) = initialize_test();
 
         let pool_address = @harvest;
 
@@ -66,7 +66,7 @@ module harvest::scripts_tests {
 
         assert!(coin::balance<RewardCoin>(@alice) == 6048000, 1);
 
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&harvest, @harvest);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
