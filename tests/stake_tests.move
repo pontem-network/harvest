@@ -682,10 +682,6 @@ module harvest::stake_tests {
 
         let alice_acc = new_account_with_stake_coins(@alice, 12345);
 
-        // check stake exists before pool register
-        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(!exists, 1);
-
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 12345);
 

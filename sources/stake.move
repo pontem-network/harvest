@@ -156,9 +156,8 @@ module harvest::stake {
 
     /// Returns true if stake exists.
     public fun stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
-        if (!exists<StakePool<S, R>>(pool_addr)) {
-            return false
-        };
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         table::contains(&pool.stakes, user_addr)
