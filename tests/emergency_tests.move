@@ -165,7 +165,7 @@ module harvest::emergency_tests {
         assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         coin::deposit(@alice, coins);
 
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 3);
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
     }
 
     #[test]
@@ -218,7 +218,8 @@ module harvest::emergency_tests {
         assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         coin::deposit(@alice, coins);
 
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 3);
+        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(!exists, 3);
     }
 
     #[test]
