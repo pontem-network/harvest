@@ -189,28 +189,18 @@ module harvest::stake {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+        let user_stake = table::borrow(&pool.stakes, user_addr);
 
         let current_time = timestamp::now_seconds();
-        let seconds_passed = current_time - pool.last_updated;
-        let total_stake = coin::value(&pool.stake_coins);
-        let stake_scale = pool.stake_scale;
-        let accum_reward = pool.accum_reward;
-        let earned_reward = table::borrow(&pool.stakes, user_addr).earned_reward;
-        let staked_amount = table::borrow(&pool.stakes, user_addr).amount;
-        let unobtainable_reward = table::borrow(&pool.stakes, user_addr).unobtainable_reward;
+        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
-        // calculate user reward without update
-        if (total_stake != 0) {
-            let total_reward = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(stake_scale);
-            let new_accum_rewards = total_reward / to_u128(total_stake);
+        let earned_since_last_update = user_earned_since_last_update(
+            pool.accum_reward + new_accum_rewards,
+            pool.stake_scale,
+            user_stake,
+        );
 
-            accum_reward = accum_reward + new_accum_rewards;
-        };
-
-        let earned =
-            (accum_reward * (to_u128(staked_amount)) / to_u128(stake_scale)) - unobtainable_reward;
-
-        earned_reward + to_u64(earned)
+        user_stake.earned_reward + to_u64(earned_since_last_update)
     }
 
     //
@@ -391,26 +381,37 @@ module harvest::stake {
     /// Recalculates pool accumulated reward.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
         let current_time = timestamp::now_seconds();
-        let seconds_passed = current_time - pool.last_updated;
-        let total_stake = coin::value(&pool.stake_coins);
+        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
         pool.last_updated = current_time;
 
-        if (total_stake != 0) {
-            let total_reward = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
-            let new_accum_rewards = total_reward / to_u128(total_stake);
-
+        if (new_accum_rewards != 0) {
             pool.accum_reward = pool.accum_reward + new_accum_rewards;
-        }
+        };
+    }
+
+    fun accum_rewards_since_last_updated<S, R>(pool: &StakePool<S, R>, current_time: u64): u128 {
+        let seconds_passed = current_time - pool.last_updated;
+        if (seconds_passed == 0) return 0;
+
+        let total_stake = coin::value(&pool.stake_coins);
+        if (total_stake == 0) return 0;
+
+        let total_rewards = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
+        total_rewards / to_u128(total_stake)
     }
 
     /// Calculates user earnings.
     fun update_user_earnings<S, R>(accum_reward: u128, stake_scale: u64, user_stake: &mut UserStake) {
         let earned =
-            (accum_reward * (to_u128(user_stake.amount)) / to_u128(stake_scale)) - user_stake.unobtainable_reward;
-
+            user_earned_since_last_update(accum_reward, stake_scale, user_stake);
         user_stake.earned_reward = user_stake.earned_reward + to_u64(earned);
         user_stake.unobtainable_reward = user_stake.unobtainable_reward + earned;
+    }
+
+    fun user_earned_since_last_update(accum_reward: u128, stake_scale: u64, user_stake: &UserStake): u128 {
+        (accum_reward * (to_u128(user_stake.amount)) / to_u128(stake_scale))
+            - user_stake.unobtainable_reward
     }
 
     fun to_u64(num: u128): u64 {
