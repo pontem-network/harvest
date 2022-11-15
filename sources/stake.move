@@ -2,10 +2,13 @@ module harvest::stake {
     use std::signer;
 
     use aptos_std::event::{Self, EventHandle};
+    use aptos_std::math64;
     use aptos_std::table;
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
+
+    use harvest::stake_config;
 
     //
     // Errors
@@ -26,8 +29,8 @@ module harvest::stake {
     /// Not enough S balance to unstake
     const ERR_NOT_ENOUGH_S_BALANCE: u64 = 104;
 
-    /// Not enough balance to pay reward.
-    const ERR_NOT_ENOUGH_REWARDS: u64 = 105;
+    /// Pool has no rewards on balance.
+    const ERR_EMPTY_POOL_REWARD_BALANCE: u64 = 105;
 
     /// Amount can't be zero.
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 106;
@@ -63,49 +66,36 @@ module harvest::stake {
 
     /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key {
-        // pool reward coins per second
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
-        // last accum_reward & reward_per_sec update time
+        // last accum_reward update time
         last_updated: u64,
-        // user stake list
+
         stakes: table::Table<address, UserStake>,
-        // pool staked coins
         stake_coins: Coin<S>,
-        // pool reward coins
         reward_coins: Coin<R>,
 
-        // decimals multiplier for stake coins
         stake_scale: u64,
-        // decimals multiplier for reward coins
         // todo: we don't use it at all, remove?
         reward_scale: u64,
 
         /// This field set to `true` only in case of emergency:
         /// * only `emergency_unstake()` operation is available in the state of emergency
-        /// * emergency admin is hardcoded to `@harvest` address
         emergency_locked: bool,
 
-        // stake events
         stake_events: EventHandle<StakeEvent>,
-        // unstake events
         unstake_events: EventHandle<UnstakeEvent>,
-        // deposit events
         deposit_events: EventHandle<DepositRewardEvent>,
-        // harvest events
         harvest_events: EventHandle<HarvestEvent>,
     }
 
     /// Stores user stake info.
     struct UserStake has store {
-        // staked amount
         amount: u64,
         // contains the value of rewards that cannot be harvested by the user
         unobtainable_reward: u128,
-        // reward earned by current stake
         earned_reward: u64,
-        // unlock time
         unlock_time: u64,
     }
 
@@ -118,6 +108,7 @@ module harvest::stake {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
+        assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -126,15 +117,14 @@ module harvest::stake {
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins: coin::zero(),
-            stake_scale: pow_10(coin::decimals<S>()),
-            reward_scale: pow_10(coin::decimals<R>()),
+            stake_scale: math64::pow(10, (coin::decimals<S>() as u64)),
+            reward_scale: math64::pow(10, (coin::decimals<R>() as u64)),
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
             deposit_events: account::new_event_handle<DepositRewardEvent>(owner),
             harvest_events: account::new_event_handle<HarvestEvent>(owner),
         };
-
         move_to(owner, pool);
     }
 
@@ -143,7 +133,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         let amount = coin::value(&coins);
 
@@ -159,6 +149,20 @@ module harvest::stake {
     // Getter functions
     //
 
+    /// Returns true if pool exists.
+    public fun pool_exists<S, R>(pool_addr: address): bool {
+        exists<StakePool<S, R>>(pool_addr)
+    }
+
+    /// Returns true if stake exists.
+    public fun stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        table::contains(&pool.stakes, user_addr)
+    }
+
     /// Returns current staked amount in pool.
     public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
@@ -172,11 +176,30 @@ module harvest::stake {
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        if (table::contains(&pool.stakes, user_addr)) {
-            table::borrow(&pool.stakes, user_addr).amount
-        } else {
-            0
-        }
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        table::borrow(&pool.stakes, user_addr).amount
+    }
+
+    /// Returns current pending user reward in specific pool.
+    public fun get_pending_user_rewards<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+        let user_stake = table::borrow(&pool.stakes, user_addr);
+
+        let current_time = timestamp::now_seconds();
+        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
+
+        let earned_since_last_update = user_earned_since_last_update(
+            pool.accum_reward + new_accum_rewards,
+            pool.stake_scale,
+            user_stake,
+        );
+
+        user_stake.earned_reward + to_u64(earned_since_last_update)
     }
 
     //
@@ -197,7 +220,7 @@ module harvest::stake {
         let amount = coin::value(&coins);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -248,7 +271,7 @@ module harvest::stake {
 
         let user_addr = signer::address_of(user);
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
@@ -284,7 +307,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
@@ -296,26 +319,34 @@ module harvest::stake {
         // update earnings
         update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
 
-        let earned = user_stake.earned_reward;
-        user_stake.earned_reward = 0;
+        let earned_to_withdraw = user_stake.earned_reward;
+        assert!(earned_to_withdraw > 0, ERR_NOTHING_TO_HARVEST);
 
-        assert!(earned > 0, ERR_NOTHING_TO_HARVEST);
-        assert!(coin::value(&pool.reward_coins) >= earned, ERR_NOT_ENOUGH_REWARDS);
+        let pool_rewards_balance = coin::value(&pool.reward_coins);
+        assert!(pool_rewards_balance > 0, ERR_EMPTY_POOL_REWARD_BALANCE);
+
+        if (earned_to_withdraw > pool_rewards_balance) {
+            earned_to_withdraw = pool_rewards_balance;
+        };
+        user_stake.earned_reward = user_stake.earned_reward - earned_to_withdraw;
 
         event::emit_event<HarvestEvent>(
             &mut pool.harvest_events,
-            HarvestEvent { user_address: user_addr, amount: earned },
+            HarvestEvent { user_address: user_addr, amount: earned_to_withdraw },
         );
 
-        coin::extract(&mut pool.reward_coins, earned)
+        coin::extract(&mut pool.reward_coins, earned_to_withdraw)
     }
 
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-        assert!(signer::address_of(admin) == @harvest, ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY);
+        assert!(
+            signer::address_of(admin) == stake_config::get_emergency_admin_address(),
+            ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY
+        );
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!pool.emergency_locked, ERR_EMERGENCY);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         pool.emergency_locked = true;
     }
@@ -324,7 +355,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(pool.emergency_locked, ERR_NO_EMERGENCY);
+        assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
 
         let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
@@ -335,29 +366,56 @@ module harvest::stake {
         coin::extract(&mut pool.stake_coins, amount)
     }
 
+    public fun is_emergency<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        is_emergency_inner(pool)
+    }
+
+    public fun is_local_emergency<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.emergency_locked
+    }
+
+    fun is_emergency_inner<S, R>(pool: &StakePool<S, R>): bool {
+        pool.emergency_locked || stake_config::is_global_emergency()
+    }
+
     /// Recalculates pool accumulated reward.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
         let current_time = timestamp::now_seconds();
-        let seconds_passed = current_time - pool.last_updated;
-        let total_stake = coin::value(&pool.stake_coins);
+        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
         pool.last_updated = current_time;
 
-        if (total_stake != 0) {
-            let total_reward = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
-            let new_accum_rewards = total_reward / to_u128(total_stake);
-
+        if (new_accum_rewards != 0) {
             pool.accum_reward = pool.accum_reward + new_accum_rewards;
-        }
+        };
+    }
+
+    fun accum_rewards_since_last_updated<S, R>(pool: &StakePool<S, R>, current_time: u64): u128 {
+        let seconds_passed = current_time - pool.last_updated;
+        if (seconds_passed == 0) return 0;
+
+        let total_stake = coin::value(&pool.stake_coins);
+        if (total_stake == 0) return 0;
+
+        let total_rewards = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
+        total_rewards / to_u128(total_stake)
     }
 
     /// Calculates user earnings.
     fun update_user_earnings<S, R>(accum_reward: u128, stake_scale: u64, user_stake: &mut UserStake) {
         let earned =
-            (accum_reward * (to_u128(user_stake.amount)) / to_u128(stake_scale)) - user_stake.unobtainable_reward;
-
+            user_earned_since_last_update(accum_reward, stake_scale, user_stake);
         user_stake.earned_reward = user_stake.earned_reward + to_u64(earned);
         user_stake.unobtainable_reward = user_stake.unobtainable_reward + earned;
+    }
+
+    fun user_earned_since_last_update(accum_reward: u128, stake_scale: u64, user_stake: &UserStake): u128 {
+        (accum_reward * (to_u128(user_stake.amount)) / to_u128(stake_scale))
+            - user_stake.unobtainable_reward
     }
 
     fun to_u64(num: u128): u64 {
@@ -366,23 +424,6 @@ module harvest::stake {
 
     fun to_u128(num: u64): u128 {
         (num as u128)
-    }
-
-    /// Returns 10^degree.
-    fun pow_10(degree: u8): u64 {
-        let res = 1;
-        let i = 0;
-        while ({
-            spec {
-                invariant res == spec_pow(10, i);
-                invariant 0 <= i && i <= degree;
-            };
-            i < degree
-        }) {
-            res = res * 10;
-            i = i + 1;
-        };
-        res
     }
 
     //
@@ -413,11 +454,11 @@ module harvest::stake {
     public fun get_user_stake_info<S, R>(
         pool_addr: address,
         user_addr: address
-    ): (u128, u64, u64) acquires StakePool {
+    ): (u128, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
         let fields = table::borrow(&pool.stakes, user_addr);
 
-        (fields.unobtainable_reward, fields.earned_reward, fields.unlock_time)
+        (fields.unobtainable_reward, fields.unlock_time)
     }
 
     #[test_only]
@@ -437,11 +478,5 @@ module harvest::stake {
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
         update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
-    }
-
-    #[test_only]
-    /// Access pow_10 func.
-    public fun calc_pow_10(n: u8): u64 {
-        pow_10(n)
     }
 }

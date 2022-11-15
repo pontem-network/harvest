@@ -8,7 +8,8 @@ module lp_staking_admin::lp_staking_tests {
 
     use dgen_admin::dgen::{Self, DGEN};
     use harvest::stake;
-    use harvest::stake_test_helpers;
+    use harvest::stake_config;
+    use harvest::stake_test_helpers::{Self, new_account};
     use liquidswap::curves::Uncorrelated;
     use liquidswap::router;
     use liquidswap_lp::lp_coin::LP;
@@ -33,6 +34,9 @@ module lp_staking_admin::lp_staking_tests {
         let harvest_acc = stake_test_helpers::new_account(@harvest);
         let dgen_admin_acc = stake_test_helpers::new_account(@dgen_admin);
         let alice_acc = stake_test_helpers::new_account(@alice);
+
+        let emergency_admin = new_account(@stake_emergency_admin);
+        stake_config::initialize(&emergency_admin);
 
         // initialize DGEN coin with premint for admin
         dgen::initialize(&dgen_admin_acc);
@@ -83,9 +87,7 @@ module lp_staking_admin::lp_staking_tests {
         // harvest from alice
         let coins =
             stake::harvest<LP<BTC, USDT, Uncorrelated>, DGEN>(@alice, @harvest);
-        let (_, earned_reward, _) =
-            stake::get_user_stake_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice);
-        assert!(earned_reward == 0, 1);
+        assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
         // 6047.999951 DGEN coins
         assert!(coin::value(&coins) == 6047999951, 1);
         coin::deposit(@alice, coins);
