@@ -29,8 +29,8 @@ module harvest::stake {
     /// Not enough S balance to unstake
     const ERR_NOT_ENOUGH_S_BALANCE: u64 = 104;
 
-    /// Not enough balance to pay reward.
-    const ERR_NOT_ENOUGH_REWARDS: u64 = 105;
+    /// Pool has no rewards on balance.
+    const ERR_EMPTY_POOL_REWARD_BALANCE: u64 = 105;
 
     /// Amount can't be zero.
     const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 106;
@@ -320,18 +320,23 @@ module harvest::stake {
         // update earnings
         update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
 
-        let earned = user_stake.earned_reward;
-        user_stake.earned_reward = 0;
+        let earned_to_withdraw = user_stake.earned_reward;
+        assert!(earned_to_withdraw > 0, ERR_NOTHING_TO_HARVEST);
 
-        assert!(earned > 0, ERR_NOTHING_TO_HARVEST);
-        assert!(coin::value(&pool.reward_coins) >= earned, ERR_NOT_ENOUGH_REWARDS);
+        let pool_rewards_balance = coin::value(&pool.reward_coins);
+        assert!(pool_rewards_balance > 0, ERR_EMPTY_POOL_REWARD_BALANCE);
+
+        if (earned_to_withdraw > pool_rewards_balance) {
+            earned_to_withdraw = pool_rewards_balance;
+        };
+        user_stake.earned_reward = user_stake.earned_reward - earned_to_withdraw;
 
         event::emit_event<HarvestEvent>(
             &mut pool.harvest_events,
-            HarvestEvent { user_address: user_addr, amount: earned },
+            HarvestEvent { user_address: user_addr, amount: earned_to_withdraw },
         );
 
-        coin::extract(&mut pool.reward_coins, earned)
+        coin::extract(&mut pool.reward_coins, earned_to_withdraw)
     }
 
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
