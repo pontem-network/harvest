@@ -6,7 +6,7 @@ module lp_staking_admin::lp_staking_tests {
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
-    use dgen_admin::dgen::{Self, DGEN};
+    use dgen_coin::dgen::{Self, DGEN};
     use harvest::stake;
     use harvest::stake_config;
     use harvest::stake_test_helpers::{Self, new_account};
@@ -32,7 +32,7 @@ module lp_staking_admin::lp_staking_tests {
 
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
-        let dgen_admin_acc = stake_test_helpers::new_account(@dgen_admin);
+        let dgen_admin_acc = stake_test_helpers::new_account(@dgen_coin);
         let alice_acc = stake_test_helpers::new_account(@alice);
 
         let emergency_admin = new_account(@stake_emergency_admin);

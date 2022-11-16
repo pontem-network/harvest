@@ -1,19 +1,19 @@
 #[test_only]
-module dgen_admin::dgen_tests {
+module dgen_coin::dgen_tests {
     use std::option;
     use std::string;
 
     use aptos_framework::account;
     use aptos_framework::coin;
 
-    use dgen_admin::dgen::{Self, DGEN};
+    use dgen_coin::dgen::{Self, DGEN};
 
     // 100 millions total DGEN supply.
     const TOTAL_SUPPLY: u64 = 100000000000000;
 
     #[test]
     public fun test_initialize() {
-        let dgen_admin = account::create_account_for_test(@dgen_admin);
+        let dgen_admin = account::create_account_for_test(@dgen_coin);
 
         // initialize new coin
         dgen::initialize(&dgen_admin);
@@ -26,12 +26,12 @@ module dgen_admin::dgen_tests {
 
         // check supply and creator balance
         assert!(option::extract(&mut coin::supply<DGEN>()) == (TOTAL_SUPPLY as u128), 1);
-        assert!(coin::balance<DGEN>(@dgen_admin) == TOTAL_SUPPLY, 1);
+        assert!(coin::balance<DGEN>(@dgen_coin) == TOTAL_SUPPLY, 1);
     }
 
     #[test]
     public fun test_burn() {
-        let dgen_admin = account::create_account_for_test(@dgen_admin);
+        let dgen_admin = account::create_account_for_test(@dgen_coin);
         let alice = account::create_account_for_test(@alice);
 
         // initialize new coin
@@ -42,7 +42,7 @@ module dgen_admin::dgen_tests {
         coin::transfer<DGEN>(&dgen_admin, @alice, 2000000000000);
 
         // check balances
-        assert!(coin::balance<DGEN>(@dgen_admin) == 98000000000000, 1);
+        assert!(coin::balance<DGEN>(@dgen_coin) == 98000000000000, 1);
         assert!(coin::balance<DGEN>(@alice) == 2000000000000, 1);
 
         // burn all from alice
@@ -54,7 +54,7 @@ module dgen_admin::dgen_tests {
         dgen::burn(coins);
 
         // check balances and supply
-        assert!(coin::balance<DGEN>(@dgen_admin) == 93000000000000, 1);
+        assert!(coin::balance<DGEN>(@dgen_coin) == 93000000000000, 1);
         assert!(coin::balance<DGEN>(@alice) == 0, 1);
         assert!(option::extract(&mut coin::supply<DGEN>()) == 93000000000000u128, 1);
     }
@@ -77,7 +77,7 @@ module dgen_admin::dgen_tests {
     #[test]
     #[expected_failure(abort_code = 524290)]
     public fun test_initialize_fails_if_executed_twice() {
-        let dgen_admin = account::create_account_for_test(@dgen_admin);
+        let dgen_admin = account::create_account_for_test(@dgen_coin);
 
         // initialize new coin
         dgen::initialize(&dgen_admin);
