@@ -338,6 +338,7 @@ module harvest::stake {
         coin::extract(&mut pool.reward_coins, earned_to_withdraw)
     }
 
+    /// Enables local "emergency state" for the specific `<S, R>` pool at `pool_addr`. Cannot be disabled.
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
         assert!(
@@ -351,6 +352,7 @@ module harvest::stake {
         pool.emergency_locked = true;
     }
 
+    /// Withdraws all the user stake from the pool. Only accessible in the "emergency state".
     public fun emergency_unstake<S, R>(user: &signer, pool_addr: address): Coin<S> acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
@@ -366,12 +368,14 @@ module harvest::stake {
         coin::extract(&mut pool.stake_coins, amount)
     }
 
+    /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
     public fun is_emergency<S, R>(pool_addr: address): bool acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
         is_emergency_inner(pool)
     }
 
+    /// Checks whether a specific `<S, R>` pool at the `pool_addr` has an "emergency state" enabled.
     public fun is_local_emergency<S, R>(pool_addr: address): bool acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
