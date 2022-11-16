@@ -80,7 +80,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -160,7 +160,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice after unstake
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -258,7 +258,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -338,7 +338,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice after unstake
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -436,7 +436,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -516,7 +516,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice after unstake
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -614,7 +614,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -694,7 +694,7 @@ module harvest::stake_decimals_tests {
 
         // harvest from alice after unstake
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);

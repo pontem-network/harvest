@@ -303,12 +303,13 @@ module harvest::stake {
     }
 
     /// Harvests user reward, returning R coins.
-    public fun harvest<S, R>(user_addr: address, pool_addr: address): Coin<R> acquires StakePool {
+    public fun harvest<S, R>(user: &signer, pool_addr: address): Coin<R> acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
+        let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         // update pool accum_reward and timestamp

@@ -531,7 +531,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -549,7 +549,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -559,7 +559,7 @@ module harvest::stake_tests {
 
         // harvest from bob
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@bob, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob) == 0, 1);
@@ -577,7 +577,7 @@ module harvest::stake_tests {
 
         // harvest from bob
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@bob, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob) == 0, 1);
@@ -614,7 +614,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check amounts, 9 RewardCoins is still unharvested
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 9000000, 1);
@@ -634,7 +634,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 1, 1);
@@ -651,7 +651,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         // check amounts
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
@@ -792,7 +792,7 @@ module harvest::stake_tests {
 
         // harvest from alice
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         assert!(coin::value(&coins) == 604800000000, 1);
         coin::deposit<RewardCoin>(@alice, coins);
 
@@ -839,11 +839,11 @@ module harvest::stake_tests {
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_harvest_fails_if_pool_does_not_exist() {
-        new_account(@harvest);
+        let harvest = new_account(@harvest);
 
         // harvest when no pool
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@harvest, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&harvest, @harvest);
         coin::deposit<RewardCoin>(@harvest, coins);
     }
 
@@ -932,7 +932,7 @@ module harvest::stake_tests {
 
         // harvest when stake not exists
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@harvest, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&harvest, @harvest);
         coin::deposit<RewardCoin>(@harvest, coins);
     }
 
@@ -987,7 +987,7 @@ module harvest::stake_tests {
 
         // harvest from alice when no RewardCoins in pool
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit<RewardCoin>(@alice, coins);
     }
 
@@ -1046,7 +1046,7 @@ module harvest::stake_tests {
 
         // harvest from alice at the same second
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit<RewardCoin>(@alice, coins);
     }
 
@@ -1079,10 +1079,10 @@ module harvest::stake_tests {
 
         // harvest from alice twice at the same second
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit<RewardCoin>(@alice, coins);
         let coins =
-            stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit<RewardCoin>(@alice, coins);
     }
 
