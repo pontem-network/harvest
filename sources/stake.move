@@ -325,9 +325,8 @@ module harvest::stake {
         coin::extract(&mut pool.stake_coins, amount)
     }
 
-    // todo: change harvest for only owner, change description
     /// Harvests user reward.
-    /// * `user_addr` - address of user for which reward will be harvested.
+    /// * `user` - stake owner account.
     /// * `pool_addr` - address under which pool are stored.
     /// Returns R coins: `Coin<R>`.
     public fun harvest<S, R>(user: &signer, pool_addr: address): Coin<R> acquires StakePool {
