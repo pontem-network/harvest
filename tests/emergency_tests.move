@@ -49,14 +49,14 @@ module harvest::emergency_tests {
     fun test_cannot_harvest_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
-        let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
-        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
     }
 
@@ -97,12 +97,12 @@ module harvest::emergency_tests {
         let (harvest, emergency_admin) = initialize_test();
         stake_config::enable_global_emergency(&emergency_admin);
 
-        let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
 
-        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(@alice, @harvest);
+        let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
     }
 

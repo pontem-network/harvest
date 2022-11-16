@@ -47,8 +47,8 @@ module harvest::scripts {
     ///     * `user` - owner of the stake used to receive the rewards,
     ///     * `pool_addr` - address of the pool
     public entry fun harvest<S, R>(user: &signer, pool_addr: address) {
+        let rewards = stake::harvest<S, R>(user, pool_addr);
         let user_addr = signer::address_of(user);
-        let rewards = stake::harvest<S, R>(user_addr, pool_addr);
 
         if (!coin::is_account_registered<R>(user_addr)) {
             coin::register<R>(user);
