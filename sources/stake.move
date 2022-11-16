@@ -152,14 +152,14 @@ module harvest::stake {
     // Getter functions
     //
 
-    /// Сhecks if pool exists.
+    /// Checks if pool exists.
     /// * `pool_addr` - address under which pool are stored.
     /// Returns true if pool exists.
     public fun pool_exists<S, R>(pool_addr: address): bool {
         exists<StakePool<S, R>>(pool_addr)
     }
 
-    /// Сhecks if stake exists.
+    /// Checks if stake exists.
     /// * `pool_addr` - address under which pool are stored.
     /// * `user_addr` - stake owner address.
     /// Returns true if stake exists.
