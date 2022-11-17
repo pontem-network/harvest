@@ -169,6 +169,28 @@ module harvest::emergency_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = 111)]
+    fun test_cannot_unstake_in_non_emergency() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
+
+        let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
+        coin::deposit(@alice, coins);
+
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
+    }
+
+    #[test]
     fun test_emergency_is_local_to_a_pool() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -187,7 +209,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 204)]
+    #[expected_failure(abort_code = 202)]
     fun test_cannot_enable_global_emergency_twice() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -223,7 +245,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 201)]
+    #[expected_failure(abort_code = 200)]
     fun test_cannot_enable_global_emergency_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
@@ -231,7 +253,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 201)]
+    #[expected_failure(abort_code = 200)]
     fun test_cannot_change_admin_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
