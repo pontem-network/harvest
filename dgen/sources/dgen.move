@@ -8,10 +8,10 @@ module dgen_coin::dgen {
     // Errors.
 
     /// Only creator can execute.
-    const ERR_NO_PERMISSIONS: u64 = 100;
+    const ERR_NO_PERMISSIONS: u64 = 300;
 
     /// DGEN coin does not exist.
-    const ERR_NO_COIN: u64 = 101;
+    const ERR_NO_COIN: u64 = 301;
 
     /// 100 millions total DGEN supply.
     const TOTAL_SUPPLY: u64 = 100000000000000;
