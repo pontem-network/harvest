@@ -9,8 +9,14 @@ stake_emergency_admin = "0xee89c702cc7237f637be750dd110460ec8b2521e7cb69ec2c7d05
 # Test addresses.
 alice = "0x10"
 bob = "0x11"
+collection_owner = "0x12"
 
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'
 rev = 'a2a3bf79b68823287f962bded2abfaefc688e71c'
 subdir = 'aptos-move/framework/aptos-framework'
+
+[dependencies.AptosToken]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'a2a3bf79b68823287f962bded2abfaefc688e71c'
+subdir = 'aptos-move/framework/aptos-token'

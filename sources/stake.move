@@ -1,5 +1,6 @@
 module harvest::stake {
     use std::signer;
+    use std::option;
 
     use aptos_std::event::{Self, EventHandle};
     use aptos_std::math64;
@@ -7,8 +8,11 @@ module harvest::stake {
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::timestamp;
+    use aptos_token::token::{Self, Token};
 
     use harvest::stake_config;
+    use std::string::{Self, String};
+    use std::option::Option;
 
     //
     // Errors
@@ -60,6 +64,11 @@ module harvest::stake {
     /// Week in seconds, lockup period.
     const WEEK_IN_SECONDS: u64 = 604800;
 
+    // todo: comment it
+    const MIN_NFT_BOOST_PRECENT: u64 = 1;
+
+    const MAX_NFT_BOOST_PERCENT: u64 = 100;
+
     //
     // Core data structures
     //
@@ -75,9 +84,13 @@ module harvest::stake {
         stakes: table::Table<address, UserStake>,
         stake_coins: Coin<S>,
         reward_coins: Coin<R>,
-
         stake_scale: u64,
-        reward_scale: u64,
+
+        total_boosted: u64,
+        // nft collection info
+        collection_owner: address,
+        collection_name: String,
+        boost_percent: u64,
 
         /// This field set to `true` only in case of emergency:
         /// * only `emergency_unstake()` operation is available in the state of emergency
@@ -89,6 +102,10 @@ module harvest::stake {
         harvest_events: EventHandle<HarvestEvent>,
     }
 
+    // struct NFTBoost has store {
+    //
+    // }
+
     /// Stores user stake info.
     struct UserStake has store {
         amount: u64,
@@ -96,6 +113,9 @@ module harvest::stake {
         unobtainable_reward: u128,
         earned_reward: u64,
         unlock_time: u64,
+        // todo: comments?
+        nft: Option<Token>,
+        boosted_amount: u64,
     }
 
     //
@@ -105,11 +125,29 @@ module harvest::stake {
     /// Registering pool for specific coin.
     /// * `owner` - pool creator account, under which the pool will be stored.
     /// * `reward_per_sec` - amount of R coins that the pool allocates each second for shared reward.
-    public fun register_pool<S, R>(owner: &signer, reward_per_sec: u64) {
+    // todo: complete comment
+    public fun register_pool<S, R>(
+        owner: &signer,
+        reward_per_sec: u64,
+        collection_owner: address,
+        collection_name: String,
+        boost_percent: u64,
+    ) {
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
+
+
+        // check collection exists
+        if (collection_owner != @0x0 || !string::is_empty(&collection_name) || boost_percent != 0) {
+            // todo: add exeption and test
+            // todo: test with strange collection_name (very long, 0 len)
+            std::debug::print(&b"123");
+            assert!(token::check_collection_exists(collection_owner, collection_name), 1);
+            assert!(boost_percent >= MIN_NFT_BOOST_PRECENT, 1);
+            assert!(boost_percent <= MAX_NFT_BOOST_PERCENT, 1);
+        };
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -119,7 +157,12 @@ module harvest::stake {
             stake_coins: coin::zero(),
             reward_coins: coin::zero(),
             stake_scale: math64::pow(10, (coin::decimals<S>() as u64)),
-            reward_scale: math64::pow(10, (coin::decimals<R>() as u64)),
+
+            total_boosted: 0,
+            collection_owner,
+            collection_name,
+            boost_percent,
+
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
@@ -252,6 +295,8 @@ module harvest::stake {
                 unobtainable_reward: 0,
                 earned_reward: 0,
                 unlock_time: current_time + WEEK_IN_SECONDS,
+                nft: option::none(),
+                boosted_amount: 0,
             };
 
             // calculate unobtainable reward for new stake
@@ -265,8 +310,15 @@ module harvest::stake {
 
             user_stake.amount = user_stake.amount + amount;
 
+            if (option::is_some(&user_stake.nft)) {
+                pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
+                user_stake.boosted_amount = (user_stake.amount / 100) * pool.boost_percent;
+                pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+            };
+
             // recalculate unobtainable reward after stake amount changed
-            user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake.amount)) / to_u128(pool.stake_scale);
+            user_stake.unobtainable_reward =
+                (accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
             user_stake.unlock_time =  current_time + WEEK_IN_SECONDS;
         };
@@ -314,8 +366,16 @@ module harvest::stake {
 
         user_stake.amount = user_stake.amount - amount;
 
+        if (option::is_some(&user_stake.nft)) {
+            pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
+            user_stake.boosted_amount = (user_stake.amount / 100) * pool.boost_percent;
+            pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+        };
+        // todo: add nft withdraw on full unstake
+
         // recalculate unobtainable reward after stake amount changed
-        user_stake.unobtainable_reward = (pool.accum_reward * to_u128(user_stake.amount)) / to_u128(pool.stake_scale);
+        user_stake.unobtainable_reward =
+            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
@@ -365,6 +425,47 @@ module harvest::stake {
         coin::extract(&mut pool.reward_coins, earned_to_withdraw)
     }
 
+    // todo: add comments
+    public fun boost<S, R>(user: &signer, pool_addr: address, nft: Token) acquires StakePool {
+        // todo: test
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
+
+        // todo: test
+        let user_addr = signer::address_of(user);
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let token_id = token::get_token_id(&nft);
+        let (collection_owner, collection_name, _, _) = token::get_token_id_fields(&token_id);
+
+        // todo: create according errors and tests
+        // check collection id
+        assert!(token::check_collection_exists(collection_owner, collection_name), 1);
+        assert!(collection_owner == pool.collection_owner, 1);
+        assert!(collection_name == pool.collection_name, 1);
+
+        // recalculate pool
+        update_accum_reward(pool);
+
+        let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
+
+        // recalculate stake
+        update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
+
+        // check if not staked before
+        // todo: add `already boosted error` test it
+        assert!(option::is_none(&user_stake.nft), 1);
+
+
+        option::fill(&mut user_stake.nft, nft);
+
+        // update user stake and pool after stake boost
+        user_stake.boosted_amount = (user_stake.amount / 100) * pool.boost_percent;
+        pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+    }
+
     /// Enables local "emergency state" for the specific `<S, R>` pool at `pool_addr`. Cannot be disabled.
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
@@ -379,21 +480,22 @@ module harvest::stake {
         pool.emergency_locked = true;
     }
 
-    /// Withdraws all the user stake from the pool. Only accessible in the "emergency state".
-    public fun emergency_unstake<S, R>(user: &signer, pool_addr: address): Coin<S> acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
-
-        let user_addr = signer::address_of(user);
-        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-
-        let user_stake = table::remove(&mut pool.stakes, user_addr);
-        let UserStake { amount, unobtainable_reward: _, earned_reward: _, unlock_time: _ } = user_stake;
-
-        coin::extract(&mut pool.stake_coins, amount)
-    }
+    // /// Withdraws all the user stake from the pool. Only accessible in the "emergency state".
+    // public fun emergency_unstake<S, R>(user: &signer, pool_addr: address): Coin<S> acquires StakePool {
+    //     assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+    //
+    //     let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+    //     assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
+    //
+    //     let user_addr = signer::address_of(user);
+    //     assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+    //
+    //     let user_stake = table::remove(&mut pool.stakes, user_addr);
+    //     // todo: handle nft emergency withdraw
+    //     let UserStake { amount, unobtainable_reward: _, earned_reward: _, unlock_time: _, nft: _ } = user_stake;
+    //
+    //     coin::extract(&mut pool.stake_coins, amount)
+    // }
 
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
     public fun is_emergency<S, R>(pool_addr: address): bool acquires StakePool {
@@ -434,7 +536,8 @@ module harvest::stake {
         let seconds_passed = current_time - pool.last_updated;
         if (seconds_passed == 0) return 0;
 
-        let total_stake = coin::value(&pool.stake_coins);
+        // let total_stake = coin::value(&pool.stake_coins);
+        let total_stake = pool_total_staked_with_boosted(pool);
         if (total_stake == 0) return 0;
 
         let total_rewards = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
@@ -458,8 +561,16 @@ module harvest::stake {
     /// * `user_stake` - stake to update earnings.
     /// Returns new stake earnings.
     fun user_earned_since_last_update(accum_reward: u128, stake_scale: u64, user_stake: &UserStake): u128 {
-        (accum_reward * (to_u128(user_stake.amount)) / to_u128(stake_scale))
+        (accum_reward * (to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(stake_scale))
             - user_stake.unobtainable_reward
+    }
+
+    fun pool_total_staked_with_boosted<S, R>(pool: &StakePool<S, R>): u64 {
+        coin::value(&pool.stake_coins) + pool.total_boosted
+    }
+
+    fun user_stake_amount_with_boosted(user_stake: &UserStake): u64 {
+        user_stake.amount + user_stake.boosted_amount
     }
 
     fun to_u64(num: u128): u64 {
@@ -507,11 +618,11 @@ module harvest::stake {
 
     #[test_only]
     /// Access staking pool fields with no getters.
-    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64, u64) acquires StakePool {
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
-            coin::value<R>(&pool.reward_coins), pool.stake_scale, pool.reward_scale)
+            coin::value<R>(&pool.reward_coins), pool.stake_scale)
     }
 
     #[test_only]

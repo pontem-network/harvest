@@ -1,16 +1,18 @@
 /// Collection of entrypoints to handle staking pools.
 module harvest::scripts {
     use std::signer;
+    use std::string;
 
     use aptos_framework::coin;
 
     use harvest::stake;
 
+    // todo: update register_pool func params
     /// Register new staking pool with staking coin `S` and reward coin `R`.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `reward_per_sec` - how many reward coins `R` to grant to stake owners every second.
     public entry fun register_pool<S, R>(pool_owner: &signer, reward_per_sec: u64) {
-        stake::register_pool<S, R>(pool_owner, reward_per_sec);
+        stake::register_pool<S, R>(pool_owner, reward_per_sec, @0x0, string::utf8(b""), 0);
     }
 
     /// Register new staking pool with staking coin `S` and reward coin `R`, and deposit reward coins `R` at the same time.
@@ -72,10 +74,11 @@ module harvest::scripts {
         stake::enable_emergency<S, R>(admin, pool_addr);
     }
 
-    /// Unstake all the coins of the user. Only callable in "emergency state".
-    public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
-        let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
-        // wallet should exist
-        coin::deposit(signer::address_of(user), stake_coins);
-    }
+    // todo: repair emergency_unstake
+    // /// Unstake all the coins of the user. Only callable in "emergency state".
+    // public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
+    //     let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
+    //     // wallet should exist
+    //     coin::deposit(signer::address_of(user), stake_coins);
+    // }
 }
