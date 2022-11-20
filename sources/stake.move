@@ -77,7 +77,6 @@ module harvest::stake {
         reward_coins: Coin<R>,
 
         stake_scale: u64,
-        reward_scale: u64,
 
         /// This field set to `true` only in case of emergency:
         /// * only `emergency_unstake()` operation is available in the state of emergency
@@ -119,7 +118,6 @@ module harvest::stake {
             stake_coins: coin::zero(),
             reward_coins: coin::zero(),
             stake_scale: math64::pow(10, (coin::decimals<S>() as u64)),
-            reward_scale: math64::pow(10, (coin::decimals<R>() as u64)),
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
@@ -507,11 +505,11 @@ module harvest::stake {
 
     #[test_only]
     /// Access staking pool fields with no getters.
-    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64, u64) acquires StakePool {
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
-            coin::value<R>(&pool.reward_coins), pool.stake_scale, pool.reward_scale)
+            coin::value<R>(&pool.reward_coins), pool.stake_scale)
     }
 
     #[test_only]
