@@ -259,7 +259,7 @@ module harvest::stake {
             let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
 
             // update earnings
-            update_user_earnings<S, R>(accum_reward, pool.stake_scale, user_stake);
+            update_user_earnings(accum_reward, pool.stake_scale, user_stake);
 
             user_stake.amount = user_stake.amount + amount;
 
@@ -306,7 +306,7 @@ module harvest::stake {
         assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
 
         // update earnings
-        update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
 
         assert!(amount <= user_stake.amount, ERR_NOT_ENOUGH_S_BALANCE);
 
@@ -342,7 +342,7 @@ module harvest::stake {
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
 
         // update earnings
-        update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
 
         let earned_to_withdraw = user_stake.earned_reward;
         assert!(earned_to_withdraw > 0, ERR_NOTHING_TO_HARVEST);
@@ -443,7 +443,7 @@ module harvest::stake {
     /// * `accum_reward` - reward accumulated by pool.
     /// * `stake_scale` - multiplier to count S coin decimals.
     /// * `user_stake` - stake to update earnings.
-    fun update_user_earnings<S, R>(accum_reward: u128, stake_scale: u64, user_stake: &mut UserStake) {
+    fun update_user_earnings(accum_reward: u128, stake_scale: u64, user_stake: &mut UserStake) {
         let earned =
             user_earned_since_last_update(accum_reward, stake_scale, user_stake);
         user_stake.earned_reward = user_stake.earned_reward + to_u64(earned);
@@ -519,6 +519,6 @@ module harvest::stake {
         update_accum_reward(pool);
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
-        update_user_earnings<S, R>(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
     }
 }
