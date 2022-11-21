@@ -27,7 +27,7 @@ module dgen_coin::dgen {
     // Functions.
 
     /// Initializes DGEN coin, making total supply premint for owner.
-    ///     * `dgen_owner` - deployer of the module.
+    ///     * `dgen_admin` - deployer of the module.
     public entry fun initialize(dgen_admin: &signer) {
         let dgen_admin_addr = signer::address_of(dgen_admin);
         assert!(dgen_admin_addr == @dgen_coin, ERR_NO_PERMISSIONS);
