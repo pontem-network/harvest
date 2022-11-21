@@ -13,15 +13,13 @@ module harvest::stake_tests {
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
 
-    /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
-    const ONE_COIN: u64 = 1000000;
-
     // todo: add test of registration two different pools at same time from different users
 
     public fun initialize_test(): (signer, signer) {
         genesis::setup();
 
         let harvest = new_account(@harvest);
+
         // create coins for pool to be valid
         initialize_reward_coin(&harvest, 6);
         initialize_stake_coin(&harvest, 6);

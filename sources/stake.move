@@ -87,7 +87,10 @@ module harvest::stake {
         stake_scale: u64,
 
         total_boosted: u64,
-        // todo: comments?
+
+        /// This field can contain pool boost configuration.
+        /// Pool creator can give ability for users to increase their stake profitability
+        /// by staking nft's from setted collection.
         nft_boost_config: Option<NFTBoostConfig>,
 
         /// This field set to `true` only in case of emergency:
@@ -100,6 +103,7 @@ module harvest::stake {
         harvest_events: EventHandle<HarvestEvent>,
     }
 
+    /// Pool boost config with NFT collection info.
     struct NFTBoostConfig has store {
         boost_percent: u64,
         collection_owner: address,
@@ -147,7 +151,7 @@ module harvest::stake {
     /// Registering pool for specific coin.
     /// * `owner` - pool creator account, under which the pool will be stored.
     /// * `reward_per_sec` - amount of R coins that the pool allocates each second for shared reward.
-    // todo: complete comment
+    /// * `nft_boost_config` - optional stake boosting configurations.
     public fun register_pool<S, R>(
         owner: &signer,
         reward_per_sec: u64,
@@ -230,9 +234,10 @@ module harvest::stake {
         coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
     }
 
-    // todo: add comments
+    /// Checks current total boosted amount in pool.
+    /// * `pool_addr` - address under which pool are stored.
+    /// Returns total pool boosted amount.
     public fun get_pool_total_boosted<S, R>(pool_addr: address): u64 acquires StakePool {
-        // todo: add error and success tests
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         borrow_global<StakePool<S, R>>(pool_addr).total_boosted
@@ -252,14 +257,15 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
-    // todo: add comments
+    /// Checks current user boosted amount in specific pool.
+    /// * `pool_addr` - address under which pool are stored.
+    /// * `user_addr` - stake owner address.
+    /// Returns user boosted amount.
     public fun get_user_boosted<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
-        // todo: add error
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        // todo: add error and success tests
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         table::borrow(&pool.stakes, user_addr).boosted_amount
@@ -275,11 +281,10 @@ module harvest::stake {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-        let user_stake = table::borrow(&pool.stakes, user_addr);
 
+        let user_stake = table::borrow(&pool.stakes, user_addr);
         let current_time = timestamp::now_seconds();
         let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
-
         let earned_since_last_update = user_earned_since_last_update(
             pool.accum_reward + new_accum_rewards,
             pool.stake_scale,
