@@ -1,16 +1,18 @@
 #[test_only]
 module harvest::stake_nft_boost_tests {
-    use std::string::{Self, String};
     use std::bcs;
+    use std::string::{Self, String};
 
     use aptos_framework::coin;
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
-    use aptos_token::token;
+
+    use aptos_token::token::{Self, Token};
+
     use harvest::stake;
     use harvest::stake_config;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, /*mint_default_coins,*/ StakeCoin, RewardCoin, new_account_with_stake_coins};
-    use aptos_token::token::Token;
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use std::option;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -61,21 +63,6 @@ module harvest::stake_nft_boost_tests {
             default_types,
         );
         let token_id = token::create_token_id_raw(@collection_owner, string::utf8(b"Test collection"), string::utf8(b"Token"), 0);
-
-        // let balance = token::balance_of(@collection_owner, token_id);
-        // std::debug::print(&balance);
-
-        // let token_data_id = token::create_token_data_id(
-        //     @collection_owner,
-        //     string::utf8(b"Test collection"),
-        //     string::utf8(b"Hello, Token"));
-
-        // std::debug::print(&token_data_id);
-        // let token_id = token::mint_token(
-        //     &collection_owner,
-        //     token_data_id,
-        //     1,
-        // );
         let nft = token::withdraw_token(&collection_owner, token_id, 1);
 
         (collection_owner, nft)
@@ -93,7 +80,7 @@ module harvest::stake_nft_boost_tests {
 
         // register staking pool
         let reward_per_sec_rate = 1000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_per_sec_rate, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_per_sec_rate, option::none());
         // todo: check collection fields
         // check pool statistics
         let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
@@ -117,18 +104,38 @@ module harvest::stake_nft_boost_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000, @collection_owner, string::utf8(b"Test collection"), 5);
+        let boost_config =
+            stake::create_boost_config(@collection_owner, string::utf8(b"Test collection"), 5);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000, option::some(boost_config));
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // boost stake with nft
         stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        // check values
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(total_boosted == 25000000, 1);
+        assert!(user_boosted == 25000000, 1);
 
         // wait 10 seconds
         timestamp::update_global_time_for_test_secs(start_time + 10);
 
         let pending_rewards = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(pending_rewards == 9999675, 1);
+
+        // claim nft
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
+
+        // check values
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(total_boosted == 0, 1);
+        assert!(user_boosted == 0, 1);
     }
 }

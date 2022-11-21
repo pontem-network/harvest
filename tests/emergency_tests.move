@@ -1,6 +1,6 @@
 #[test_only]
 module harvest::emergency_tests {
-    use std::string;
+    use std::option;
 
     use aptos_framework::coin;
 
@@ -20,7 +20,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -37,7 +37,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -53,7 +53,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -70,7 +70,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -86,7 +86,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100);
         coin::deposit(@alice, coins);
@@ -101,7 +101,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
@@ -116,7 +116,7 @@ module harvest::emergency_tests {
         let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
     }
@@ -129,7 +129,7 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice_acc, @harvest);
     }
@@ -140,7 +140,7 @@ module harvest::emergency_tests {
         let (harvest, emergency_admin) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
@@ -154,7 +154,7 @@ module harvest::emergency_tests {
     //     let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
     //
     //     // register staking pool
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
     //
     //     let coins =
     //         coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -177,8 +177,8 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
-        stake::register_pool<RewardCoin, StakeCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<RewardCoin, StakeCoin>(&emergency_admin, @harvest);
 
@@ -194,7 +194,7 @@ module harvest::emergency_tests {
         let (harvest, emergency_admin) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN, option::none());
 
         stake_config::enable_global_emergency(&emergency_admin);
         stake_config::enable_global_emergency(&emergency_admin);
@@ -247,7 +247,7 @@ module harvest::emergency_tests {
         stake_config::set_emergency_admin_address(&emergency_admin, @alice);
 
         let alice = new_account(@alice);
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN, option::none());
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice, @alice);
 
@@ -273,7 +273,7 @@ module harvest::emergency_tests {
         stake_config::set_emergency_admin_address(&emergency_admin, @alice);
 
         let alice = new_account(@alice);
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN, option::none());
         stake_config::enable_global_emergency(&alice);
 
         assert!(!stake::is_local_emergency<StakeCoin, RewardCoin>(@alice), 1);

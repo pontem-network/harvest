@@ -1,7 +1,7 @@
 /// Collection of entrypoints to handle staking pools.
 module harvest::scripts {
     use std::signer;
-    use std::string;
+    use std::option;
 
     use aptos_framework::coin;
 
@@ -12,7 +12,7 @@ module harvest::scripts {
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `reward_per_sec` - how many reward coins `R` to grant to stake owners every second.
     public entry fun register_pool<S, R>(pool_owner: &signer, reward_per_sec: u64) {
-        stake::register_pool<S, R>(pool_owner, reward_per_sec, @0x0, string::utf8(b""), 0);
+        stake::register_pool<S, R>(pool_owner, reward_per_sec, option::none());
     }
 
     /// Register new staking pool with staking coin `S` and reward coin `R`, and deposit reward coins `R` at the same time.

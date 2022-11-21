@@ -1,6 +1,6 @@
 #[test_only]
 module harvest::stake_decimals_tests {
-    use std::string;
+    use std::option;
 
     use aptos_framework::coin;
     use aptos_framework::genesis;
@@ -38,7 +38,7 @@ module harvest::stake_decimals_tests {
 
         // register staking pool, deposit 10 000 000 RewardCoins
         let reward_coins = mint_default_coins<RewardCoin>(10000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, option::none());
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 19 StakeCoins from alice
@@ -216,7 +216,7 @@ module harvest::stake_decimals_tests {
 
         // register staking pool, deposit 10 000 000 RewardCoins
         let reward_coins = mint_default_coins<RewardCoin>(1000000000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, option::none());
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 19.99 StakeCoins from alice
@@ -394,7 +394,7 @@ module harvest::stake_decimals_tests {
 
         // register staking pool, deposit 100 000 RewardCoins
         let reward_coins = mint_default_coins<RewardCoin>(10000000000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, option::none());
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 19.999999 StakeCoins from alice
@@ -572,7 +572,7 @@ module harvest::stake_decimals_tests {
 
         // register staking pool, deposit 10 000 000 RewardCoins
         let reward_coins = mint_default_coins<RewardCoin>(1000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, @0x0, string::utf8(b""), 0);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate, option::none());
         stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
 
         // stake 19.99999999 StakeCoins from alice

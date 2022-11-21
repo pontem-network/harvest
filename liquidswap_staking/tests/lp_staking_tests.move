@@ -14,6 +14,7 @@ module lp_staking_admin::lp_staking_tests {
     use liquidswap::router;
     use liquidswap_lp::lp_coin::LP;
     use test_helpers::test_pool;
+    use std::option;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -69,7 +70,7 @@ module lp_staking_admin::lp_staking_tests {
 
         // register stake pool with 0,01 DGEN coins per second reward
         let reward_per_sec_rate = 10000;
-        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, reward_per_sec_rate);
+        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, reward_per_sec_rate, option::none());
 
         // deposit 50 000 DGEN rewards in pool
         let dgen_coins = coin::withdraw<DGEN>(&dgen_admin_acc, 50000000000);
