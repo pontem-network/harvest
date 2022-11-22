@@ -181,13 +181,9 @@ module harvest::emergency_tests {
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
 
         let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         coin::deposit(@alice, coins);
-
-        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
     }
 
     #[test]
