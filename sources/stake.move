@@ -267,7 +267,7 @@ module harvest::stake {
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
         let user_stake = table::borrow(&pool.stakes, user_addr);
 
-        let current_time = timestamp::now_seconds();
+        let current_time = get_time_for_last_update(pool);
         let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
         let earned_since_last_update = user_earned_since_last_update(
@@ -487,7 +487,7 @@ module harvest::stake {
     /// Calculates pool accumulated reward, updating pool.
     /// * `pool` - pool to update rewards.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
-        let current_time = timestamp::now_seconds();
+        let current_time = get_time_for_last_update(pool);
         let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
         pool.last_updated = current_time;
@@ -541,6 +541,10 @@ module harvest::stake {
 
     fun to_u128(num: u64): u128 {
         (num as u128)
+    }
+
+    fun get_time_for_last_update<S, R>(pool: &StakePool<S, R>): u64 {
+        math64::min(pool.end_timestamp, timestamp::now_seconds())
     }
 
     //
