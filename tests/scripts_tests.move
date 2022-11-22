@@ -24,10 +24,11 @@ module harvest::scripts_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         scripts::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        let finish_time = start_time + duration;
 
-        let (pool_duration, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (end_ts, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
-        assert!(pool_duration == duration, 1);
+        assert!(end_ts == finish_time, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 2);
         assert!(last_updated == 682981200, 3);

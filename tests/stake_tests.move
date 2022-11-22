@@ -40,11 +40,12 @@ module harvest::stake_tests {
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
         stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration);
+        let finish_time = start_time + duration;
 
         // check pool statistics
-        let (pool_duration, reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
+        let (end_ts, reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@alice);
-        assert!(pool_duration == duration, 1);
+        assert!(end_ts == finish_time, 1);
         assert!(reward_per_sec == 1000000, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
@@ -229,16 +230,6 @@ module harvest::stake_tests {
         let coins =
             stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 250000);
         coin::deposit(@bob, coins);
-
-        // stake from alice after year of rest
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 1000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-
-        // check alice stake unlock time
-        let (_, unlock_time) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(unlock_time == start_time + 31536000 + WEEK_IN_SECONDS, 1);
     }
 
     #[test]
