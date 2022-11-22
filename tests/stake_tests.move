@@ -894,16 +894,16 @@ module harvest::stake_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_2, duration);
     }
 
-    // todo: rework this test
-    // #[test]
-    // #[expected_failure(abort_code = 102 /* ERR_REWARD_CANNOT_BE_ZERO */)]
-    // public fun test_register_fails_if_reward_is_zero() {
-    //     let harvest = new_account(@harvest);
-    //
-    //     // register staking pool with zero reward
-    //     let reward_coins = mint_default_coin<RewardCoin>(0);
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, 12345);
-    // }
+    #[test]
+    #[expected_failure(abort_code = 102 /* ERR_REWARD_CANNOT_BE_ZERO */)]
+    public fun test_register_fails_if_reward_is_zero() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = coin::zero<RewardCoin>();
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+    }
 
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
@@ -1132,20 +1132,21 @@ module harvest::stake_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
     }
 
-    // todo: remove?
-    // #[test]
-    // #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
-    // public fun test_register_fails_if_reward_coin_is_not_coin() {
-    //     genesis::setup();
-    //
-    //     let harvest = new_account(@harvest);
-    //
-    //     // create only stake coin
-    //     initialize_stake_coin(&harvest, 6);
-    //
-    //     // register staking pool with rewards
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1000000);
-    // }
+    #[test]
+    #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
+    public fun test_register_fails_if_reward_coin_is_not_coin() {
+        genesis::setup();
+
+        let harvest = new_account(@harvest);
+
+        // create only stake coin
+        initialize_stake_coin(&harvest, 6);
+
+        // register staking pool with rewards
+        let reward_coins = coin::zero<RewardCoin>();
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+    }
 
     #[test]
     #[expected_failure(abort_code = 109 /* ERR_TOO_EARLY_UNSTAKE */)]

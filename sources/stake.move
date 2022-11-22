@@ -115,16 +115,11 @@ module harvest::stake {
     /// * `duration` - pool life duration, can be increased by depositing more rewards.
     public fun register_pool<S, R>(owner: &signer, coins: Coin<R>, duration: u64) {
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
-
-        // todo: does this assert actual if we reciving R coins itself? Maybe remove R coin check?
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
-
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
 
         let amount = coin::value(&coins);
 
-        // todo: test it (stake_tests L909)
-        assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
         // todo: error + test
         assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
@@ -134,10 +129,10 @@ module harvest::stake {
         let end_timestamp = timestamp::now_seconds() + duration;
 
         let pool = StakePool<S, R> {
-            end_timestamp,
             reward_per_sec,
             accum_reward: 0,
             last_updated: timestamp::now_seconds(),
+            end_timestamp,
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins: coins,
