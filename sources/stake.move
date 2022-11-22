@@ -53,6 +53,12 @@ module harvest::stake {
     /// Only one hardcoded account can enable "emergency state" for the pool, it's not the one.
     const ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY: u64 = 112;
 
+    /// Duration can't be zero.
+    const ERR_DURATION_CANNOT_BE_ZERO: u64 = 113;
+
+    /// When harvest finished for a pool.
+    const ERR_HARVEST_FINISHED: u64 = 114;
+
     //
     // Constants
     //
@@ -66,12 +72,13 @@ module harvest::stake {
 
     /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key {
-        duration: u64,
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
         // last accum_reward update time
         last_updated: u64,
+        // when harvest will be finished.
+        end_timestamp: u64,
 
         stakes: table::Table<address, UserStake>,
         stake_coins: Coin<S>,
@@ -119,13 +126,15 @@ module harvest::stake {
         // todo: test it (stake_tests L909)
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
         // todo: error + test
-        assert!(duration > 0, 1);
+        assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
         let reward_per_sec = amount / duration;
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
 
+        let end_timestamp = timestamp::now_seconds() + duration;
+
         let pool = StakePool<S, R> {
-            duration,
+            end_timestamp,
             reward_per_sec,
             accum_reward: 0,
             last_updated: timestamp::now_seconds(),
@@ -150,8 +159,8 @@ module harvest::stake {
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
-
-        // todo: here we should add current pool duration check and prevent depositing rewards after duration passed
+        // todo: test it.
+        assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
 
         // it's forbiden to deposit more rewards (extend pool duration) after previous pool duration passed
         // preventing anfair reward destribution
@@ -162,15 +171,16 @@ module harvest::stake {
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
 
         // todo: create separate test with only syntetic recalculates and reward adding
-        let new_duration = pool.duration + (amount / pool.reward_per_sec);
+        let additional_duration = amount / pool.reward_per_sec;
 
         // todo: 1) Do we need it?  2) Create error  3) Test it
-        assert!(new_duration > 0, 1);
+        assert!(additional_duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
-        pool.duration = new_duration;
+        pool.end_timestamp = pool.end_timestamp + additional_duration;
 
         coin::merge(&mut pool.reward_coins, coins);
 
+        // todo: add to events new duration, but i think we should expand events with more data.
         event::emit_event<DepositRewardEvent>(
             &mut pool.deposit_events,
             DepositRewardEvent { amount },
@@ -180,6 +190,28 @@ module harvest::stake {
     //
     // Getter functions
     //
+
+    /// Checks if harvest on the pool finished.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns true if harvest finished for the pool.
+    public fun is_finished<S, R>(pool_addr: address): bool acquires StakePool {
+        // todo: test the whole function.
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        is_finished_inner(pool)
+    }
+
+    /// Gets timestamp when harvest will be finished for the pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns timestamp.
+    public fun get_end_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
+        // todo: test the whole function.
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.end_timestamp
+    }
 
     /// Checks if pool exists.
     /// * `pool_addr` - address under which pool are stored.
@@ -269,6 +301,8 @@ module harvest::stake {
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
+        // todo: test it.
+        assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -442,6 +476,14 @@ module harvest::stake {
         pool.emergency_locked || stake_config::is_global_emergency()
     }
 
+    /// Internal function to check if harvest finished on the pool.
+    ///     * `pool` - the pool itself.
+    /// Returns true if harvest finished for the pool.
+    fun is_finished_inner<S, R>(pool: &StakePool<S, R>): bool {
+        let now = timestamp::now_seconds();
+        now >= pool.end_timestamp
+    }
+
     /// Calculates pool accumulated reward, updating pool.
     /// * `pool` - pool to update rewards.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
@@ -541,7 +583,7 @@ module harvest::stake {
     public fun get_pool_info<S, R>(pool_addr: address): (u64, u64, u128, u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        (pool.duration, pool.reward_per_sec, pool.accum_reward, pool.last_updated,
+        (pool.end_timestamp, pool.reward_per_sec, pool.accum_reward, pool.last_updated,
             coin::value<R>(&pool.reward_coins), pool.stake_scale)
     }
 
