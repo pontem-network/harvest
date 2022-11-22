@@ -366,7 +366,7 @@ module harvest::stake {
     }
 
     /// Enables local "emergency state" for the specific `<S, R>` pool at `pool_addr`. Cannot be disabled.
-    ///     * `admin` - admin account.
+    ///     * `admin` - current emergency admin account.
     ///     * `pool_addr` - address under which pool are stored.
     public fun enable_emergency<S, R>(admin: &signer, pool_addr: address) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);

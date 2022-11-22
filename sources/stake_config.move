@@ -1,7 +1,7 @@
 /// Module handles global stake pool configuration:
 ///   * allows to enable "global emergency state", which disables all the operations on the `StakePool` instances,
-///     except for the `emergency_unstake()`
-///   * allows to specify custom `emergency_admin` account
+///     except for the `emergency_unstake()`.
+///   * allows to specify custom `emergency_admin` account.
 module harvest::stake_config {
     use std::signer;
 
@@ -27,7 +27,7 @@ module harvest::stake_config {
     // Functions.
 
     /// Initializes global configuration.
-    ///     * `emergency_admin` - emergency admin account.
+    ///     * `emergency_admin` - initial emergency admin account.
     public entry fun initialize(emergency_admin: &signer) {
         assert!(
             signer::address_of(emergency_admin) == @stake_emergency_admin,
@@ -41,7 +41,7 @@ module harvest::stake_config {
 
     /// Sets `emergency_admin` account.
     /// Should be signed with current `emergency_admin` account.
-    ///     * `emergency_admin` - emergency admin account.
+    ///     * `emergency_admin` - current emergency admin account.
     ///     * `new_address` - new emergency admin address.
     public entry fun set_emergency_admin_address(emergency_admin: &signer, new_address: address) acquires GlobalConfig {
         assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
@@ -63,7 +63,7 @@ module harvest::stake_config {
 
     /// Enables "global emergency state". All the pools' operations are disabled except for `emergency_unstake()`.
     /// This state cannot be disabled, use with caution.
-    ///     * `emergency_admin` - emergency admin account.
+    ///     * `emergency_admin` - current emergency admin account.
     public entry fun enable_global_emergency(emergency_admin: &signer) acquires GlobalConfig {
         assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
         let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
