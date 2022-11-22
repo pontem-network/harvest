@@ -66,6 +66,7 @@ module harvest::stake {
 
     /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key {
+        duration: u64,
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
@@ -77,7 +78,6 @@ module harvest::stake {
         reward_coins: Coin<R>,
 
         stake_scale: u64,
-        reward_scale: u64,
 
         /// This field set to `true` only in case of emergency:
         /// * only `emergency_unstake()` operation is available in the state of emergency
@@ -104,22 +104,35 @@ module harvest::stake {
 
     /// Registering pool for specific coin.
     /// * `owner` - pool creator account, under which the pool will be stored.
-    /// * `reward_per_sec` - amount of R coins that the pool allocates each second for shared reward.
-    public fun register_pool<S, R>(owner: &signer, reward_per_sec: u64) {
-        assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
+    /// * `coins` - R coins which are used in distribution as reward.
+    /// * `duration` - pool life duration, can be increased by depositing more rewards.
+    public fun register_pool<S, R>(owner: &signer, coins: Coin<R>, duration: u64) {
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
+
+        // todo: does this assert actual if we reciving R coins itself? Maybe remove R coin check?
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
+
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
 
+        let amount = coin::value(&coins);
+
+        // todo: test it (stake_tests L909)
+        assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
+        // todo: error + test
+        assert!(duration > 0, 1);
+
+        let reward_per_sec = amount / duration;
+        assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
+
         let pool = StakePool<S, R> {
+            duration,
             reward_per_sec,
             accum_reward: 0,
             last_updated: timestamp::now_seconds(),
             stakes: table::new(),
             stake_coins: coin::zero(),
-            reward_coins: coin::zero(),
+            reward_coins: coins,
             stake_scale: math64::pow(10, (coin::decimals<S>() as u64)),
-            reward_scale: math64::pow(10, (coin::decimals<R>() as u64)),
             emergency_locked: false,
             stake_events: account::new_event_handle<StakeEvent>(owner),
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
@@ -129,7 +142,7 @@ module harvest::stake {
         move_to(owner, pool);
     }
 
-    /// Depositing reward coins to specific pool.
+    /// Depositing reward coins to specific pool, updates pool duration.
     /// * `pool_addr` - address under which pool are stored.
     /// * `coins` - R coins which are used in distribution as reward.
     public fun deposit_reward_coins<S, R>(pool_addr: address, coins: Coin<R>) acquires StakePool {
@@ -138,7 +151,23 @@ module harvest::stake {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
+        // todo: here we should add current pool duration check and prevent depositing rewards after duration passed
+
+        // it's forbiden to deposit more rewards (extend pool duration) after previous pool duration passed
+        // preventing anfair reward destribution
+
         let amount = coin::value(&coins);
+
+        // todo: test it
+        assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
+
+        // todo: create separate test with only syntetic recalculates and reward adding
+        let new_duration = pool.duration + (amount / pool.reward_per_sec);
+
+        // todo: 1) Do we need it?  2) Create error  3) Test it
+        assert!(new_duration > 0, 1);
+
+        pool.duration = new_duration;
 
         coin::merge(&mut pool.reward_coins, coins);
 
@@ -431,6 +460,8 @@ module harvest::stake {
     /// * `current_time` - execution timestamp.
     /// Returns new accumulated reward.
     fun accum_rewards_since_last_updated<S, R>(pool: &StakePool<S, R>, current_time: u64): u128 {
+        // todo: here we should add staff that will bloc accum_reward increases after pool duration end
+        // todo: we need to test it well
         let seconds_passed = current_time - pool.last_updated;
         if (seconds_passed == 0) return 0;
 
@@ -507,11 +538,11 @@ module harvest::stake {
 
     #[test_only]
     /// Access staking pool fields with no getters.
-    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64, u64) acquires StakePool {
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u64, u128, u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
-            coin::value<R>(&pool.reward_coins), pool.stake_scale, pool.reward_scale)
+        (pool.duration, pool.reward_per_sec, pool.accum_reward, pool.last_updated,
+            coin::value<R>(&pool.reward_coins), pool.stake_scale)
     }
 
     #[test_only]

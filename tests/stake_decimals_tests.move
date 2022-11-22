@@ -5,8 +5,8 @@ module harvest::stake_decimals_tests {
     use aptos_framework::timestamp;
 
     use harvest::stake;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
     use harvest::stake_config;
+    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -31,13 +31,10 @@ module harvest::stake_decimals_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        // reward rate 5 RewardCoin
-        let reward_per_sec_rate = 5;
-
-        // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_default_coins<RewardCoin>(10000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        // register staking pool with 10 000 000 RewardCoins
+        let reward_coins = mint_default_coin<RewardCoin>(10000000);
+        let duration = 2000000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
 
         // stake 19 StakeCoins from alice
         let coins =
@@ -45,8 +42,11 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check pool parameters after first stake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, reward_per_sec, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        // pool_rewards_amount / duration
+        // 5 RewardCoins
+        assert!(reward_per_sec == 5, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
 
@@ -63,7 +63,7 @@ module harvest::stake_decimals_tests {
         stake::recalculate_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
 
         // check pool parameters after 10 seconds
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 2 RewardCoins
@@ -113,7 +113,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 104277 RewardCoins
@@ -141,7 +141,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters after full unstake
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 104282 RewardCoins
@@ -183,7 +183,7 @@ module harvest::stake_decimals_tests {
         assert!(total_staked == 0, 1);
 
         // 42 RewardCoin lost during calculations
-        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec_rate;
+        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec;
         let total_earned = coin::balance<RewardCoin>(@alice);
         let losed_rewards =  total_rewards - total_earned;
         assert!(losed_rewards == 42, 1);
@@ -209,13 +209,10 @@ module harvest::stake_decimals_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        // reward rate 2 RewardCoin
-        let reward_per_sec_rate = 200000000;
-
         // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_default_coins<RewardCoin>(1000000000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        let reward_coins = mint_default_coin<RewardCoin>(1000000000000000);
+        let duration = 5000000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
 
         // stake 19.99 StakeCoins from alice
         let coins =
@@ -223,8 +220,11 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check pool parameters after first stake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, reward_per_sec, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        // pool_rewards_amount / duration
+        // 2 RewardCoins
+        assert!(reward_per_sec == 200000000, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
 
@@ -241,7 +241,7 @@ module harvest::stake_decimals_tests {
         stake::recalculate_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
 
         // check pool parameters after 10 seconds
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 1.00050025 RewardCoins
@@ -291,7 +291,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 40334.44498174 RewardCoins
@@ -319,7 +319,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters after full unstake
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 40336.44698374 RewardCoins
@@ -361,7 +361,7 @@ module harvest::stake_decimals_tests {
         assert!(total_staked == 0, 1);
 
         // 0.00000014 RewardCoin lost during calculations
-        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec_rate;
+        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec;
         let total_earned = coin::balance<RewardCoin>(@alice);
         let losed_rewards =  total_rewards - total_earned;
         assert!(losed_rewards == 14, 1);
@@ -387,13 +387,10 @@ module harvest::stake_decimals_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        // reward rate 1 RewardCoin
-        let reward_per_sec_rate = 10000000000;
-
-        // register staking pool, deposit 100 000 RewardCoins
-        let reward_coins = mint_default_coins<RewardCoin>(10000000000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        // register staking pool, deposit 1 000 000 RewardCoins
+        let reward_coins = mint_default_coin<RewardCoin>(10000000000000000);
+        let duration = 1000000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
 
         // stake 19.999999 StakeCoins from alice
         let coins =
@@ -401,8 +398,11 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check pool parameters after first stake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, reward_per_sec, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        // pool_rewards_amount / duration
+        // 1 RewardCoin
+        assert!(reward_per_sec == 10000000000, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
 
@@ -419,10 +419,10 @@ module harvest::stake_decimals_tests {
         stake::recalculate_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
 
         // check pool parameters after 10 seconds
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
-        // 0.505000000250 RewardCoins
+        // 0.5000000250 RewardCoins
         assert!(accum_reward == 5000000250, 1);
         assert!(last_updated == start_time + 10, 1);
 
@@ -469,7 +469,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 20160.5006720250 RewardCoins
@@ -497,7 +497,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters after full unstake
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 20161.5006721250 RewardCoins
@@ -521,7 +521,6 @@ module harvest::stake_decimals_tests {
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
         assert!(coin::value(&coins) == 6048099999999994, 1);
-
         coin::deposit<RewardCoin>(@alice, coins);
 
         // check stake parameters after harvest
@@ -539,7 +538,7 @@ module harvest::stake_decimals_tests {
         assert!(total_staked == 0, 1);
 
         // 0.0000000007 RewardCoin lost during calculations
-        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec_rate;
+        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec;
         let total_earned = coin::balance<RewardCoin>(@alice);
         let losed_rewards =  total_rewards - total_earned;
         assert!(losed_rewards == 7, 1);
@@ -565,13 +564,10 @@ module harvest::stake_decimals_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        // reward rate 3.5 RewardCoin
-        let reward_per_sec_rate = 350;
-
-        // register staking pool, deposit 10 000 000 RewardCoins
-        let reward_coins = mint_default_coins<RewardCoin>(1000000000);
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_per_sec_rate);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        // register staking pool, deposit 10 000 004 RewardCoins
+        let reward_coins = mint_default_coin<RewardCoin>(1000000400);
+        let duration = 2857144;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
 
         // stake 19.99999999 StakeCoins from alice
         let coins =
@@ -579,8 +575,11 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check pool parameters after first stake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, reward_per_sec, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        // pool_rewards_amount / duration
+        // 3.5 RewardCoins
+        assert!(reward_per_sec == 350, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == start_time, 1);
 
@@ -597,7 +596,7 @@ module harvest::stake_decimals_tests {
         stake::recalculate_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
 
         // check pool parameters after 10 seconds
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 1.75 RewardCoins
@@ -647,7 +646,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 70561.75 RewardCoins
@@ -675,7 +674,7 @@ module harvest::stake_decimals_tests {
 
         // check pool parameters after full unstake
         // note: accum_reward recalculated before total_stake was decreased by user unstake
-        let (_, accum_reward, last_updated, _, _, _) =
+        let (_, _, accum_reward, last_updated, _, _) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         // (reward_per_sec_rate * time passed / total_staked) + accum_reward(previous)
         // 70565.25 RewardCoins
@@ -717,7 +716,7 @@ module harvest::stake_decimals_tests {
         assert!(total_staked == 0, 1);
 
         // 0.01 RewardCoin lost during calculations
-        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec_rate;
+        let total_rewards = (20 + WEEK_IN_SECONDS) * reward_per_sec;
         let total_earned = coin::balance<RewardCoin>(@alice);
         let losed_rewards =  total_rewards - total_earned;
         assert!(losed_rewards == 1, 1);

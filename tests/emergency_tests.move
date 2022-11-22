@@ -5,7 +5,7 @@ module harvest::emergency_tests {
 
     use harvest::stake;
     use harvest::stake_config;
-    use harvest::stake_test_helpers::{new_account_with_stake_coins, RewardCoin, StakeCoin, new_account};
+    use harvest::stake_test_helpers::{new_account_with_stake_coins, mint_default_coin, RewardCoin, StakeCoin, new_account};
     use harvest::stake_tests::initialize_test;
 
     /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
@@ -19,7 +19,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -36,7 +38,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -52,7 +56,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -69,7 +75,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -85,7 +93,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100);
         coin::deposit(@alice, coins);
@@ -100,7 +110,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
@@ -115,7 +127,9 @@ module harvest::emergency_tests {
         let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
     }
@@ -128,7 +142,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice_acc, @harvest);
     }
@@ -139,7 +155,9 @@ module harvest::emergency_tests {
         let (harvest, emergency_admin) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
@@ -152,7 +170,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -175,8 +195,11 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
-        stake::register_pool<RewardCoin, StakeCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins_1 = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let reward_coins_2 = mint_default_coin<StakeCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins_1, duration);
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins_2, duration);
 
         stake::enable_emergency<RewardCoin, StakeCoin>(&emergency_admin, @harvest);
 
@@ -192,7 +215,9 @@ module harvest::emergency_tests {
         let (harvest, emergency_admin) = initialize_test();
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         stake_config::enable_global_emergency(&emergency_admin);
         stake_config::enable_global_emergency(&emergency_admin);
@@ -205,7 +230,9 @@ module harvest::emergency_tests {
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -244,7 +271,10 @@ module harvest::emergency_tests {
         stake_config::set_emergency_admin_address(&emergency_admin, @alice);
 
         let alice = new_account(@alice);
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins, duration);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice, @alice);
 
@@ -270,7 +300,11 @@ module harvest::emergency_tests {
         stake_config::set_emergency_admin_address(&emergency_admin, @alice);
 
         let alice = new_account(@alice);
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, 1 * ONE_COIN);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins, duration);
+
         stake_config::enable_global_emergency(&alice);
 
         assert!(!stake::is_local_emergency<StakeCoin, RewardCoin>(@alice), 1);

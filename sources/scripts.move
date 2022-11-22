@@ -2,27 +2,29 @@
 module harvest::scripts {
     use std::signer;
 
-    use aptos_framework::coin;
+    use aptos_framework::coin::{Self, Coin};
 
     use harvest::stake;
 
     /// Register new staking pool with staking coin `S` and reward coin `R`.
     ///     * `pool_owner` - account which will be used as a pool storage.
-    ///     * `reward_per_sec` - how many reward coins `R` to grant to stake owners every second.
-    public entry fun register_pool<S, R>(pool_owner: &signer, reward_per_sec: u64) {
-        stake::register_pool<S, R>(pool_owner, reward_per_sec);
+    ///     * `coins` - R coins which are used in distribution as reward.
+    ///     * `duration` - pool life duration, can be increased by depositing more rewards.
+    public entry fun register_pool<S, R>(pool_owner: &signer, coins: Coin<R>, duration: u64) {
+        stake::register_pool<S, R>(pool_owner, coins, duration);
     }
 
-    /// Register new staking pool with staking coin `S` and reward coin `R`, and deposit reward coins `R` at the same time.
-    ///     * `pool_owner` - account which will be used as a pool storage.
-    ///     * `reward_per_sec` - how many reward coins `R` to grant to stake owners every second.
-    ///     * `rewards_amount` - how many reward coins `R` to deposit at the time of registering a pool.
-    public entry fun register_pool_with_rewards<S, R>(pool_owner: &signer, reward_per_sec: u64, rewards_amount: u64) {
-        register_pool<S, R>(pool_owner, reward_per_sec);
-
-        let pool_addr = signer::address_of(pool_owner);
-        deposit_reward_coins<S, R>(pool_owner, pool_addr, rewards_amount);
-    }
+    // todo: No option to regiter without rewards. Can we remove it now?
+    // /// Register new staking pool with staking coin `S` and reward coin `R`, and deposit reward coins `R` at the same time.
+    // ///     * `pool_owner` - account which will be used as a pool storage.
+    // ///     * `reward_per_sec` - how many reward coins `R` to grant to stake owners every second.
+    // ///     * `rewards_amount` - how many reward coins `R` to deposit at the time of registering a pool.
+    // public entry fun register_pool_with_rewards<S, R>(pool_owner: &signer, reward_per_sec: u64, rewards_amount: u64) {
+    //     register_pool<S, R>(pool_owner, reward_per_sec);
+    //
+    //     let pool_addr = signer::address_of(pool_owner);
+    //     deposit_reward_coins<S, R>(pool_owner, pool_addr, rewards_amount);
+    // }
 
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     ///     * `user` - stake owner.
