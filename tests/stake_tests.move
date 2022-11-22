@@ -6,7 +6,16 @@ module harvest::stake_tests {
 
     use harvest::stake;
     use harvest::stake_config;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, to_u128, mint_default_coins, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use harvest::stake_test_helpers::{
+        new_account,
+        initialize_reward_coin,
+        initialize_stake_coin,
+        to_u128,
+        mint_default_coins,
+        StakeCoin,
+        RewardCoin,
+        new_account_with_stake_coins,
+    };
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -51,6 +60,15 @@ module harvest::stake_tests {
         assert!(reward_amount == 0, 1);
         assert!(s_scale == 1000000, 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@alice) == 0, 1);
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_register_without_config_initialization_fails() {
+        let harvest = new_account(@harvest);
+        initialize_stake_coin(&harvest, 6);
+        initialize_reward_coin(&harvest, 6);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
     }
 
     #[test]

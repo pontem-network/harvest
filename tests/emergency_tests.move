@@ -295,4 +295,32 @@ module harvest::emergency_tests {
         assert!(stake::is_emergency<StakeCoin, RewardCoin>(@alice), 2);
         assert!(stake_config::is_global_emergency(), 3);
     }
+
+    // Cases for ERR_NOT_INITIALIZED.
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_enable_global_emergency_not_initialized_fails() {
+        let emergency_admin = new_account(@stake_emergency_admin);
+        stake_config::enable_global_emergency(&emergency_admin);
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_is_global_emergency_not_initialized_fails() {
+        stake_config::is_global_emergency();
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_get_emergency_admin_address_not_initialized_fails() {
+        stake_config::get_emergency_admin_address();
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_set_emergency_admin_address_not_initialized_fails() {
+        let emergency_admin = new_account(@stake_emergency_admin);
+        stake_config::set_emergency_admin_address(&emergency_admin, @alice);
+    }
 }
