@@ -12,12 +12,11 @@ module harvest::scripts_tests {
 
     const WEEK_IN_SECONDS: u64 = 604800;
 
+    const START_TIME: u64 = 682981200;
+
     #[test]
     fun test_scripts_register_pool() {
         let (harvest, _) = initialize_test();
-
-        let start_time = 682981200;
-        timestamp::update_global_time_for_test_secs(start_time);
 
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
@@ -26,7 +25,7 @@ module harvest::scripts_tests {
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
         let (end_ts, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
-        assert!(end_ts == start_time + duration, 1);
+        assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
@@ -40,17 +39,13 @@ module harvest::scripts_tests {
 
         let pool_address = @harvest;
 
-        let start_time = 682981200;
-        timestamp::update_global_time_for_test_secs(start_time);
-
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         scripts::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
-        let finish_time = start_time + duration;
 
         let (end_ts, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
-        assert!(end_ts == finish_time, 1);
+        assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
@@ -70,7 +65,7 @@ module harvest::scripts_tests {
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(pool_address) == 10 * ONE_COIN, 1);
 
         // wait one week to unstake
-        timestamp::update_global_time_for_test_secs(start_time + WEEK_IN_SECONDS);
+        timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
 
         scripts::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 5 * ONE_COIN);
 
