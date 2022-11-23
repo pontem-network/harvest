@@ -7,6 +7,7 @@ module harvest::stake_tests {
     use harvest::stake;
     use harvest::stake_config;
     use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use harvest::stake::is_finished;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -890,6 +891,31 @@ module harvest::stake_tests {
     }
 
     #[test]
+    public fun test_is_finished() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // check is finished
+        assert!(!is_finished<StakeCoin, RewardCoin>(@harvest), 1);
+
+        // wait to a second before pool duration end
+        timestamp::update_global_time_for_test_secs(START_TIME + duration - 1);
+
+        // check is finished
+        assert!(!is_finished<StakeCoin, RewardCoin>(@harvest), 1);
+
+        // wait one second
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        // check is finished
+        assert!(is_finished<StakeCoin, RewardCoin>(@harvest), 1);
+    }
+
+    #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_deposit_reward_coins_fails_if_pool_does_not_exist() {
         let harvest = new_account(@harvest);
@@ -952,6 +978,12 @@ module harvest::stake_tests {
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pending_user_rewards_fails_if_pool_does_not_exist() {
         stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_if_finished_fails_if_pool_does_not_exist() {
+        stake::is_finished<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]

@@ -190,7 +190,6 @@ module harvest::stake {
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if harvest finished for the pool.
     public fun is_finished<S, R>(pool_addr: address): bool acquires StakePool {
-        // todo: test the whole function.
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
