@@ -14,7 +14,6 @@ module harvest::stake_tests {
     const START_TIME: u64 = 682981200;
 
     // todo: add test of registration two different pools at same time from different users
-    // todo: test harvest works after harvest finished
 
     public fun initialize_test(): (signer, signer) {
         genesis::setup();
@@ -177,8 +176,8 @@ module harvest::stake_tests {
             coin::withdraw<StakeCoin>(&alice_acc, 12345);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
-        // wait until pool expired
-        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+        // wait until pool expired and a week more
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS);
 
         // unstake from alice
         let coins =
@@ -621,6 +620,38 @@ module harvest::stake_tests {
         assert!(coin::value(&coins) == 100000000, 1);
 
         coin::deposit<RewardCoin>(@bob, coins);
+    }
+
+    #[test]
+    public fun test_harvest_works_after_pool_duration_end() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // stake 100 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // wait until pool expired and a week more
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS);
+
+        // harvest from alice
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+
+        // check amounts
+        assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
+        assert!(coin::value(&coins) == 157680000000000, 1);
+
+        coin::deposit<RewardCoin>(@alice, coins);
     }
 
     // todo: there are no such logics now. It should be always rewards until pool alive.
