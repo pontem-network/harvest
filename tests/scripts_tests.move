@@ -13,6 +13,24 @@ module harvest::scripts_tests {
     const WEEK_IN_SECONDS: u64 = 604800;
 
     #[test]
+    fun test_scripts_register_pool() {
+        let (harvest, _) = initialize_test();
+
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            1,
+        );
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        assert!(reward_per_sec == 1, 1);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == 0, 1);
+        assert!(reward_coin_amount == 0, 1);
+        assert!(s_scale == 1000000, 1);
+    }
+
+    #[test]
     fun test_scripts_end_to_end() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -31,14 +49,13 @@ module harvest::scripts_tests {
             1000 * ONE_COIN
         );
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale, r_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
         assert!(reward_per_sec == 10, 1);
-        assert!(accum_reward == 0, 2);
-        assert!(last_updated == 682981200, 3);
-        assert!(reward_coin_amount == 1000 * ONE_COIN, 4);
-        assert!(s_scale == 1000000, 5);
-        assert!(r_scale == 1000000, 6);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == 682981200, 1);
+        assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
+        assert!(s_scale == 1000000, 1);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100 * ONE_COIN);
 

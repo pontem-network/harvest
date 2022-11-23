@@ -68,11 +68,16 @@ module harvest::scripts {
 
     /// Enable "emergency state" for a pool on a `pool_addr` address. This state cannot be disabled
     /// and removes all operations except for `emergency_unstake()`, which unstakes all the coins for a user.
+    ///     * `admin` - current emergency admin account.
+    ///     * `pool_addr` - address of the the pool.
     public entry fun enable_emergency<S, R>(admin: &signer, pool_addr: address) {
         stake::enable_emergency<S, R>(admin, pool_addr);
     }
 
-    /// Unstake all the coins of the user. Only callable in "emergency state".
+    /// Unstake all the coins of the user and deposit to user account.
+    /// Only callable in "emergency state".
+    ///     * `user` - user account which has stake.
+    ///     * `pool_addr` - address of the pool.
     public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
         let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
         // wallet should exist

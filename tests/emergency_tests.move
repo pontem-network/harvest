@@ -169,6 +169,24 @@ module harvest::emergency_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = 111)]
+    fun test_cannot_unstake_in_non_emergency() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, 1 * ONE_COIN);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit(@alice, coins);
+    }
+
+    #[test]
     fun test_emergency_is_local_to_a_pool() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -187,7 +205,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 204)]
+    #[expected_failure(abort_code = 202)]
     fun test_cannot_enable_global_emergency_twice() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -223,7 +241,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 201)]
+    #[expected_failure(abort_code = 200)]
     fun test_cannot_enable_global_emergency_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
@@ -231,7 +249,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 201)]
+    #[expected_failure(abort_code = 200)]
     fun test_cannot_change_admin_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
@@ -276,5 +294,33 @@ module harvest::emergency_tests {
         assert!(!stake::is_local_emergency<StakeCoin, RewardCoin>(@alice), 1);
         assert!(stake::is_emergency<StakeCoin, RewardCoin>(@alice), 2);
         assert!(stake_config::is_global_emergency(), 3);
+    }
+
+    // Cases for ERR_NOT_INITIALIZED.
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_enable_global_emergency_not_initialized_fails() {
+        let emergency_admin = new_account(@stake_emergency_admin);
+        stake_config::enable_global_emergency(&emergency_admin);
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_is_global_emergency_not_initialized_fails() {
+        stake_config::is_global_emergency();
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_get_emergency_admin_address_not_initialized_fails() {
+        stake_config::get_emergency_admin_address();
+    }
+
+    #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_set_emergency_admin_address_not_initialized_fails() {
+        let emergency_admin = new_account(@stake_emergency_admin);
+        stake_config::set_emergency_admin_address(&emergency_admin, @alice);
     }
 }
