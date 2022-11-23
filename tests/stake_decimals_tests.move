@@ -6,7 +6,15 @@ module harvest::stake_decimals_tests {
 
     use harvest::stake;
     use harvest::stake_config;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
+    use harvest::stake_test_helpers::{
+        new_account,
+        initialize_reward_coin,
+        initialize_stake_coin,
+        mint_default_coin,
+        StakeCoin,
+        RewardCoin,
+        new_account_with_stake_coins
+    };
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;

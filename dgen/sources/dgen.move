@@ -8,10 +8,10 @@ module dgen_coin::dgen {
     // Errors.
 
     /// Only creator can execute.
-    const ERR_NO_PERMISSIONS: u64 = 100;
+    const ERR_NO_PERMISSIONS: u64 = 300;
 
     /// DGEN coin does not exist.
-    const ERR_NO_COIN: u64 = 101;
+    const ERR_NO_COIN: u64 = 301;
 
     /// 100 millions total DGEN supply.
     const TOTAL_SUPPLY: u64 = 100000000000000;
@@ -27,7 +27,7 @@ module dgen_coin::dgen {
     // Functions.
 
     /// Initializes DGEN coin, making total supply premint for owner.
-    ///     * `dgen_owner` - deployer of the module.
+    ///     * `dgen_admin` - deployer of the module.
     public entry fun initialize(dgen_admin: &signer) {
         let dgen_admin_addr = signer::address_of(dgen_admin);
         assert!(dgen_admin_addr == @dgen_coin, ERR_NO_PERMISSIONS);

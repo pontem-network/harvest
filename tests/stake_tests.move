@@ -55,6 +55,18 @@ module harvest::stake_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code=201)]
+    fun test_register_without_config_initialization_fails() {
+        let harvest = new_account(@harvest);
+        initialize_stake_coin(&harvest, 6);
+        initialize_reward_coin(&harvest, 6);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+    }
+
+    #[test]
     public fun test_deposit_reward_coins() {
         let (harvest, _) = initialize_test();
 
