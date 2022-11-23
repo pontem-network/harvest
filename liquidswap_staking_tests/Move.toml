@@ -1,5 +1,5 @@
 [package]
-name = 'LiquidswapStaking'
+name = 'LiquidswapStakingTests'
 version = '1.0.0'
 
 [addresses]
