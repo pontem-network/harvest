@@ -106,7 +106,7 @@ module harvest::stake {
     }
 
     //
-    // Pool config
+    // Public functions
     //
 
     /// Registering pool for specific coin.
@@ -117,8 +117,6 @@ module harvest::stake {
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
-        // todo: Need to decide, do we allow users create pool with duration less than lockup period.
-        // todo: We have option to cut part of lockup period that exceeds pool duration
         assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
         let reward_per_sec = coin::value(&reward_coins) / duration;
@@ -181,100 +179,6 @@ module harvest::stake {
             DepositRewardEvent { amount },
         );
     }
-
-    //
-    // Getter functions
-    //
-
-    /// Checks if harvest on the pool finished.
-    ///     * `pool_addr` - address under which pool are stored.
-    /// Returns true if harvest finished for the pool.
-    public fun is_finished<S, R>(pool_addr: address): bool acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        is_finished_inner(pool)
-    }
-
-    /// Gets timestamp when harvest will be finished for the pool.
-    ///     * `pool_addr` - address under which pool are stored.
-    /// Returns timestamp.
-    public fun get_end_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        pool.end_timestamp
-    }
-
-    /// Checks if pool exists.
-    ///     * `pool_addr` - address under which pool are stored.
-    /// Returns true if pool exists.
-    public fun pool_exists<S, R>(pool_addr: address): bool {
-        exists<StakePool<S, R>>(pool_addr)
-    }
-
-    /// Checks if stake exists.
-    ///     * `pool_addr` - address under which pool are stored.
-    ///     * `user_addr` - stake owner address.
-    /// Returns true if stake exists.
-    public fun stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-
-        table::contains(&pool.stakes, user_addr)
-    }
-
-    /// Checks current total staked amount in pool.
-    ///     * `pool_addr` - address under which pool are stored.
-    /// Returns total staked amount.
-    public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
-    }
-
-    /// Checks current amount staked by user in specific pool.
-    ///     * `pool_addr` - address under which pool are stored.
-    ///     * `user_addr` - stake owner address.
-    /// Returns staked amount.
-    public fun get_user_stake<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-
-        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-
-        table::borrow(&pool.stakes, user_addr).amount
-    }
-
-    /// Checks current pending user reward in specific pool.
-    ///     * `pool_addr` - address under which pool are stored.
-    ///     * `user_addr` - stake owner address.
-    /// Returns reward amount that can be harvested by stake owner.
-    public fun get_pending_user_rewards<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-
-        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-        let user_stake = table::borrow(&pool.stakes, user_addr);
-
-        let current_time = get_time_for_last_update(pool);
-        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
-
-        let earned_since_last_update = user_earned_since_last_update(
-            pool.accum_reward + new_accum_rewards,
-            pool.stake_scale,
-            user_stake,
-        );
-
-        user_stake.earned_reward + to_u64(earned_since_last_update)
-    }
-
-    //
-    // Public functions
-    //
 
     /// Stakes user coins in pool.
     ///     * `user` - account that making a stake.
@@ -361,8 +265,7 @@ module harvest::stake {
 
         // check unlock timestamp
         let current_time = timestamp::now_seconds();
-        if (pool.end_timestamp > current_time) {
-            // todo: test it well.
+        if (pool.end_timestamp >= current_time) {
             assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
         };
 
@@ -459,6 +362,96 @@ module harvest::stake {
         coin::extract(&mut pool.stake_coins, amount)
     }
 
+    //
+    // Getter functions
+    //
+
+    /// Checks if harvest on the pool finished.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns true if harvest finished for the pool.
+    public fun is_finished<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        is_finished_inner(pool)
+    }
+
+    /// Gets timestamp when harvest will be finished for the pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns timestamp.
+    public fun get_end_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.end_timestamp
+    }
+
+    /// Checks if pool exists.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns true if pool exists.
+    public fun pool_exists<S, R>(pool_addr: address): bool {
+        exists<StakePool<S, R>>(pool_addr)
+    }
+
+    /// Checks if stake exists.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns true if stake exists.
+    public fun stake_exists<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        table::contains(&pool.stakes, user_addr)
+    }
+
+    /// Checks current total staked amount in pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns total staked amount.
+    public fun get_pool_total_stake<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
+    }
+
+    /// Checks current amount staked by user in specific pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns staked amount.
+    public fun get_user_stake<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        table::borrow(&pool.stakes, user_addr).amount
+    }
+
+    /// Checks current pending user reward in specific pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns reward amount that can be harvested by stake owner.
+    public fun get_pending_user_rewards<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+        let user_stake = table::borrow(&pool.stakes, user_addr);
+
+        let current_time = get_time_for_last_update(pool);
+        let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
+
+        let earned_since_last_update = user_earned_since_last_update(
+            pool.accum_reward + new_accum_rewards,
+            pool.stake_scale,
+            user_stake,
+        );
+
+        user_stake.earned_reward + to_u64(earned_since_last_update)
+    }
+
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if emergency happened (local or global).
@@ -476,6 +469,10 @@ module harvest::stake {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
         pool.emergency_locked
     }
+
+    //
+    // Private functions.
+    //
 
     /// Checks if local pool or global emergency enabled.
     ///     * `pool` - pool to check emergency.
@@ -511,7 +508,6 @@ module harvest::stake {
     ///     * `current_time` - execution timestamp.
     /// Returns new accumulated reward.
     fun accum_rewards_since_last_updated<S, R>(pool: &StakePool<S, R>, current_time: u64): u128 {
-        // todo: here we should add staff that will bloc accum_reward increases after pool duration end
         // todo: we need to test it well
         let seconds_passed = current_time - pool.last_updated;
         if (seconds_passed == 0) return 0;
