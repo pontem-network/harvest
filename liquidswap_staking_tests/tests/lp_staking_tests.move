@@ -97,7 +97,7 @@ module lp_staking_admin::lp_staking_tests {
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
         // 0.000049 RewardCoin lost during calculations
-        let (_, reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest);
+        let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<DGEN>(@alice);
 
