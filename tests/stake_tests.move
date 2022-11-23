@@ -993,6 +993,7 @@ module harvest::stake_tests {
     }
 
     // todo: there are no such logics now. It should be always rewards until pool alive.
+    // todo: add test that rewards distributed complete after duration end. 0 rewards on pool balance
     // #[test]
     // #[expected_failure(abort_code = 105 /* ERR_EMPTY_POOL_REWARD_BALANCE */)]
     // public fun test_harvest_fails_if_pool_reward_balance_is_empty() {
@@ -1175,5 +1176,16 @@ module harvest::stake_tests {
         let coins =
             stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 1000000);
         coin::deposit(@alice, coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 113 /* ERR_DURATION_CANNOT_BE_ZERO */)]
+    public fun test_register_fails_if_duration_is_zero() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(12345);
+        let duration = 0;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
     }
 }
