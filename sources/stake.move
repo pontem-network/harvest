@@ -492,7 +492,6 @@ module harvest::stake {
     /// Calculates pool accumulated reward, updating pool.
     ///     * `pool` - pool to update rewards.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
-        // todo: test this staff
         let current_time = get_time_for_last_update(pool);
         let new_accum_rewards = accum_rewards_since_last_updated(pool, current_time);
 
@@ -508,7 +507,6 @@ module harvest::stake {
     ///     * `current_time` - execution timestamp.
     /// Returns new accumulated reward.
     fun accum_rewards_since_last_updated<S, R>(pool: &StakePool<S, R>, current_time: u64): u128 {
-        // todo: we need to test it well
         let seconds_passed = current_time - pool.last_updated;
         if (seconds_passed == 0) return 0;
 
