@@ -32,14 +32,13 @@ module lp_staking_admin::lp_staking_tests {
 
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
-        let dgen_admin_acc = stake_test_helpers::new_account(@dgen_coin);
         let alice_acc = stake_test_helpers::new_account(@alice);
 
         let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin);
 
         // initialize DGEN coin with premint for admin
-        dgen::initialize(&dgen_admin_acc);
+        dgen::initialize(&harvest_acc);
 
         // get LP coins
         stake_test_helpers::initialize_coin<BTC>(
@@ -72,7 +71,7 @@ module lp_staking_admin::lp_staking_tests {
         stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, reward_per_sec_rate);
 
         // deposit 50 000 DGEN rewards in pool
-        let dgen_coins = coin::withdraw<DGEN>(&dgen_admin_acc, 50000000000);
+        let dgen_coins = coin::withdraw<DGEN>(&harvest_acc, 50000000000);
         stake::deposit_reward_coins<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, dgen_coins);
 
         // stake 999.999 LP from alice
