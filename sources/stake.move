@@ -154,20 +154,21 @@ module harvest::stake {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
-        // todo: test it.
-        // it's forbiden to deposit more rewards (extend pool duration) after previous pool duration passed
-        // preventing anfair reward destribution
+        // it's forbidden to deposit more rewards (extend pool duration) after previous pool duration passed
+        // preventing unfair reward distribution
         assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
 
         let amount = coin::value(&coins);
-
-        // todo: test it
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
 
-        // todo: create separate test with only syntetic recalculates and reward adding
-        let additional_duration = amount / pool.reward_per_sec;
+        // todo: resolve
+        // here still a case when rew_per_sec = 10
+        // and we depositing 19 RewardCoins. It will add 1 second to end_ts and 9 coins will be freezed
+        // We can add:
+        // coins_used = pool.reward_per_sec * additional_duration
+        // assert!(coins_used == amount)
 
-        // todo: 1) Do we need it?  2) Create error  3) Test it
+        let additional_duration = amount / pool.reward_per_sec;
         assert!(additional_duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
         pool.end_timestamp = pool.end_timestamp + additional_duration;
