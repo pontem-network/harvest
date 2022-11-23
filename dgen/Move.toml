@@ -4,7 +4,7 @@ version = "1.0.0"
 upgrade_policy = "immutable"
 
 [addresses]
-dgen_coin = "0xc42b764ca81b34c59d792c2ca875d82f7dfbb5f2905bd3c771cccf0ff20078c4"
+dgen_coin = "0x2ec4190dd6eec80913e02da22de89700a9b5e13e27b51750191b7ceb3eee1a2f"
 
 # Test addresses.
 alice = "0x10"
