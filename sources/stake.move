@@ -110,9 +110,9 @@ module harvest::stake {
     //
 
     /// Registering pool for specific coin.
-    /// * `owner` - pool creator account, under which the pool will be stored.
-    /// * `reward_coins` - R coins which are used in distribution as reward.
-    /// * `duration` - pool life duration, can be increased by depositing more rewards.
+    ///     * `owner` - pool creator account, under which the pool will be stored.
+    ///     * `reward_coins` - R coins which are used in distribution as reward.
+    ///     * `duration` - pool life duration, can be increased by depositing more rewards.
     public fun register_pool<S, R>(owner: &signer, reward_coins: Coin<R>, duration: u64) {
         assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
@@ -146,8 +146,8 @@ module harvest::stake {
     }
 
     /// Depositing reward coins to specific pool, updates pool duration.
-    /// * `pool_addr` - address under which pool are stored.
-    /// * `coins` - R coins which are used in distribution as reward.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `coins` - R coins which are used in distribution as reward.
     public fun deposit_reward_coins<S, R>(pool_addr: address, coins: Coin<R>) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
@@ -297,7 +297,6 @@ module harvest::stake {
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
-        // todo: test it.
         assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
 
         // update pool accum_reward and timestamp
@@ -493,7 +492,7 @@ module harvest::stake {
     }
 
     /// Calculates pool accumulated reward, updating pool.
-    /// * `pool` - pool to update rewards.
+    ///     * `pool` - pool to update rewards.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
         // todo: test this staff
         let current_time = get_time_for_last_update(pool);

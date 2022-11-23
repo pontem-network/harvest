@@ -14,7 +14,6 @@ module harvest::stake_tests {
     const START_TIME: u64 = 682981200;
 
     // todo: add test of registration two different pools at same time from different users
-    // todo: unstake works after harvest finished
     // todo: test harvest works after harvest finished
 
     public fun initialize_test(): (signer, signer) {
@@ -160,6 +159,34 @@ module harvest::stake_tests {
         assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @bob) == 0, 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 400000000, 1);
         coin::deposit<StakeCoin>(@bob, coins);
+    }
+
+    #[test]
+    public fun test_unstake_works_after_pool_duration_end() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 12345);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 12345);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // wait until pool expired
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        // unstake from alice
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 12345);
+        assert!(coin::value(&coins) == 12345, 1);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
+        coin::deposit<StakeCoin>(@alice, coins);
     }
 
     #[test]
