@@ -5,7 +5,7 @@ version = '1.0.0'
 [addresses]
 lp_staking_admin = "0xc42b764ca81b34c59d792c2ca875d82f7dfbb5f2905bd3c771cccf0ff20078c5"
 
-[dependencies.Staking]
+[dependencies.Harvest]
 local = ".."
 
 [dependencies.Liquidswap]
