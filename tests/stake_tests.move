@@ -13,8 +13,6 @@ module harvest::stake_tests {
 
     const START_TIME: u64 = 682981200;
 
-    // todo: add test of registration two different pools at same time from different users
-
     public fun initialize_test(): (signer, signer) {
         genesis::setup();
 
@@ -51,7 +49,30 @@ module harvest::stake_tests {
         assert!(last_updated == START_TIME, 1);
         assert!(reward_amount == 15768000000000, 1);
         assert!(s_scale == 1000000, 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@alice), 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@alice) == 0, 1);
+    }
+
+    #[test]
+    public fun test_register_two_pools() {
+        initialize_test();
+
+        let alice_acc = new_account(@alice);
+        let bob_acc = new_account(@bob);
+
+        // register staking pool 1 with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration);
+
+        // register staking pool 2 with rewards
+        let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<RewardCoin, StakeCoin>(&bob_acc, reward_coins, duration);
+
+        // check pools exist
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@alice), 1);
+        assert!(stake::pool_exists<RewardCoin,StakeCoin>(@bob), 1);
     }
 
     #[test]
