@@ -67,7 +67,7 @@ module lp_staking_admin::lp_staking_tests {
         coin::register<LP<BTC, USDT, Uncorrelated>>(&alice_acc);
 
         // register stake pool with 50 000 DGEN rewards. 0,01 DGEN coins per second reward
-        let dgen_coins = coin::withdraw<DGEN>(&dgen_admin_acc, 50000000000);
+        let dgen_coins = coin::withdraw<DGEN>(&harvest_acc, 50000000000);
         let duration = 5000000;
         stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, dgen_coins, duration);
 
