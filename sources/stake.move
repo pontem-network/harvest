@@ -361,7 +361,10 @@ module harvest::stake {
 
         // check unlock timestamp
         let current_time = timestamp::now_seconds();
-        assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
+        if (pool.end_timestamp > current_time) {
+            // todo: test it well.
+            assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
+        };
 
         // update earnings
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
@@ -555,6 +558,9 @@ module harvest::stake {
         (num as u128)
     }
 
+    /// Get time for last pool update: current time if the pool is not finished or end timmestamp.
+    ///     * `pool` - pool to get time.
+    /// Returns timestamp.
     fun get_time_for_last_update<S, R>(pool: &StakePool<S, R>): u64 {
         math64::min(pool.end_timestamp, timestamp::now_seconds())
     }
