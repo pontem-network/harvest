@@ -200,7 +200,6 @@ module harvest::stake {
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns timestamp.
     public fun get_end_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
-        // todo: test the whole function.
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
@@ -597,10 +596,10 @@ module harvest::stake {
 
     #[test_only]
     /// Access staking pool fields with no getters.
-    public fun get_pool_info<S, R>(pool_addr: address): (u64, u64, u128, u64, u64, u64) acquires StakePool {
+    public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u64) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
 
-        (pool.end_timestamp, pool.reward_per_sec, pool.accum_reward, pool.last_updated,
+        (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
             coin::value<R>(&pool.reward_coins), pool.stake_scale)
     }
 

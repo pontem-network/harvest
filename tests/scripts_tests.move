@@ -22,15 +22,16 @@ module harvest::scripts_tests {
         let duration = 100000000;
         scripts::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
-        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
-        let (end_ts, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(s_scale == 1000000, 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
     }
 
     #[test]
@@ -43,8 +44,9 @@ module harvest::scripts_tests {
         let duration = 100000000;
         scripts::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
 
-        let (end_ts, reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
