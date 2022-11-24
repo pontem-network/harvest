@@ -6,12 +6,15 @@ The main purpose of contracts is to allow the staking of LP coins and earn commu
 Supported features:
 
 * The contracts are permissionless and can be used for any Stake/Reward coins pair.
-* Each staking pool has a reward rate per second set by the pool creator.
-* Rewards can be deposited to a pool at any time.
-* User can unstake own coins without loss of profit at any time after one week since the stake passed.
+* Each staking pool has a reward rate per second set by the pool creator by providing reward and duration.
+* Rewards can be deposited to a pool at any time and duration would be extended.
+* User can unstake own coins without loss of profit at any time after one week since the stake passed or once harvest finished.
 * User can withdraw rewards at any time.
-* Pool can be emergency stopped, and stakers can withdraw their stake.
-* **Important:** as it's permissionless, we will allowlist only trusted pools on our end (UI).
+* Pool can be emergency stopped, and stakers can withdraw their stake and rewards providers can withdraw remaining rewards.
+
+**Important warnings:**
+* As it's permissionless, we will allowlist only trusted pools on our end (UI).
+* It may not work with exotic coins (large decimals amounts, too large supply), so use on your own risk and double check.
 
 ## DGEN coin
 
