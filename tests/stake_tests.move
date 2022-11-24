@@ -734,6 +734,113 @@ module harvest::stake_tests {
     }
 
     #[test]
+    public fun test_stake_and_harvest_big_real_values() {
+        // well, really i just want to test large numbers with 8 decimals, so this why we have billions.
+        let (harvest, _) = initialize_test();
+
+        // 900b of coins.
+        let alice_acc = new_account_with_stake_coins(@alice, 900000000000000000);
+        // 100b of coins.
+        let bob_acc = new_account_with_stake_coins(@bob, 100000000000000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        // 1000b of coins
+        let reward_coins = mint_default_coin<RewardCoin>(1000000000000000000);
+        // 1 week.
+        let duration = WEEK_IN_SECONDS;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // stake alice.
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 90000000000000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // stake bob.
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 10000000000000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        // harvest first time.
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit<RewardCoin>(@alice, coins);
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        coin::deposit<RewardCoin>(@bob, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        // harvest second time.
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit<RewardCoin>(@alice, coins);
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        coin::deposit<RewardCoin>(@bob, coins);
+
+        // unstake.
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 90000000000000000);
+        coin::deposit<StakeCoin>(@alice, coins);
+
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 10000000000000000);
+        coin::deposit<StakeCoin>(@bob, coins);
+    }
+
+    #[test]
+    public fun test_stake_and_harvest_big_real_values_long_time() {
+        // well, really i just want to test large numbers with 8 decimals, so this why we have billions.
+        let (harvest, _) = initialize_test();
+
+        // 900b of coins.
+        let alice_acc = new_account_with_stake_coins(@alice, 900000000000000000);
+        // 100b of coins.
+        let bob_acc = new_account_with_stake_coins(@bob, 100000000000000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        // 1000b of coins
+        let reward_coins = mint_default_coin<RewardCoin>(1000000000000000000);
+        // 10 years.
+        let duration = 31536000 * 10;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // stake alice.
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 90000000000000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // stake bob.
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 10000000000000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit<RewardCoin>(@alice, coins);
+        let coins =
+            stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        coin::deposit<RewardCoin>(@bob, coins);
+
+        // unstake.
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 90000000000000000);
+        coin::deposit<StakeCoin>(@alice, coins);
+
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 10000000000000000);
+        coin::deposit<StakeCoin>(@bob, coins);
+    }
+
+    #[test]
     public fun test_premature_unstake_and_harvest() {
         let (harvest, _) = initialize_test();
 
