@@ -173,10 +173,12 @@ module harvest::stake {
 
         coin::merge(&mut pool.reward_coins, coins);
 
-        // todo: add to events new duration, but i think we should expand events with more data.
         event::emit_event<DepositRewardEvent>(
             &mut pool.deposit_events,
-            DepositRewardEvent { amount },
+            DepositRewardEvent {
+                amount,
+                new_end_timestamp: pool.end_timestamp,
+            },
         );
     }
 
@@ -575,6 +577,7 @@ module harvest::stake {
 
     struct DepositRewardEvent has drop, store {
         amount: u64,
+        new_end_timestamp: u64,
     }
 
     struct HarvestEvent has drop, store {
