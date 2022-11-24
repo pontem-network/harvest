@@ -18,7 +18,7 @@ Supported features:
 
 ## DGEN coin
 
-The `DGEN` coin is currently placed in [DGEN](./DGEN) module.
+The `DGEN` coin is currently placed in [dgen](./dgen) module.
 
 It's our community genesis generation coin which we are going to airdrop and reward
 early adopters, also it will be used in our staking pools as a reward.
@@ -33,32 +33,31 @@ Placed in [liquiswap_staking_tests/](liquidswap_staking_tests) module.
 
 ### Build
 
-[Aptos CLI](https://github.com/aptos-labs/aptos-core/releases) required:
+[Aptos CLI](https://github.com/aptos-labs/aptos-core/releases) required.
+
+Core:
 
     aptos move compile
 
-Or LP staking module:
-
-    cd liquidswap_staking
-    aptos move compile
-    
 Or DGEN:
 
-    cd DGEN
+    cd dgen
     aptos move compile
 
 ### Test
 
+Core:
+
     aptos move test
 
 Or LP staking module:
 
-    cd liquidswap_staking
+    cd liquidswap_staking_tests
     aptos move test
 
 Or DGEN:
 
-    cd DGEN
+    cd dgen
     aptos move test
 
 
