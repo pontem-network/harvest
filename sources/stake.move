@@ -29,35 +29,35 @@ module harvest::stake {
     /// Not enough S balance to unstake
     const ERR_NOT_ENOUGH_S_BALANCE: u64 = 104;
 
-    /// Pool has no rewards on balance.
-    const ERR_EMPTY_POOL_REWARD_BALANCE: u64 = 105;
+    // /// Pool has no rewards on balance.
+    // const ERR_EMPTY_POOL_REWARD_BALANCE: u64 = 105;
 
     /// Amount can't be zero.
-    const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 106;
+    const ERR_AMOUNT_CANNOT_BE_ZERO: u64 = 105;
 
     /// Nothing to harvest yet.
-    const ERR_NOTHING_TO_HARVEST: u64 = 107;
+    const ERR_NOTHING_TO_HARVEST: u64 = 106;
 
     /// CoinType is not a coin.
-    const ERR_IS_NOT_COIN: u64 = 108;
+    const ERR_IS_NOT_COIN: u64 = 107;
 
     /// Cannot unstake before lockup period end.
-    const ERR_TOO_EARLY_UNSTAKE: u64 = 109;
+    const ERR_TOO_EARLY_UNSTAKE: u64 = 108;
 
     /// The pool is in the "emergency state", all operations except for the `emergency_unstake()` are disabled.
-    const ERR_EMERGENCY: u64 = 110;
+    const ERR_EMERGENCY: u64 = 109;
 
     /// The pool is not in "emergency state".
-    const ERR_NO_EMERGENCY: u64 = 111;
+    const ERR_NO_EMERGENCY: u64 = 110;
 
     /// Only one hardcoded account can enable "emergency state" for the pool, it's not the one.
-    const ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY: u64 = 112;
+    const ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY: u64 = 111;
 
     /// Duration can't be zero.
-    const ERR_DURATION_CANNOT_BE_ZERO: u64 = 113;
+    const ERR_DURATION_CANNOT_BE_ZERO: u64 = 112;
 
     /// When harvest finished for a pool.
-    const ERR_HARVEST_FINISHED: u64 = 114;
+    const ERR_HARVEST_FINISHED: u64 = 113;
 
     //
     // Constants
@@ -313,12 +313,6 @@ module harvest::stake {
         let earned_to_withdraw = user_stake.earned_reward;
         assert!(earned_to_withdraw > 0, ERR_NOTHING_TO_HARVEST);
 
-        let pool_rewards_balance = coin::value(&pool.reward_coins);
-        assert!(pool_rewards_balance > 0, ERR_EMPTY_POOL_REWARD_BALANCE);
-
-        if (earned_to_withdraw > pool_rewards_balance) {
-            earned_to_withdraw = pool_rewards_balance;
-        };
         user_stake.earned_reward = user_stake.earned_reward - earned_to_withdraw;
 
         event::emit_event<HarvestEvent>(
