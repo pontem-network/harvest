@@ -76,8 +76,12 @@ module harvest::stake_test_helpers {
     // Accounts.
 
     public fun new_account(account_addr: address): signer {
-        let account = account::create_account_for_test(account_addr);
-        account
+        if (!account::exists_at(account_addr)) {
+            account::create_account_for_test(account_addr)
+        } else {
+            let cap = account::create_test_signer_cap(account_addr);
+            account::create_signer_with_capability(&cap)
+        }
     }
 
     public fun new_account_with_stake_coins(account_addr: address, amount: u64): signer acquires Capabilities {

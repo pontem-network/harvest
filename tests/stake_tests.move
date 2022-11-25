@@ -26,7 +26,7 @@ module harvest::stake_tests {
         initialize_stake_coin(&harvest, 6);
 
         let emergency_admin = new_account(@stake_emergency_admin);
-        stake_config::initialize(&emergency_admin);
+        stake_config::initialize(&emergency_admin, @treasury);
         (harvest, emergency_admin)
     }
 
@@ -80,6 +80,7 @@ module harvest::stake_tests {
     #[test]
     public fun test_deposit_reward_coins() {
         let (harvest, _) = initialize_test();
+        let alice_acc = new_account(@alice);
 
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -97,7 +98,7 @@ module harvest::stake_tests {
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, reward_coins);
 
         // check pool statistics
         let pool_finish_time = pool_finish_time + 604800;
@@ -113,7 +114,7 @@ module harvest::stake_tests {
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
 
         // check pool statistics
         let pool_finish_time = pool_finish_time + 604800;
@@ -1144,7 +1145,7 @@ module harvest::stake_tests {
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
 
         // check pool expiration date
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
@@ -1160,7 +1161,7 @@ module harvest::stake_tests {
         initialize_reward_coin(&harvest, 6);
         let reward_coins = mint_default_coin<RewardCoin>(100);
 
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
     }
 
     #[test]
@@ -1385,7 +1386,7 @@ module harvest::stake_tests {
 
         // deposit 0 RewardCoins
         let reward_coins = coin::zero<RewardCoin>();
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
     }
 
     #[test]
@@ -1525,7 +1526,7 @@ module harvest::stake_tests {
 
         // deposit rewards less than rew_per_sec pool rate
         let reward_coins = mint_default_coin<RewardCoin>(999999);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
     }
 
     #[test]
@@ -1543,7 +1544,7 @@ module harvest::stake_tests {
 
         // deposit rewards less than rew_per_sec pool rate
         let reward_coins = mint_default_coin<RewardCoin>(1000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(@harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
     }
 
     #[test]
@@ -1577,5 +1578,92 @@ module harvest::stake_tests {
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+    }
+
+    // Withdraw rewards tests.
+
+    #[test]
+    #[expected_failure(abort_code = 115)]
+    fun test_withdraw_fails_non_emergency_or_finish() {
+        let (harvest, _) = initialize_test();
+        let treasury = new_account(@treasury);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        coin::register<RewardCoin>(&treasury);
+        coin::deposit(@treasury, reward_coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 116)]
+    fun test_withdraw_fails_from_non_treasury_account() {
+        let (harvest, emergency) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        stake_config::enable_global_emergency(&emergency);
+
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&harvest, @harvest, 157680000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+    }
+
+    #[test]
+    fun test_withdraw_in_emergency() {
+        let (harvest, emergency) = initialize_test();
+        let treasury = new_account(@treasury);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        stake_config::enable_global_emergency(&emergency);
+
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        coin::register<RewardCoin>(&treasury);
+        coin::deposit(@treasury, reward_coins);
+    }
+
+    #[test]
+    fun test_withdraw_after_period() {
+        let (harvest, _) = initialize_test();
+        let treasury = new_account(@treasury);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
+
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        coin::register<RewardCoin>(&treasury);
+        coin::deposit(@treasury, reward_coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 115)]
+    fun test_withdraw_fails_before_period() {
+        let (harvest, _) = initialize_test();
+        let treasury = new_account(@treasury);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        coin::register<RewardCoin>(&treasury);
+        coin::deposit(@treasury, reward_coins);
     }
 }
