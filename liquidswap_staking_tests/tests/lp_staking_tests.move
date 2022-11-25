@@ -35,7 +35,7 @@ module lp_staking_admin::lp_staking_tests {
         let alice_acc = stake_test_helpers::new_account(@alice);
 
         let emergency_admin = new_account(@stake_emergency_admin);
-        stake_config::initialize(&emergency_admin);
+        stake_config::initialize(&emergency_admin, @treasury);
 
         // initialize DGEN coin with premint for admin
         dgen::initialize(&harvest_acc);

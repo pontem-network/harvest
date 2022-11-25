@@ -58,12 +58,21 @@ module harvest::stake {
     /// When harvest finished for a pool.
     const ERR_HARVEST_FINISHED: u64 = 113;
 
+    /// When withdrawing at wrong period.
+    const ERR_NOT_WITHDRAW_PERIOD: u64 = 114;
+
+    /// When not treasury withdrawing.
+    const ERR_NOT_TREASURY: u64 = 115;
+
     //
     // Constants
     //
 
     /// Week in seconds, lockup period.
     const WEEK_IN_SECONDS: u64 = 604800;
+
+    /// When treasury can withdraw rewards (~3 months).
+    const WITHDRAW_REWARD_PERIOD_IN_SECONDS: u64 = 7257600;
 
     //
     // Core data structures
@@ -143,9 +152,10 @@ module harvest::stake {
     }
 
     /// Depositing reward coins to specific pool, updates pool duration.
+    ///     * `depositor` - rewards depositor account.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `coins` - R coins which are used in distribution as reward.
-    public fun deposit_reward_coins<S, R>(pool_addr: address, coins: Coin<R>) acquires StakePool {
+    public fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, coins: Coin<R>) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
@@ -158,13 +168,6 @@ module harvest::stake {
         let amount = coin::value(&coins);
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
 
-        // todo: resolve
-        // here still a case when rew_per_sec = 10
-        // and we depositing 19 RewardCoins. It will add 1 second to end_ts and 9 coins will be freezed
-        // We can add:
-        // coins_used = pool.reward_per_sec * additional_duration
-        // assert!(coins_used == amount)
-
         let additional_duration = amount / pool.reward_per_sec;
         assert!(additional_duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
@@ -172,9 +175,12 @@ module harvest::stake {
 
         coin::merge(&mut pool.reward_coins, coins);
 
+        let depositor_addr = signer::address_of(depositor);
+
         event::emit_event<DepositRewardEvent>(
             &mut pool.deposit_events,
             DepositRewardEvent {
+                user_address: depositor_addr,
                 amount,
                 new_end_timestamp: pool.end_timestamp,
             },
@@ -355,6 +361,25 @@ module harvest::stake {
         let UserStake { amount, unobtainable_reward: _, earned_reward: _, unlock_time: _ } = user_stake;
 
         coin::extract(&mut pool.stake_coins, amount)
+    }
+
+    /// If 3 months passed we can withdraw any remaining rewards using treasury account.
+    /// In case of emergency we can withdraw to treasury immediately.
+    ///     * `treasury` - treasury admin account.
+    ///     * `pool_addr` - address of the pool.
+    ///     * `amount` - rewards amount to withdraw.
+    public fun withdraw_to_treasury<S, R>(treasury: &signer, pool_addr: address, amount: u64): Coin<R> acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        assert!(signer::address_of(treasury) == stake_config::get_treasury_admin_address(), ERR_NOT_TREASURY);
+
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+
+        if (!is_emergency_inner(pool)) {
+            let now = timestamp::now_seconds();
+            assert!(now >= (pool.end_timestamp + WITHDRAW_REWARD_PERIOD_IN_SECONDS), ERR_NOT_WITHDRAW_PERIOD);
+        };
+
+        coin::extract(&mut pool.reward_coins, amount)
     }
 
     //
@@ -569,6 +594,7 @@ module harvest::stake {
     }
 
     struct DepositRewardEvent has drop, store {
+        user_address: address,
         amount: u64,
         new_end_timestamp: u64,
     }

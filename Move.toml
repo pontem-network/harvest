@@ -5,6 +5,7 @@ version = '1.0.0'
 [addresses]
 harvest = "0x2ec4190dd6eec80913e02da22de89700a9b5e13e27b51750191b7ceb3eee1a2f"
 stake_emergency_admin = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
+treasury = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
 
 # Test addresses.
 alice = "0x10"
