@@ -365,7 +365,7 @@ module harvest::stake {
 
     /// If 3 months passed we can withdraw any remaining rewards using treasury account.
     /// In case of emergency we can withdraw to treasury immediately.
-    ///     * `treasury` - treasury admin address.
+    ///     * `treasury` - treasury admin account.
     ///     * `pool_addr` - address of the pool.
     ///     * `amount` - rewards amount to withdraw.
     public fun withdraw_to_treasury<S, R>(treasury: &signer, pool_addr: address, amount: u64): Coin<R> acquires StakePool {
