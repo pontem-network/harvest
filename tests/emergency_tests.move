@@ -57,7 +57,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_stake_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -76,7 +76,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_unstake_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -94,7 +94,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_add_rewards_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -110,7 +110,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_add_rewards_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -126,7 +126,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_harvest_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -144,7 +144,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_stake_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -163,7 +163,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_unstake_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -185,7 +185,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_register_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         stake_config::enable_global_emergency(&emergency_admin);
@@ -197,7 +197,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_harvest_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         stake_config::enable_global_emergency(&emergency_admin);
@@ -214,7 +214,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_enable_local_emergency_if_global_is_enabled() {
         let (harvest, emergency_admin) = initialize_test();
         stake_config::enable_global_emergency(&emergency_admin);
@@ -230,7 +230,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 112)]
+    #[expected_failure(abort_code = 111)]
     fun test_cannot_enable_emergency_with_non_admin_account() {
         let (harvest, _) = initialize_test();
 
@@ -245,7 +245,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = 109)]
     fun test_cannot_enable_emergency_twice() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -284,7 +284,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 111)]
+    #[expected_failure(abort_code = 110)]
     fun test_cannot_unstake_in_non_emergency() {
         let (harvest, _) = initialize_test();
 

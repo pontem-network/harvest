@@ -861,7 +861,7 @@ module harvest::stake_tests {
             coin::withdraw<StakeCoin>(&alice_acc, 100000000);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
-        // wait until pool expired and a week more
+        // wait until pool expired and almost a week more
         timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS / 2);
 
         let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
@@ -897,7 +897,7 @@ module harvest::stake_tests {
             coin::withdraw<StakeCoin>(&alice_acc, 100000000);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
-        // wait until pool expired and a week more
+        // wait until pool expired
         timestamp::update_global_time_for_test_secs(START_TIME + duration);
 
         // harvest from alice
@@ -1342,7 +1342,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 105 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_stake_fails_if_amount_is_zero() {
         let (harvest, _) = initialize_test();
 
@@ -1359,7 +1359,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 105 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_unstake_fails_if_amount_is_zero() {
         let (harvest, _) = initialize_test();
 
@@ -1375,7 +1375,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 106 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 105 /* ERR_AMOUNT_CANNOT_BE_ZERO */)]
     public fun test_deposit_reward_coins_fails_if_amount_is_zero() {
         let (harvest, _) = initialize_test();
 
@@ -1390,7 +1390,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
+    #[expected_failure(abort_code = 106 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_1() {
         let (harvest, _) = initialize_test();
 
@@ -1415,7 +1415,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 107 /* ERR_NOTHING_TO_HARVEST */)]
+    #[expected_failure(abort_code = 106 /* ERR_NOTHING_TO_HARVEST */)]
     public fun test_harvest_fails_if_nothing_to_harvest_2() {
         let (harvest, _) = initialize_test();
 
@@ -1446,7 +1446,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
+    #[expected_failure(abort_code = 107 /* ERR_IS_NOT_COIN */)]
     public fun test_register_fails_if_stake_coin_is_not_coin() {
         genesis::setup();
 
@@ -1462,7 +1462,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 108 /* ERR_IS_NOT_COIN */)]
+    #[expected_failure(abort_code = 107 /* ERR_IS_NOT_COIN */)]
     public fun test_register_fails_if_reward_coin_is_not_coin() {
         genesis::setup();
 
@@ -1478,7 +1478,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109 /* ERR_TOO_EARLY_UNSTAKE */)]
+    #[expected_failure(abort_code = 108 /* ERR_TOO_EARLY_UNSTAKE */)]
     public fun test_unstake_fails_if_executed_before_lockup_end() {
         let (harvest, _) = initialize_test();
 
@@ -1504,7 +1504,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 113 /* ERR_DURATION_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 112 /* ERR_DURATION_CANNOT_BE_ZERO */)]
     public fun test_register_fails_if_duration_is_zero() {
         let (harvest, _) = initialize_test();
 
@@ -1515,7 +1515,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 113 /* ERR_DURATION_CANNOT_BE_ZERO */)]
+    #[expected_failure(abort_code = 112 /* ERR_DURATION_CANNOT_BE_ZERO */)]
     public fun test_deposit_reward_coins_fails_if_duration_is_zero() {
         let (harvest, _) = initialize_test();
 
@@ -1530,7 +1530,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 114 /* ERR_HARVEST_FINISHED */)]
+    #[expected_failure(abort_code = 113 /* ERR_HARVEST_FINISHED */)]
     public fun test_deposit_reward_coins_fails_after_harvest_is_finished() {
         let (harvest, _) = initialize_test();
 
@@ -1548,7 +1548,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 114 /* ERR_HARVEST_FINISHED */)]
+    #[expected_failure(abort_code = 113 /* ERR_HARVEST_FINISHED */)]
     public fun test_stake_fails_after_harvest_is_finished() {
         let (harvest, _) = initialize_test();
 
@@ -1583,7 +1583,7 @@ module harvest::stake_tests {
     // Withdraw rewards tests.
 
     #[test]
-    #[expected_failure(abort_code = 115)]
+    #[expected_failure(abort_code = 114)]
     fun test_withdraw_fails_non_emergency_or_finish() {
         let (harvest, _) = initialize_test();
         let treasury = new_account(@treasury);
@@ -1599,7 +1599,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 116)]
+    #[expected_failure(abort_code = 115)]
     fun test_withdraw_fails_from_non_treasury_account() {
         let (harvest, emergency) = initialize_test();
 
@@ -1650,7 +1650,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 115)]
+    #[expected_failure(abort_code = 114)]
     fun test_withdraw_fails_before_period() {
         let (harvest, _) = initialize_test();
         let treasury = new_account(@treasury);
