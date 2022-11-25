@@ -58,7 +58,7 @@ module harvest::stake {
     /// When harvest finished for a pool.
     const ERR_HARVEST_FINISHED: u64 = 113;
 
-    /// When withdraw account is not depositor (anymore).
+    /// When withdrawing at wrong period.
     const ERR_NOT_WITHDRAW_PERIOD: u64 = 114;
 
     /// When not treasury withdrawing.
@@ -374,11 +374,8 @@ module harvest::stake {
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
 
-        let is_emergency = is_emergency_inner(pool);
-        assert!(is_finished_inner(pool) || is_emergency, ERR_NOT_WITHDRAW_PERIOD);
-
-        let now = timestamp::now_seconds();
-        if (!is_emergency) {
+        if (!is_emergency_inner(pool)) {
+            let now = timestamp::now_seconds();
             assert!(now >= (pool.end_timestamp + WITHDRAW_REWARD_PERIOD_IN_SECONDS), ERR_NOT_WITHDRAW_PERIOD);
         };
 
