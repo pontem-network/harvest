@@ -382,8 +382,7 @@ module harvest::stake {
             assert!(now >= (pool.end_timestamp + WITHDRAW_REWARD_PERIOD_IN_SECONDS), ERR_NOT_WITHDRAW_PERIOD);
         };
 
-        let rewards = coin::extract(&mut pool.reward_coins, amount);
-        rewards
+        coin::extract(&mut pool.reward_coins, amount)
     }
 
     //

@@ -8,7 +8,7 @@ module harvest::stake_config {
     // Errors.
 
     /// Doesn't have enough permissions: not a current admin account.
-    const ERR_NO_PERMISSIONN: u64 = 200;
+    const ERR_NO_PERMISSIONS: u64 = 200;
 
     /// Global config is not initialized, call `initialize()` first.
     const ERR_NOT_INITIALIZED: u64 = 201;
@@ -29,10 +29,11 @@ module harvest::stake_config {
 
     /// Initializes global configuration.
     ///     * `emergency_admin` - initial emergency admin account.
+    ///     * `treasury_admin` - initial treasury admin address.
     public entry fun initialize(emergency_admin: &signer, treasury_admin: address) {
         assert!(
             signer::address_of(emergency_admin) == @stake_emergency_admin,
-            ERR_NO_PERMISSIONN
+            ERR_NO_PERMISSIONS
         );
         move_to(emergency_admin, GlobalConfig {
             emergency_admin_address: @stake_emergency_admin,
@@ -50,7 +51,7 @@ module harvest::stake_config {
         let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
         assert!(
             signer::address_of(emergency_admin) == global_config.emergency_admin_address,
-            ERR_NO_PERMISSIONN
+            ERR_NO_PERMISSIONS
         );
         global_config.emergency_admin_address = new_address;
     }
@@ -65,14 +66,14 @@ module harvest::stake_config {
 
     /// Sets `treasury_admin` account.
     /// Should be signed with current `treasury_admin` account.
-    ///     * `emergency_admin` - current emergency admin account.
-    ///     * `new_address` - new emergency admin address.
+    ///     * `treasury_admin` - current treasury admin account.
+    ///     * `new_address` - new treasury admin address.
     public entry fun set_treasury_admin_address(treasury_admin: &signer, new_address: address) acquires GlobalConfig {
         assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
         let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
         assert!(
             signer::address_of(treasury_admin) == global_config.treasury_admin_address,
-            ERR_NO_PERMISSIONN
+            ERR_NO_PERMISSIONS
         );
         global_config.treasury_admin_address = new_address;
     }
@@ -93,7 +94,7 @@ module harvest::stake_config {
         let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
         assert!(
             signer::address_of(emergency_admin) == global_config.emergency_admin_address,
-            ERR_NO_PERMISSIONN
+            ERR_NO_PERMISSIONS
         );
         assert!(!global_config.global_emergency_locked, ERR_GLOBAL_EMERGENCY);
         global_config.global_emergency_locked = true;
