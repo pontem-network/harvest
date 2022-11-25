@@ -35,7 +35,7 @@ module lp_staking_admin::lp_staking_tests {
         let alice_acc = stake_test_helpers::new_account(@alice);
 
         let emergency_admin = new_account(@stake_emergency_admin);
-        stake_config::initialize(&emergency_admin);
+        stake_config::initialize(&emergency_admin, @treasury);
 
         // initialize DGEN coin with premint for admin
         dgen::initialize(&harvest_acc);
@@ -56,8 +56,8 @@ module lp_staking_admin::lp_staking_tests {
 
         router::register_pool<BTC, USDT, Uncorrelated>(&harvest_acc);
 
-        let btc_coins = stake_test_helpers::mint_coins<BTC>(&lp_staking_admin_acc, 100000000);
-        let usdt_coins = stake_test_helpers::mint_coins<USDT>(&lp_staking_admin_acc, 10000000000);
+        let btc_coins = stake_test_helpers::mint_coin<BTC>(&lp_staking_admin_acc, 100000000);
+        let usdt_coins = stake_test_helpers::mint_coin<USDT>(&lp_staking_admin_acc, 10000000000);
         let (btc_rem, usdt_rem, lp_coins) =
             router::add_liquidity<BTC, USDT, Uncorrelated>(btc_coins, 100000000, usdt_coins, 10000000000);
         coin::destroy_zero(btc_rem);
@@ -66,13 +66,10 @@ module lp_staking_admin::lp_staking_tests {
         coin::register<DGEN>(&alice_acc);
         coin::register<LP<BTC, USDT, Uncorrelated>>(&alice_acc);
 
-        // register stake pool with 0,01 DGEN coins per second reward
-        let reward_per_sec_rate = 10000;
-        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, reward_per_sec_rate);
-
-        // deposit 50 000 DGEN rewards in pool
+        // register stake pool with 50 000 DGEN rewards. 0,01 DGEN coins per second reward
         let dgen_coins = coin::withdraw<DGEN>(&harvest_acc, 50000000000);
-        stake::deposit_reward_coins<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, dgen_coins);
+        let duration = 5000000;
+        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, dgen_coins, duration);
 
         // stake 999.999 LP from alice
         stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest, lp_coins);
@@ -100,7 +97,8 @@ module lp_staking_admin::lp_staking_tests {
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
         // 0.000049 RewardCoin lost during calculations
-        let total_rewards = WEEK_IN_SECONDS * reward_per_sec_rate;
+        let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest);
+        let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<DGEN>(@alice);
 
         assert!(losed_rewards == 49, 1);
