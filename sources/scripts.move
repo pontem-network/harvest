@@ -1,18 +1,20 @@
 /// Collection of entrypoints to handle staking pools.
 module harvest::scripts {
+    use std::option;
     use std::signer;
 
     use aptos_framework::coin;
 
     use harvest::stake;
 
+    // todo: update this function
     /// Register new staking pool with staking coin `S` and reward coin `R`.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
     public entry fun register_pool<S, R>(pool_owner: &signer, amount: u64, duration: u64) {
         let rewards = coin::withdraw<R>(pool_owner, amount);
-        stake::register_pool<S, R>(pool_owner, rewards, duration);
+        stake::register_pool<S, R>(pool_owner, rewards, duration, option::none());
     }
 
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
@@ -65,15 +67,16 @@ module harvest::scripts {
         stake::enable_emergency<S, R>(admin, pool_addr);
     }
 
-    /// Unstake all the coins of the user and deposit to user account.
-    /// Only callable in "emergency state".
-    ///     * `user` - user account which has stake.
-    ///     * `pool_addr` - address of the pool.
-    public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
-        let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
-        // wallet should exist
-        coin::deposit(signer::address_of(user), stake_coins);
-    }
+    // todo: repair
+    // /// Unstake all the coins of the user and deposit to user account.
+    // /// Only callable in "emergency state".
+    // ///     * `user` - user account which has stake.
+    // ///     * `pool_addr` - address of the pool.
+    // public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
+    //     let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
+    //     // wallet should exist
+    //     coin::deposit(signer::address_of(user), stake_coins);
+    // }
 
     /// Withdraw and deposit rewards to treasury.
     ///     * `treasury` - treasury account.
