@@ -18,10 +18,6 @@ module harvest::stake_nft_boost_tests {
 
     const START_TIME: u64 = 682981200;
 
-    const MIN_NFT_BOOST_PRECENT: u64 = 1;
-
-    const MAX_NFT_BOOST_PERCENT: u64 = 100;
-
     // todo: add test which checks calculations with different boost percents
 
     public fun initialize_test(): (signer, signer) {
@@ -56,11 +52,6 @@ module harvest::stake_nft_boost_tests {
     }
 
     public fun create_token(collection_owner: &signer, collection_name: String, name: String): Token {
-        let default_keys = vector<String>[];
-        let default_vals = vector<vector<u8>>[];
-        let default_types = vector<String>[];
-        let mutate_setting = vector<bool>[ false, false, false, false, false, false ];
-
         token::create_token_script(
             collection_owner,
             collection_name,
@@ -72,10 +63,10 @@ module harvest::stake_nft_boost_tests {
             @collection_owner,
             100,
             0,
-            mutate_setting,
-            default_keys,
-            default_vals,
-            default_types,
+            vector<bool>[ false, false, false, false, false, false ],
+            vector<String>[],
+            vector<vector<u8>>[],
+            vector<String>[],
         );
         let token_id = token::create_token_id_raw(@collection_owner, collection_name, name, 0);
 
@@ -89,7 +80,7 @@ module harvest::stake_nft_boost_tests {
         let alice_acc = new_account(@alice);
 
         let collection_name = string::utf8(b"Test Collection");
-        let _ = create_collecton(@collection_owner, collection_name);
+        create_collecton(@collection_owner, collection_name);
 
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -122,7 +113,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    public fun test_boost() {
+    public fun test_boost_and_claim() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
@@ -169,6 +160,8 @@ module harvest::stake_nft_boost_tests {
         let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(total_boosted == 0, 1);
         assert!(user_boosted == 0, 1);
+
+        // todo: add more users and calculations
     }
 
     #[test]
@@ -179,7 +172,6 @@ module harvest::stake_nft_boost_tests {
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
         let nft = create_token(&collection_owner, collection_name,string::utf8(b"Token"));
-
 
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -202,6 +194,8 @@ module harvest::stake_nft_boost_tests {
         // check values
         let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(user_boosted == 25000000, 1);
+
+        // todo: add more boosts \ claims?
     }
 
     #[test]
@@ -234,6 +228,8 @@ module harvest::stake_nft_boost_tests {
         // check values
         let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
         assert!(total_boosted == 25000000, 1);
+
+        // todo: add claim?
     }
 
     #[test]
@@ -246,6 +242,15 @@ module harvest::stake_nft_boost_tests {
         let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
 
         stake::boost<StakeCoin, RewardCoin>(&harvest, @harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_claim_fails_if_pool_does_not_exist() {
+        let (harvest, _) = initialize_test();
+
+        let nft = stake::claim<StakeCoin, RewardCoin>(&harvest, @harvest);
+        token::deposit_token(&harvest, nft);
     }
 
     #[test]
@@ -284,6 +289,23 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    public fun test_claim_fails_if_stake_does_not_exist() {
+        let (harvest, _) = initialize_test();
+
+        let collection_name = string::utf8(b"Test Collection");
+        create_collecton(@collection_owner, collection_name);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let nft = stake::claim<StakeCoin, RewardCoin>(&harvest, @harvest);
+        token::deposit_token(&harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
     public fun test_get_user_boosted_fails_if_stake_not_exists() {
         let (harvest, _) = initialize_test();
 
@@ -300,7 +322,7 @@ module harvest::stake_nft_boost_tests {
     public fun test_create_boost_config_fails_if_colleciont_does_not_exist_1() {
         let (harvest, _) = initialize_test();
 
-        let _ = create_collecton(@collection_owner, string::utf8(b"Test Collection"));
+        create_collecton(@collection_owner, string::utf8(b"Test Collection"));
 
         let boost_config = stake::create_boost_config(
             @collection_owner,
@@ -329,7 +351,7 @@ module harvest::stake_nft_boost_tests {
         let (harvest, _) = initialize_test();
 
         let collection_name = string::utf8(b"Test Collection");
-        let _ = create_collecton(@collection_owner, collection_name);
+        create_collecton(@collection_owner, collection_name);
 
         let boost_config = stake::create_boost_config(
             @collection_owner,
@@ -345,7 +367,7 @@ module harvest::stake_nft_boost_tests {
         let (harvest, _) = initialize_test();
 
         let collection_name = string::utf8(b"Test Collection");
-        let _ = create_collecton(@collection_owner, collection_name);
+        create_collecton(@collection_owner, collection_name);
 
         let boost_config = stake::create_boost_config(
             @collection_owner,
@@ -364,7 +386,6 @@ module harvest::stake_nft_boost_tests {
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
         let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
-
 
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -418,12 +439,11 @@ module harvest::stake_nft_boost_tests {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
-
         let collection_name_1 = string::utf8(b"Test Collection 1");
         let collection_name_2 = string::utf8(b"Test Collection 2");
         let collection_owner = create_collecton(@collection_owner, collection_name_1);
         create_collecton(@collection_owner, collection_name_2);
-        let nft = create_token(&collection_owner, collection_name_2, string::utf8(b"Token 2"));
+        let nft = create_token(&collection_owner, collection_name_2, string::utf8(b"Token"));
 
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -450,11 +470,10 @@ module harvest::stake_nft_boost_tests {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
-
-        let collection_name = string::utf8(b"Test Collection 1");
+        let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
         create_collecton(@bob, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token 1"));
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
 
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -473,5 +492,90 @@ module harvest::stake_nft_boost_tests {
 
         // boost stake with nft
         stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    public fun test_claim_fails_when_executed_with_non_boost_pool() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // claim nft
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    public fun test_claim_fails_if_executed_before_boost() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+
+        let collection_name = string::utf8(b"Test Collection");
+        create_collecton(@collection_owner, collection_name);
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // claim nft
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    public fun test_claim_fails_when_executed_twice() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        // claim nft twice
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
     }
 }

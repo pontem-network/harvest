@@ -81,6 +81,8 @@ module harvest::stake {
 
     const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
 
+    const ERR_NOTHING_TO_CLAIM: u64 = 121;
+
     //
     // Constants
     //
@@ -468,23 +470,25 @@ module harvest::stake {
         pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
     }
 
+    /// Claims nft staked by user.
+    ///     * `user` - stake owner account.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns staked nft: `Token`.
     public fun claim<S, R>(user: &signer, pool_addr: address): Token acquires StakePool {
-        // todo: test
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+        // todo: test
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
-        // todo: test
         let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         // recalculate pool
         update_accum_reward(pool);
 
-        // todo: create error, test
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
-        assert!(option::is_some(&user_stake.nft), 1);
+        assert!(option::is_some(&user_stake.nft), ERR_NOTHING_TO_CLAIM);
 
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
@@ -603,9 +607,8 @@ module harvest::stake {
         coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
     }
 
-    // todo: do we have all according tests?
     /// Checks current total boosted amount in pool.
-    /// * `pool_addr` - address under which pool are stored.
+    ///     * `pool_addr` - address under which pool are stored.
     /// Returns total pool boosted amount.
     public fun get_pool_total_boosted<S, R>(pool_addr: address): u64 acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
@@ -627,10 +630,9 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
-    // todo: do we have all according tests?
     /// Checks current user boosted amount in specific pool.
-    /// * `pool_addr` - address under which pool are stored.
-    /// * `user_addr` - stake owner address.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
     /// Returns user boosted amount.
     public fun get_user_boosted<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
