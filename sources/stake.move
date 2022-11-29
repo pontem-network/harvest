@@ -74,6 +74,13 @@ module harvest::stake {
     /// When boost percent is not in required range.
     const ERR_INVALID_BOOST_PERCENT: u64 = 117;
 
+    // todo: descr
+    const ERR_NON_BOOST_POOL: u64 = 118;
+
+    const ERR_ALREADY_BOOSTED: u64 = 119;
+
+    const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
+
     //
     // Constants
     //
@@ -411,34 +418,37 @@ module harvest::stake {
         coin::extract(&mut pool.reward_coins, earned)
     }
 
-    // todo: add comments
+    /// Boosts user stake with nft.
+    ///     * `user` - stake owner account.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `nft` - token for stake boost.
     public fun boost<S, R>(user: &signer, pool_addr: address, nft: Token) acquires StakePool {
-        // todo: test
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
-
         // todo: test
+        assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
+        assert!(option::is_some(&pool.nft_boost_config), ERR_NON_BOOST_POOL);
+
         let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         let token_id = token::get_token_id(&nft);
-        let (collection_owner_1, collection_name_1, _, _) = token::get_token_id_fields(&token_id);
+        let (token_collection_owner, token_collection_name, _, _) = token::get_token_id_fields(&token_id);
 
-        // todo: create according errors and tests
-        // check collection id. upd: do we need it?
-        assert!(token::check_collection_exists(collection_owner_1, collection_name_1), 1);
+        // todo: is it possible?
+        // // todo: create according errors and tests
+        // // check collection id. upd: do we need it?
+        // assert!(token::check_collection_exists(token_collection_owner, token_collection_name), 1);
 
         let params = option::borrow(&pool.nft_boost_config);
         let boost_percent = params.boost_percent;
-        let collection_owner_2 = params.collection_owner;
-        let collection_name_2 = params.collection_name;
+        let collection_owner = params.collection_owner;
+        let collection_name = params.collection_name;
 
         // check nft is from correct collection
-        // todo: create according errors and tests
-        assert!(collection_owner_1 == collection_owner_2, 1);
-        assert!(collection_name_1 == collection_name_2, 1);
+        assert!(token_collection_owner == collection_owner, ERR_WRONG_TOKEN_COLLECTION);
+        assert!(token_collection_name == collection_name, ERR_WRONG_TOKEN_COLLECTION);
 
         // recalculate pool
         update_accum_reward(pool);
@@ -448,9 +458,8 @@ module harvest::stake {
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
 
-        // check if not staked before
-        // todo: add `already boosted error` test it
-        assert!(option::is_none(&user_stake.nft), 1);
+        // check if stake boosted before
+        assert!(option::is_none(&user_stake.nft), ERR_ALREADY_BOOSTED);
 
         option::fill(&mut user_stake.nft, nft);
 
