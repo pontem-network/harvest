@@ -68,6 +68,12 @@ module harvest::stake {
     /// When not treasury withdrawing.
     const ERR_NOT_TREASURY: u64 = 115;
 
+    /// When NFT collection does not exist.
+    const ERR_NO_COLLECTION: u64 = 116;
+
+    /// When boost percent is not in required range.
+    const ERR_INVALID_BOOST_PERCENT: u64 = 117;
+
     //
     // Constants
     //
@@ -83,7 +89,6 @@ module harvest::stake {
     const MIN_NFT_BOOST_PRECENT: u64 = 1;
 
     const MAX_NFT_BOOST_PERCENT: u64 = 100;
-
 
     //
     // Core data structures
@@ -108,7 +113,7 @@ module harvest::stake {
 
         /// This field can contain pool boost configuration.
         /// Pool creator can give ability for users to increase their stake profitability
-        /// by staking nft's from setted collection.
+        /// by staking nft's from specified collection.
         nft_boost_config: Option<NFTBoostConfig>,
 
         /// This field set to `true` only in case of emergency:
@@ -144,20 +149,18 @@ module harvest::stake {
     // Public functions
     //
 
-    // todo: comments
+    /// Creates nft boost config that can be used for pool registration.
+    ///     * `collection_owner` - address of nft collection creator.
+    ///     * `collection_name` - nft collection name.
+    ///     * `boost_percent` - percentage of increasing user stake "power" after nft stake.
     public fun create_boost_config(
         collection_owner: address,
         collection_name: String,
         boost_percent: u64
     ): NFTBoostConfig {
-        // todo: check when not all params passed boost_config should be `none`
-        // todo: add exeptions and tests
-        // todo: test with strange collection_name (very long, 0 len)
-
-        // check collection exists
-        assert!(token::check_collection_exists(collection_owner, collection_name), 1);
-        assert!(boost_percent >= MIN_NFT_BOOST_PRECENT, 1);
-        assert!(boost_percent <= MAX_NFT_BOOST_PERCENT, 1);
+        assert!(token::check_collection_exists(collection_owner, collection_name), ERR_NO_COLLECTION);
+        assert!(boost_percent >= MIN_NFT_BOOST_PRECENT, ERR_INVALID_BOOST_PERCENT);
+        assert!(boost_percent <= MAX_NFT_BOOST_PERCENT, ERR_INVALID_BOOST_PERCENT);
 
         NFTBoostConfig {
             boost_percent,
@@ -170,7 +173,7 @@ module harvest::stake {
     ///     * `owner` - pool creator account, under which the pool will be stored.
     ///     * `reward_coins` - R coins which are used in distribution as reward.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
-    // todo: add nft_boost_config description
+    ///     * `nft_boost_config` - optional boost configuration. Allows users to stake nft and get more rewards.
     public fun register_pool<S, R>(
         owner: &signer,
         reward_coins: Coin<R>,
@@ -292,6 +295,14 @@ module harvest::stake {
 
             user_stake.amount = user_stake.amount + amount;
 
+            if (option::is_some(&user_stake.nft)) {
+                let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
+
+                pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
+                user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
+                pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+            };
+
             // recalculate unobtainable reward after stake amount changed
             user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
@@ -341,6 +352,17 @@ module harvest::stake {
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
 
         user_stake.amount = user_stake.amount - amount;
+
+        if (option::is_some(&user_stake.nft)) {
+            let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
+
+            // todo: test boost decreace on unstake! user & total
+            // todo: check that boosted is 0 on full unstake
+            pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
+            user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
+            pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+        };
+        // todo: add nft withdraw on full unstake?
 
         // recalculate unobtainable reward after stake amount changed
         user_stake.unobtainable_reward = (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
@@ -794,6 +816,15 @@ module harvest::stake {
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
             coin::value<R>(&pool.reward_coins), pool.stake_scale)
+    }
+
+    #[test_only]
+    /// Access staking pool nft boost fields.
+    public fun get_boost_config<S, R>(pool_addr: address): (u64, address, String) acquires StakePool {
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        let fields = option::borrow(&pool.nft_boost_config);
+
+        (fields.boost_percent, fields.collection_owner, fields.collection_name)
     }
 
     #[test_only]
