@@ -4,6 +4,7 @@ module harvest::emergency_tests {
     use std::option;
 
     use aptos_framework::coin;
+    use aptos_framework::timestamp;
 
     use harvest::stake;
     use harvest::stake_config;
@@ -12,6 +13,8 @@ module harvest::emergency_tests {
 
     /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
     const ONE_COIN: u64 = 1000000;
+
+    const START_TIME: u64 = 682981200;
 
     #[test]
     fun test_initialize() {
@@ -89,6 +92,10 @@ module harvest::emergency_tests {
         let duration = 12345;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
         let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100);
@@ -113,22 +120,6 @@ module harvest::emergency_tests {
 
     #[test]
     #[expected_failure(abort_code = 109)]
-    fun test_cannot_add_rewards_with_global_emergency() {
-        let (harvest, emergency_admin) = initialize_test();
-
-        // register staking pool
-        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        stake_config::enable_global_emergency(&emergency_admin);
-
-        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = 109)]
     fun test_cannot_harvest_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -139,10 +130,30 @@ module harvest::emergency_tests {
         let duration = 15768000;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // wait for rewards
+        timestamp::update_global_time_for_test_secs(START_TIME + 100);
+
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
         let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 109)]
+    fun test_cannot_register_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        // register staking pool
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -188,21 +199,24 @@ module harvest::emergency_tests {
 
     #[test]
     #[expected_failure(abort_code = 109)]
-    fun test_cannot_register_with_global_emergency() {
+    fun test_cannot_add_rewards_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
-        stake_config::enable_global_emergency(&emergency_admin);
 
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
     }
 
     #[test]
     #[expected_failure(abort_code = 109)]
     fun test_cannot_harvest_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
-        stake_config::enable_global_emergency(&emergency_admin);
 
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
@@ -210,6 +224,15 @@ module harvest::emergency_tests {
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // wait for rewards
+        timestamp::update_global_time_for_test_secs(START_TIME + 100);
+
+        stake_config::enable_global_emergency(&emergency_admin);
 
         let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
@@ -219,14 +242,13 @@ module harvest::emergency_tests {
     #[expected_failure(abort_code = 109)]
     fun test_cannot_enable_local_emergency_if_global_is_enabled() {
         let (harvest, emergency_admin) = initialize_test();
-        stake_config::enable_global_emergency(&emergency_admin);
-
-        let _ = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        stake_config::enable_global_emergency(&emergency_admin);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
     }
@@ -236,7 +258,7 @@ module harvest::emergency_tests {
     fun test_cannot_enable_emergency_with_non_admin_account() {
         let (harvest, _) = initialize_test();
 
-        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+        let alice_acc = new_account(@alice);
 
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
@@ -261,6 +283,7 @@ module harvest::emergency_tests {
     }
 
     // todo: repair emergency unstake
+    // todo: check this test
     // #[test]
     // fun test_unstake_everything_in_case_of_emergency() {
     //     let (harvest, emergency_admin) = initialize_test();
@@ -287,6 +310,7 @@ module harvest::emergency_tests {
     // }
 
     // todo: repair emergency unstake
+    // todo: check this test
     // #[test]
     // #[expected_failure(abort_code = 110)]
     // fun test_cannot_unstake_in_non_emergency() {
@@ -343,6 +367,7 @@ module harvest::emergency_tests {
     }
 
     // todo: repair emergency unstake
+    // todo: check this test
     // #[test]
     // fun test_unstake_everything_in_case_of_global_emergency() {
     //     let (harvest, emergency_admin) = initialize_test();
@@ -431,8 +456,6 @@ module harvest::emergency_tests {
         assert!(stake::is_emergency<StakeCoin, RewardCoin>(@alice), 2);
         assert!(stake_config::is_global_emergency(), 3);
     }
-
-
 
     // Cases for ERR_NOT_INITIALIZED.
 
