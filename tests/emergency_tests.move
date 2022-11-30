@@ -414,54 +414,54 @@ module harvest::emergency_tests {
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
     }
 
-    // todo: repair emergency unstake
-    // todo: check this test
-    // #[test]
-    // fun test_unstake_everything_in_case_of_emergency() {
-    //     let (harvest, emergency_admin) = initialize_test();
-    //
-    //     let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-    //
-    //     // register staking pool
-    //     let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
-    //
-    //     let coins =
-    //         coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-    //     stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-    //     assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
-    //
-    //     stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
-    //
-    //     let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-    //     assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
-    //     coin::deposit(@alice, coins);
-    //
-    //     assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
-    // }
+    // todo: add nft case same test
+    #[test]
+    fun test_unstake_everything_in_case_of_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
 
-    // todo: repair emergency unstake
-    // todo: check this test
-    // #[test]
-    // #[expected_failure(abort_code = 110)]
-    // fun test_cannot_unstake_in_non_emergency() {
-    //     let (harvest, _) = initialize_test();
-    //
-    //     let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-    //
-    //     // register staking pool
-    //     let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
-    //
-    //     let coins =
-    //         coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-    //     stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-    //
-    //     let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-    //     coin::deposit(@alice, coins);
-    // }
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+
+        let (coins, nft) = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
+        assert!(option::is_none(&nft), 1);
+        option::destroy_none(nft);
+        coin::deposit(@alice, coins);
+
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 110)]
+    fun test_cannot_emergency_unstake_in_non_emergency() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let (coins, nft) = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        option::destroy_none(nft);
+        coin::deposit(@alice, coins);
+    }
 
     #[test]
     fun test_emergency_is_local_to_a_pool() {
@@ -498,33 +498,34 @@ module harvest::emergency_tests {
         stake_config::enable_global_emergency(&emergency_admin);
     }
 
-    // todo: repair emergency unstake
-    // todo: check this test
-    // #[test]
-    // fun test_unstake_everything_in_case_of_global_emergency() {
-    //     let (harvest, emergency_admin) = initialize_test();
-    //
-    //     let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-    //
-    //     // register staking pool
-    //     let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
-    //
-    //     let coins =
-    //         coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-    //     stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-    //     assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
-    //
-    //     stake_config::enable_global_emergency(&emergency_admin);
-    //
-    //     let coins = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-    //     assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
-    //     coin::deposit(@alice, coins);
-    //
-    //     let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
-    //     assert!(!exists, 3);
-    // }
+    // todo: add case with nft
+    #[test]
+    fun test_unstake_everything_in_case_of_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        // register staking pool
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        let (coins, nft) = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
+        assert!(option::is_none(&nft), 1);
+        option::destroy_none(nft);
+        coin::deposit(@alice, coins);
+
+        let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(!exists, 3);
+    }
 
     #[test]
     #[expected_failure(abort_code = 200)]

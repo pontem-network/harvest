@@ -6,6 +6,10 @@ module harvest::scripts {
     use aptos_framework::coin;
 
     use harvest::stake;
+    use aptos_token::token;
+
+    // todo: add boost entry + tests
+    // todo: add claim entry + tests
 
     // todo: update this function
     /// Register new staking pool with staking coin `S` and reward coin `R`.
@@ -67,16 +71,22 @@ module harvest::scripts {
         stake::enable_emergency<S, R>(admin, pool_addr);
     }
 
-    // todo: repair
-    // /// Unstake all the coins of the user and deposit to user account.
-    // /// Only callable in "emergency state".
-    // ///     * `user` - user account which has stake.
-    // ///     * `pool_addr` - address of the pool.
-    // public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
-    //     let stake_coins = stake::emergency_unstake<S, R>(user, pool_addr);
-    //     // wallet should exist
-    //     coin::deposit(signer::address_of(user), stake_coins);
-    // }
+    // todo: recheck this script
+    // todo: create test with nft
+    /// Unstake all the coins of the user and deposit to user account.
+    /// Only callable in "emergency state".
+    ///     * `user` - user account which has stake.
+    ///     * `pool_addr` - address of the pool.
+    public entry fun emergency_unstake<S, R>(user: &signer, pool_addr: address) {
+        let (stake_coins, nft) = stake::emergency_unstake<S, R>(user, pool_addr);
+        // wallet should exist
+        coin::deposit(signer::address_of(user), stake_coins);
+        if (option::is_some(&nft)) {
+            token::deposit_token(user, option::extract(&mut nft));
+        };
+
+        option::destroy_none(nft);
+    }
 
     /// Withdraw and deposit rewards to treasury.
     ///     * `treasury` - treasury account.

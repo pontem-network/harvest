@@ -437,11 +437,6 @@ module harvest::stake {
         let token_id = token::get_token_id(&nft);
         let (token_collection_owner, token_collection_name, _, _) = token::get_token_id_fields(&token_id);
 
-        // todo: is it possible?
-        // // todo: create according errors and tests
-        // // check collection id. upd: do we need it?
-        // assert!(token::check_collection_exists(token_collection_owner, token_collection_name), 1);
-
         let params = option::borrow(&pool.nft_boost_config);
         let boost_percent = params.boost_percent;
         let collection_owner = params.collection_owner;
@@ -491,7 +486,7 @@ module harvest::stake {
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
 
-        // update user stake and pool after stake boost
+        // update user stake and pool after nft claim
         pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
         user_stake.boosted_amount = 0;
 
@@ -514,25 +509,31 @@ module harvest::stake {
         pool.emergency_locked = true;
     }
 
-    // todo: repair
-    // /// Withdraws all the user stake from the pool. Only accessible in the "emergency state".
-    // ///     * `user` - user who has stake.
-    // ///     * `pool_addr` - address under which pool are stored.
-    // /// Returns staked coins `S`: `Coin<S>`.
-    // public fun emergency_unstake<S, R>(user: &signer, pool_addr: address): Coin<S> acquires StakePool {
-    //     assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-    //
-    //     let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-    //     assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
-    //
-    //     let user_addr = signer::address_of(user);
-    //     assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-    //
-    //     let user_stake = table::remove(&mut pool.stakes, user_addr);
-    //     let UserStake { amount, unobtainable_reward: _, earned_reward: _, unlock_time: _ } = user_stake;
-    //
-    //     coin::extract(&mut pool.stake_coins, amount)
-    // }
+    /// Withdraws all the user stake and nft from the pool. Only accessible in the "emergency state".
+    ///     * `user` - user who has stake.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns staked coins `S` and optionaly nft: `Coin<S>`, `Option<Token>`.
+    public fun emergency_unstake<S, R>(user: &signer, pool_addr: address): (Coin<S>, Option<Token>) acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+        assert!(is_emergency_inner(pool), ERR_NO_EMERGENCY);
+
+        let user_addr = signer::address_of(user);
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let user_stake = table::remove(&mut pool.stakes, user_addr);
+        let UserStake {
+            amount,
+            unobtainable_reward: _,
+            earned_reward: _,
+            unlock_time: _,
+            nft,
+            boosted_amount: _
+        } = user_stake;
+
+        (coin::extract(&mut pool.stake_coins, amount), nft)
+    }
 
     /// If 3 months passed we can withdraw any remaining rewards using treasury account.
     /// In case of emergency we can withdraw to treasury immediately.

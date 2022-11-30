@@ -40,6 +40,7 @@ module harvest::scripts_tests {
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
     }
 
+    // todo: add same test with nft or add nft in this
     // todo: repair emergency unstake
     // #[test]
     // fun test_scripts_end_to_end() {
