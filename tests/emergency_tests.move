@@ -2,12 +2,16 @@
 module harvest::emergency_tests {
 
     use std::option;
+    use std::string;
 
     use aptos_framework::coin;
     use aptos_framework::timestamp;
 
+    use aptos_token::token;
+
     use harvest::stake;
     use harvest::stake_config;
+    use harvest::stake_nft_boost_tests::{create_collecton, create_token};
     use harvest::stake_test_helpers::{new_account_with_stake_coins, mint_default_coin, RewardCoin, StakeCoin, new_account};
     use harvest::stake_tests::initialize_test;
 
@@ -59,6 +63,19 @@ module harvest::emergency_tests {
         );
 
         stake_config::set_treasury_admin_address(&alice_acc, @treasury);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 109)]
+    fun test_cannot_register_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        // register staking pool
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -145,15 +162,66 @@ module harvest::emergency_tests {
 
     #[test]
     #[expected_failure(abort_code = 109)]
-    fun test_cannot_register_with_global_emergency() {
+    fun test_cannot_boost_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
 
-        stake_config::enable_global_emergency(&emergency_admin);
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
 
-        // register staking pool
-        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 109)]
+    fun test_cannot_claim_with_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+
+        // claim nft
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
     }
 
     #[test]
@@ -236,6 +304,70 @@ module harvest::emergency_tests {
 
         let reward_coins = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         coin::deposit(@alice, reward_coins);
+    }
+
+        #[test]
+    #[expected_failure(abort_code = 109)]
+    fun test_cannot_boost_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 109)]
+    fun test_cannot_claim_with_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        // claim nft
+        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
     }
 
     #[test]

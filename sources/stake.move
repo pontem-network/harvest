@@ -428,7 +428,6 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        // todo: test
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
         assert!(option::is_some(&pool.nft_boost_config), ERR_NON_BOOST_POOL);
 
@@ -478,7 +477,6 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
-        // todo: test
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
         let user_addr = signer::address_of(user);
