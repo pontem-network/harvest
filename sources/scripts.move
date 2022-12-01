@@ -10,9 +10,6 @@ module harvest::scripts {
     use std::string::String;
     use aptos_token::token::TokenId;
 
-    // todo: add boost entry + tests
-    // todo: add claim entry + tests
-
     /// Register new staking pool with staking coin `S` and reward coin `R` without nft boost.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `amount` - reward amount in R coins.
@@ -121,6 +118,27 @@ module harvest::scripts {
     public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, amount: u64) {
         let reward_coins = coin::withdraw<R>(depositor, amount);
         stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins);
+    }
+
+    // todo: test it
+    /// Boosts user stake with nft.
+    ///     * `user` - stake owner account.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `token_id` - idetifier of Token for boost.
+    ///     * `token_amount` - amount of Token for boost.
+    public entry fun boost<S, R>(user: &signer, pool_addr: address, token_id: TokenId, token_amount: u64) {
+        // todo: check token_amount?
+        let nft = token::withdraw_token(user, token_id, token_amount);
+        stake::boost<S, R>(user, pool_addr, nft);
+    }
+
+    // todo: test it
+    /// Removes nft boost.
+    ///     * `user` - stake owner account.
+    ///     * `pool_addr` - address under which pool are stored.
+    public entry fun remove_boost<S, R>(user: &signer, pool_addr: address) {
+        let nft = stake::remove_boost<S, R>(user, pool_addr);
+        token::deposit_token(user, nft);
     }
 
     // todo: add script test?
