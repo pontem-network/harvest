@@ -74,13 +74,16 @@ module harvest::stake {
     /// When boost percent is not in required range.
     const ERR_INVALID_BOOST_PERCENT: u64 = 117;
 
-    // todo: descr
+    /// When boosting stake in pool without specified nft collection.
     const ERR_NON_BOOST_POOL: u64 = 118;
 
+    /// When boosting same stake again.
     const ERR_ALREADY_BOOSTED: u64 = 119;
 
+    /// When token collection not match pool.
     const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
 
+    /// When claiming from non boosted stake.
     const ERR_NOTHING_TO_CLAIM: u64 = 121;
 
     //
@@ -93,10 +96,11 @@ module harvest::stake {
     /// When treasury can withdraw rewards (~3 months).
     const WITHDRAW_REWARD_PERIOD_IN_SECONDS: u64 = 7257600;
 
-    // todo: comment it
     // todo: let's discuss values
+    /// Minimum percent of stake increase on boost.
     const MIN_NFT_BOOST_PRECENT: u64 = 1;
 
+    /// Maximum percent of stake increase on boost.
     const MAX_NFT_BOOST_PERCENT: u64 = 100;
 
     //
@@ -149,7 +153,7 @@ module harvest::stake {
         unobtainable_reward: u128,
         earned_reward: u64,
         unlock_time: u64,
-        // todo: comments?
+        // optionaly contains token that boosts stake
         nft: Option<Token>,
         boosted_amount: u64,
     }
@@ -371,7 +375,6 @@ module harvest::stake {
             user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
             pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
         };
-        // todo: add nft withdraw on full unstake?
 
         // recalculate unobtainable reward after stake amount changed
         user_stake.unobtainable_reward = (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
