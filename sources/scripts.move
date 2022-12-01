@@ -8,6 +8,7 @@ module harvest::scripts {
     use harvest::stake;
     use aptos_token::token;
     use std::string::String;
+    use aptos_token::token::TokenId;
 
     // todo: add boost entry + tests
     // todo: add claim entry + tests
@@ -42,7 +43,6 @@ module harvest::scripts {
         stake::register_pool<S, R>(pool_owner, rewards, duration, option::some(boost_config));
     }
 
-    // todo: add case with nft
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     ///     * `user` - stake owner.
     ///     * `pool_addr` - address of the pool to stake.
@@ -50,6 +50,29 @@ module harvest::scripts {
     public entry fun stake<S, R>(user: &signer, pool_addr: address, amount: u64) {
         let coins = coin::withdraw<S>(user, amount);
         stake::stake<S, R>(user, pool_addr, coins);
+    }
+
+    // todo: test it
+    /// Stake an `stake_amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
+    /// Adding nft Token with `token_id` for stake boost.
+    ///     * `user` - stake owner.
+    ///     * `pool_addr` - address of the pool to stake.
+    ///     * `stake_amount` - amount of `S` coins to stake.
+    ///     * `token_id` - idetifier of Token for boost.
+    ///     * `token_amount` - amount of Token for boost.
+    public entry fun stake_with_boost<S, R>(
+        user: &signer,
+        pool_addr: address,
+        stake_amount: u64,
+        token_id: TokenId,
+        token_amount: u64
+    ) {
+        let coins = coin::withdraw<S>(user, stake_amount);
+        stake::stake<S, R>(user, pool_addr, coins);
+
+        // todo: check token_amount?
+        let nft = token::withdraw_token(user, token_id, token_amount);
+        stake::boost<S, R>(user, pool_addr, nft);
     }
 
     // todo: add case with nft
