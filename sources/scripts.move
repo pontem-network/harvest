@@ -60,7 +60,7 @@ module harvest::scripts {
     ///     * `stake_amount` - amount of `S` coins to stake.
     ///     * `token_id` - idetifier of Token for boost.
     ///     * `token_amount` - amount of Token for boost.
-    public entry fun stake_with_boost<S, R>(
+    public entry fun stake_and_boost<S, R>(
         user: &signer,
         pool_addr: address,
         stake_amount: u64,
@@ -75,7 +75,6 @@ module harvest::scripts {
         stake::boost<S, R>(user, pool_addr, nft);
     }
 
-    // todo: add case with nft
     /// Unstake an `amount` of `Coin<S>` from a pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     ///     * `user` - stake owner.
     ///     * `pool_addr` - address of the pool to unstake.
@@ -84,6 +83,21 @@ module harvest::scripts {
         let coins = stake::unstake<S, R>(user, pool_addr, amount);
         // wallet should exist
         coin::deposit(signer::address_of(user), coins);
+    }
+
+    // todo: test it
+    /// Unstake an `amount` of `Coin<S>` from a pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
+    /// Also remove boost and return it back to owner.
+    ///     * `user` - stake owner.
+    ///     * `pool_addr` - address of the pool to unstake.
+    ///     * `amount` - amount of `S` coins to unstake.
+    public entry fun unstake_and_remove_boost<S, R>(user: &signer, pool_addr: address, amount: u64) {
+        let coins = stake::unstake<S, R>(user, pool_addr, amount);
+        // wallet should exist
+        coin::deposit(signer::address_of(user), coins);
+
+        let nft = stake::remove_boost<S, R>(user, pool_addr);
+        token::deposit_token(user, nft);
     }
 
     /// Collect `user` rewards on the pool at the `pool_addr`.
@@ -109,7 +123,7 @@ module harvest::scripts {
         stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins);
     }
 
-    // todo add script test?
+    // todo: add script test?
     /// Enable "emergency state" for a pool on a `pool_addr` address. This state cannot be disabled
     /// and removes all operations except for `emergency_unstake()`, which unstakes all the coins for a user.
     ///     * `admin` - current emergency admin account.
