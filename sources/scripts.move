@@ -7,12 +7,12 @@ module harvest::scripts {
 
     use harvest::stake;
     use aptos_token::token;
+    use std::string::String;
 
     // todo: add boost entry + tests
     // todo: add claim entry + tests
 
-    // todo: update this function
-    /// Register new staking pool with staking coin `S` and reward coin `R`.
+    /// Register new staking pool with staking coin `S` and reward coin `R` without nft boost.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
@@ -21,6 +21,28 @@ module harvest::scripts {
         stake::register_pool<S, R>(pool_owner, rewards, duration, option::none());
     }
 
+    // todo: test it
+    /// Register new staking pool with staking coin `S` and reward coin `R` with nft boost.
+    ///     * `pool_owner` - account which will be used as a pool storage.
+    ///     * `amount` - reward amount in R coins.
+    ///     * `duration` - pool life duration, can be increased by depositing more rewards.
+    ///     * `collection_owner` - address of nft collection creator.
+    ///     * `collection_name` - nft collection name.
+    ///     * `boost_percent` - percentage of increasing user stake "power" after nft stake.
+    public entry fun register_pool_with_collection<S, R>(
+        pool_owner: &signer,
+        amount: u64,
+        duration: u64,
+        collection_owner: address,
+        collection_name: String,
+        boost_percent: u64
+    ) {
+        let rewards = coin::withdraw<R>(pool_owner, amount);
+        let boost_config = stake::create_boost_config(collection_owner, collection_name, boost_percent);
+        stake::register_pool<S, R>(pool_owner, rewards, duration, option::some(boost_config));
+    }
+
+    // todo: add case with nft
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     ///     * `user` - stake owner.
     ///     * `pool_addr` - address of the pool to stake.
@@ -30,6 +52,7 @@ module harvest::scripts {
         stake::stake<S, R>(user, pool_addr, coins);
     }
 
+    // todo: add case with nft
     /// Unstake an `amount` of `Coin<S>` from a pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     ///     * `user` - stake owner.
     ///     * `pool_addr` - address of the pool to unstake.
@@ -63,6 +86,7 @@ module harvest::scripts {
         stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins);
     }
 
+    // todo add script test?
     /// Enable "emergency state" for a pool on a `pool_addr` address. This state cannot be disabled
     /// and removes all operations except for `emergency_unstake()`, which unstakes all the coins for a user.
     ///     * `admin` - current emergency admin account.
@@ -73,6 +97,7 @@ module harvest::scripts {
 
     // todo: recheck this script
     // todo: create test with nft
+    // todo add script test?
     /// Unstake all the coins of the user and deposit to user account.
     /// Only callable in "emergency state".
     ///     * `user` - user account which has stake.
