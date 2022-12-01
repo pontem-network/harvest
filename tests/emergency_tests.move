@@ -414,7 +414,6 @@ module harvest::emergency_tests {
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
     }
 
-    // todo: add nft case same test
     #[test]
     fun test_unstake_everything_in_case_of_emergency() {
         let (harvest, emergency_admin) = initialize_test();
@@ -437,6 +436,44 @@ module harvest::emergency_tests {
         assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         assert!(option::is_none(&nft), 1);
         option::destroy_none(nft);
+        coin::deposit(@alice, coins);
+
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
+    }
+
+    #[test]
+    fun test_unstake_everything_and_nft_in_case_of_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+
+        let (coins, nft) = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(option::is_some(&nft), 1);
+        token::deposit_token(&alice_acc, option::extract(&mut nft));
+        option::destroy_none(nft);
+        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
         coin::deposit(@alice, coins);
 
         assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
@@ -498,7 +535,6 @@ module harvest::emergency_tests {
         stake_config::enable_global_emergency(&emergency_admin);
     }
 
-    // todo: add case with nft
     #[test]
     fun test_unstake_everything_in_case_of_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
@@ -525,6 +561,44 @@ module harvest::emergency_tests {
 
         let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(!exists, 3);
+    }
+
+    #[test]
+    fun test_unstake_everything_and_nft_in_case_of_global_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 1);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        stake_config::enable_global_emergency(&emergency_admin);
+
+        let (coins, nft) = stake::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(option::is_some(&nft), 1);
+        token::deposit_token(&alice_acc, option::extract(&mut nft));
+        option::destroy_none(nft);
+        assert!(coin::value(&coins) == 1 * ONE_COIN, 2);
+        coin::deposit(@alice, coins);
+
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 3);
     }
 
     #[test]

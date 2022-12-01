@@ -4,14 +4,13 @@ module harvest::stake_nft_boost_tests {
     use std::string::{Self, String};
 
     use aptos_framework::coin;
-    use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
     use aptos_token::token::{Self, Token};
 
     use harvest::stake;
-    use harvest::stake_config;
-    use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, StakeCoin, RewardCoin, new_account_with_stake_coins, mint_default_coin};
+    use harvest::stake_test_helpers::{new_account, StakeCoin, RewardCoin, new_account_with_stake_coins, mint_default_coin};
+    use harvest::stake_tests::initialize_test;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -19,22 +18,6 @@ module harvest::stake_nft_boost_tests {
     const START_TIME: u64 = 682981200;
 
     // todo: add test which checks calculations with different boost percents
-
-    public fun initialize_test(): (signer, signer) {
-        genesis::setup();
-
-        timestamp::update_global_time_for_test_secs(START_TIME);
-
-        let harvest = new_account(@harvest);
-
-        // create coins for pool to be valid
-        initialize_reward_coin(&harvest, 6);
-        initialize_stake_coin(&harvest, 6);
-
-        let emergency_admin = new_account(@stake_emergency_admin);
-        stake_config::initialize(&emergency_admin, @treasury);
-        (harvest, emergency_admin)
-    }
 
     public fun create_collecton(owner_addr: address, collection_name: String): signer {
         let collection_owner = new_account(owner_addr);
