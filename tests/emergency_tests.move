@@ -219,8 +219,8 @@ module harvest::emergency_tests {
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
-        // claim nft
-        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        // remove boost
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         token::deposit_token(&alice_acc, nft);
     }
 
@@ -365,8 +365,8 @@ module harvest::emergency_tests {
 
         stake_config::enable_global_emergency(&emergency_admin);
 
-        // claim nft
-        let nft = stake::claim<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        // remove boost
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         token::deposit_token(&alice_acc, nft);
     }
 

@@ -465,11 +465,11 @@ module harvest::stake {
         pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
     }
 
-    /// Claims nft staked by user.
+    /// Removes nft boost.
     ///     * `user` - stake owner account.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns staked nft: `Token`.
-    public fun claim<S, R>(user: &signer, pool_addr: address): Token acquires StakePool {
+    public fun remove_boost<S, R>(user: &signer, pool_addr: address): Token acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
