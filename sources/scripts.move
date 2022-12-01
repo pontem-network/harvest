@@ -19,7 +19,6 @@ module harvest::scripts {
         stake::register_pool<S, R>(pool_owner, rewards, duration, option::none());
     }
 
-    // todo: test it
     /// Register new staking pool with staking coin `S` and reward coin `R` with nft boost.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `amount` - reward amount in R coins.
