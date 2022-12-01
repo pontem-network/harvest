@@ -1596,7 +1596,6 @@ module harvest::stake_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
 
@@ -1613,7 +1612,6 @@ module harvest::stake_tests {
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&harvest, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
     }
 
@@ -1630,6 +1628,7 @@ module harvest::stake_tests {
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1647,6 +1646,7 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1665,6 +1665,7 @@ module harvest::stake_tests {
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1683,7 +1684,6 @@ module harvest::stake_tests {
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257599);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
 }
