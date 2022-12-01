@@ -369,8 +369,6 @@ module harvest::stake {
         if (option::is_some(&user_stake.nft)) {
             let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
 
-            // todo: test boost decreace on unstake! user & total
-            // todo: check that boosted is 0 on full unstake
             pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
             user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
             pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
