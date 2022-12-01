@@ -119,7 +119,6 @@ module harvest::scripts {
         stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins);
     }
 
-    // todo: test it
     /// Boosts user stake with nft.
     ///     * `user` - stake owner account.
     ///     * `pool_addr` - address under which pool are stored.
@@ -131,7 +130,6 @@ module harvest::scripts {
         stake::boost<S, R>(user, pool_addr, nft);
     }
 
-    // todo: test it
     /// Removes nft boost.
     ///     * `user` - stake owner account.
     ///     * `pool_addr` - address under which pool are stored.
