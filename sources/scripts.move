@@ -136,7 +136,6 @@ module harvest::scripts {
         token::deposit_token(user, nft);
     }
 
-    // todo: add script test?
     /// Enable "emergency state" for a pool on a `pool_addr` address. This state cannot be disabled
     /// and removes all operations except for `emergency_unstake()`, which unstakes all the coins for a user.
     ///     * `admin` - current emergency admin account.

@@ -340,6 +340,22 @@ module harvest::scripts_tests {
     }
 
     #[test]
+    fun test_script_enable_emergency() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+
+        assert!(stake::is_emergency<StakeCoin, RewardCoin>(@harvest), 1);
+    }
+
+    #[test]
     fun test_script_emergency_unstake() {
         let (harvest, emergency_admin) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
