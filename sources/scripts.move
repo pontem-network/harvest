@@ -145,10 +145,7 @@ module harvest::scripts {
         stake::enable_emergency<S, R>(admin, pool_addr);
     }
 
-    // todo: recheck this script
-    // todo: create test with nft
-    // todo add script test?
-    /// Unstake all the coins of the user and deposit to user account.
+    /// Unstake coins and boost of the user and deposit to user account.
     /// Only callable in "emergency state".
     ///     * `user` - user account which has stake.
     ///     * `pool_addr` - address of the pool.
@@ -156,6 +153,7 @@ module harvest::scripts {
         let (stake_coins, nft) = stake::emergency_unstake<S, R>(user, pool_addr);
         // wallet should exist
         coin::deposit(signer::address_of(user), stake_coins);
+
         if (option::is_some(&nft)) {
             token::deposit_token(user, option::extract(&mut nft));
         };

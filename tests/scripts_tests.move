@@ -340,6 +340,59 @@ module harvest::scripts_tests {
     }
 
     #[test]
+    fun test_script_emergency_unstake() {
+        let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+
+        assert!(coin::balance<StakeCoin>(@alice) == 10 * ONE_COIN, 1);
+    }
+
+    #[test]
+    fun test_script_emergency_unstake_with_boost() {
+        let (harvest, emergency_admin) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_id = token::get_token_id(&nft);
+        token::deposit_token(&alice_acc, nft);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards and boost config
+        scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
+            &harvest,
+            15768000000000,
+            15768000,
+            @collection_owner,
+            collection_name,
+            5,
+        );
+
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
+        scripts::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, token_id, 1);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+
+        assert!(coin::balance<StakeCoin>(@alice) == 10 * ONE_COIN, 1);
+        assert!(token::balance_of(@alice, token_id) == 1, 1);
+    }
+
+    #[test]
     fun test_script_withdraw_reward_to_treasury() {
         let (harvest, _) = initialize_test();
         let treasury = new_account(@treasury);
