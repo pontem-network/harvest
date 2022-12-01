@@ -48,7 +48,6 @@ module harvest::scripts {
         stake::stake<S, R>(user, pool_addr, coins);
     }
 
-    // todo: test it
     /// Stake an `stake_amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     /// Adding nft Token with `token_id` for stake boost.
     ///     * `user` - stake owner.
@@ -81,7 +80,6 @@ module harvest::scripts {
         coin::deposit(signer::address_of(user), coins);
     }
 
-    // todo: test it
     /// Unstake an `amount` of `Coin<S>` from a pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
     /// Also remove boost and return it back to owner.
     ///     * `user` - stake owner.

@@ -147,6 +147,105 @@ module harvest::scripts_tests {
     }
 
     #[test]
+    fun test_script_stake_and_boost() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_id = token::get_token_id(&nft);
+        token::deposit_token(&alice_acc, nft);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards and boost config
+        scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
+            &harvest,
+            15768000000000,
+            15768000,
+            @collection_owner,
+            collection_name,
+            5,
+        );
+
+        scripts::stake_and_boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            10 * ONE_COIN,
+            token_id,
+            1
+        );
+
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(total_staked == 10 * ONE_COIN, 1);
+        assert!(user_staked == 10 * ONE_COIN, 1);
+        assert!(total_boosted == 500000, 1);
+        assert!(user_boosted == 500000, 1);
+        assert!(coin::balance<StakeCoin>(@alice) == 0, 1);
+        assert!(token::balance_of(@alice, token_id) == 0, 1);
+    }
+
+    #[test]
+    fun test_script_unstake_and_remove_boost() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_id = token::get_token_id(&nft);
+        token::deposit_token(&alice_acc, nft);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards and boost config
+        scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
+            &harvest,
+            15768000000000,
+            15768000,
+            @collection_owner,
+            collection_name,
+            5,
+        );
+
+        scripts::stake_and_boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            10 * ONE_COIN,
+            token_id,
+            1
+        );
+
+        // wait one week to unstake
+        timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
+
+        scripts::unstake_and_remove_boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            5 * ONE_COIN,
+        );
+
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(total_staked == 5 * ONE_COIN, 1);
+        assert!(user_staked == 5 * ONE_COIN, 1);
+        assert!(total_boosted == 0, 1);
+        assert!(user_boosted == 0, 1);
+        assert!(coin::balance<StakeCoin>(@alice) == 5 * ONE_COIN, 1);
+        assert!(token::balance_of(@alice, token_id) == 1, 1);
+    }
+
+    #[test]
     fun test_script_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 100 * ONE_COIN);
