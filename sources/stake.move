@@ -790,12 +790,16 @@ module harvest::stake {
         math64::min(pool.end_timestamp, timestamp::now_seconds())
     }
 
-    // todo: comment
+    /// Get total staked amount + boosted amount in the pool.
+    ///     * `pool` - the pool itself.
+    /// Returns amount.
     fun pool_total_staked_with_boosted<S, R>(pool: &StakePool<S, R>): u64 {
         coin::value(&pool.stake_coins) + pool.total_boosted
     }
 
-    // todo: comment
+    /// Get total staked amount + boosted amount by the user.
+    ///     * `user_stake` - the user stake.
+    /// Returns amount.
     fun user_stake_amount_with_boosted(user_stake: &UserStake): u64 {
         user_stake.amount + user_stake.boosted_amount
     }
