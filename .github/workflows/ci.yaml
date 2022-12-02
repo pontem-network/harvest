@@ -23,7 +23,7 @@ jobs:
         with:
           version: aptos-cli-v1.0.0
           token: ${{ secrets.GITHUB_TOKEN }}
-          prover: true
+          prover: false
 
       - name: Build .
         run: aptos move compile
