@@ -23,7 +23,6 @@ module lp_staking_admin::lp_staking_tests {
 
     struct USDT {}
 
-    // todo: do we need NFT boost in this e2e test?
     #[test]
     fun test_liquidswap_staking_e2e() {
         genesis::setup();
