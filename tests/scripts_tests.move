@@ -11,6 +11,7 @@ module harvest::scripts_tests {
     use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account_with_stake_coins, mint_default_coin, new_account};
     use harvest::stake_tests::initialize_test;
     use aptos_token::token;
+    use aptos_token::token::get_token_id;
 
     const ONE_COIN: u64 = 1000000;
 
@@ -153,8 +154,10 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
-        let token_id = token::get_token_id(&nft);
+
+        let token_name = string::utf8(b"Token");
+        let nft = create_token(&collection_owner, collection_name, token_name);
+        let token_id = get_token_id(&nft);
         token::deposit_token(&alice_acc, nft);
 
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
@@ -175,8 +178,10 @@ module harvest::scripts_tests {
             &alice_acc,
             @harvest,
             10 * ONE_COIN,
-            token_id,
-            1
+            @collection_owner,
+            collection_name,
+            token_name,
+            0
         );
 
         let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
@@ -198,7 +203,8 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_name = string::utf8(b"Token");
+        let nft = create_token(&collection_owner, collection_name, token_name);
         let token_id = token::get_token_id(&nft);
         token::deposit_token(&alice_acc, nft);
 
@@ -220,8 +226,10 @@ module harvest::scripts_tests {
             &alice_acc,
             @harvest,
             10 * ONE_COIN,
-            token_id,
-            1
+            @collection_owner,
+            collection_name,
+            token_name,
+            0
         );
 
         // wait one week to unstake
@@ -252,7 +260,8 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_name = string::utf8(b"Token");
+        let nft = create_token(&collection_owner, collection_name, token_name);
         let token_id = token::get_token_id(&nft);
         token::deposit_token(&alice_acc, nft);
 
@@ -271,7 +280,14 @@ module harvest::scripts_tests {
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
-        scripts::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, token_id, 1);
+        scripts::boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            @collection_owner,
+            collection_name,
+            token_name,
+            0
+        );
 
         let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
         let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
@@ -287,7 +303,8 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_name = string::utf8(b"Token");
+        let nft = create_token(&collection_owner, collection_name, token_name);
         let token_id = token::get_token_id(&nft);
         token::deposit_token(&alice_acc, nft);
 
@@ -306,7 +323,14 @@ module harvest::scripts_tests {
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
-        scripts::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, token_id, 1);
+        scripts::boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            @collection_owner,
+            collection_name,
+            token_name,
+            0,
+        );
         scripts::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
         let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
@@ -381,7 +405,8 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         let collection_owner = create_collecton(@collection_owner, collection_name);
-        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+        let token_name = string::utf8(b"Token");
+        let nft = create_token(&collection_owner, collection_name, token_name);
         let token_id = token::get_token_id(&nft);
         token::deposit_token(&alice_acc, nft);
 
@@ -400,7 +425,14 @@ module harvest::scripts_tests {
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
-        scripts::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, token_id, 1);
+        scripts::boost<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            @collection_owner,
+            collection_name,
+            token_name,
+            0
+        );
         scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
 
