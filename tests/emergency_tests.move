@@ -1,6 +1,5 @@
 #[test_only]
 module harvest::emergency_tests {
-
     use std::option;
     use std::string;
 

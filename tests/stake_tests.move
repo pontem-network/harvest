@@ -6,10 +6,9 @@ module harvest::stake_tests {
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
-    use harvest::stake;
+    use harvest::stake::{Self, is_finished};
     use harvest::stake_config;
     use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
-    use harvest::stake::is_finished;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
