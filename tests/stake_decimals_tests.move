@@ -15,6 +15,7 @@ module harvest::stake_decimals_tests {
         RewardCoin,
         new_account_with_stake_coins
     };
+    use std::option;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -43,7 +44,7 @@ module harvest::stake_decimals_tests {
         // register staking pool with 10 000 000 RewardCoins
         let reward_coins = mint_default_coin<RewardCoin>(10000000);
         let duration = 2000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration, option::none());
 
         // stake 19 StakeCoins from alice
         let coins =
@@ -220,7 +221,7 @@ module harvest::stake_decimals_tests {
         // register staking pool, deposit 10 000 000 RewardCoins
         let reward_coins = mint_default_coin<RewardCoin>(1000000000000000);
         let duration = 5000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration, option::none());
 
         // stake 19.99 StakeCoins from alice
         let coins =
@@ -397,7 +398,7 @@ module harvest::stake_decimals_tests {
         // register staking pool, deposit 1 000 000 RewardCoins
         let reward_coins = mint_default_coin<RewardCoin>(10000000000000000);
         let duration = 1000000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration, option::none());
 
         // stake 19.999999 StakeCoins from alice
         let coins =
@@ -573,7 +574,7 @@ module harvest::stake_decimals_tests {
         // register staking pool, deposit 10 000 004 RewardCoins
         let reward_coins = mint_default_coin<RewardCoin>(1000000400);
         let duration = 2857144;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest_acc, reward_coins, duration, option::none());
 
         // stake 19.99999999 StakeCoins from alice
         let coins =

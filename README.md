@@ -5,12 +5,12 @@ The main purpose of contracts is to allow the staking of LP coins and earn commu
 
 Supported features:
 
-* The contracts are permissionless and can be used for any Stake/Reward coins pair.
-* Each staking pool has a reward rate per second set by the pool creator by providing reward and duration.
+* The contracts are permissionless: anyone can create new staking pool.
+* Any coins can be used as stake or reward coins.
+* NFT collection can be configured during pool creation and NFTs used to boost stake. 
 * Rewards can be deposited to a pool at any time and duration would be extended.
-* User can unstake own coins without loss of profit at any time after one week since the stake passed or once harvest finished.
-* User can withdraw rewards at any time.
-* Pool can be emergency stopped, and stakers can withdraw their stake and rewards providers can withdraw remaining rewards.
+* User can unstake own coins without loss of profit at any time after one week since the stake passed or once harvest period is finished.
+* User can withdraw rewards at any time by doing harvesting.
 
 **Important warnings:**
 * As it's permissionless, we will allowlist only trusted pools on our end (UI).

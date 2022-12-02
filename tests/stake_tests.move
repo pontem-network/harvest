@@ -1,13 +1,14 @@
 #[test_only]
 module harvest::stake_tests {
+    use std::option;
+
     use aptos_framework::coin;
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
-    use harvest::stake;
+    use harvest::stake::{Self, is_finished};
     use harvest::stake_config;
     use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
-    use harvest::stake::is_finished;
 
     // week in seconds, lockup period
     const WEEK_IN_SECONDS: u64 = 604800;
@@ -39,7 +40,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration, option::none());
 
         // check pool statistics
         let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
@@ -65,12 +66,12 @@ module harvest::stake_tests {
         // register staking pool 1 with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration, option::none());
 
         // register staking pool 2 with rewards
         let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<RewardCoin, StakeCoin>(&bob_acc, reward_coins, duration);
+        stake::register_pool<RewardCoin, StakeCoin>(&bob_acc, reward_coins, duration, option::none());
 
         // check pools exist
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@alice), 1);
@@ -85,7 +86,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check pool statistics
         let pool_finish_time = START_TIME + duration;
@@ -136,7 +137,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check no stakes
         assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 1);
@@ -195,7 +196,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake from alice
         let coins =
@@ -224,7 +225,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake from alice
         let coins =
@@ -307,7 +308,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -453,8 +454,6 @@ module harvest::stake_tests {
         assert!(losed_rewards == 100, 1);
     }
 
-
-
     #[test]
     public fun test_reward_calculation_works_well_when_pool_is_empty() {
         let (harvest, _) = initialize_test();
@@ -464,7 +463,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // wait one week with empty pool
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
@@ -583,7 +582,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -661,7 +660,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -683,7 +682,7 @@ module harvest::stake_tests {
     }
 
     #[test]
-    public fun test_stake_and_harvest_for_pull_less_than_week_duration() {
+    public fun test_stake_and_harvest_for_pool_less_than_week_duration() {
         let (harvest, _) = initialize_test();
 
         let alice_acc = new_account_with_stake_coins(@alice, 100000000);
@@ -694,7 +693,7 @@ module harvest::stake_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(302400000000);
         let duration = 302400;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 100000000);
@@ -751,7 +750,7 @@ module harvest::stake_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000000000000000000);
         // 1 week.
         let duration = WEEK_IN_SECONDS;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake alice.
         let coins =
@@ -810,7 +809,7 @@ module harvest::stake_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000000000000000000);
         // 10 years.
         let duration = 31536000 * 10;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake alice.
         let coins =
@@ -852,7 +851,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration - 1);
 
@@ -890,7 +889,7 @@ module harvest::stake_tests {
         let reward_coins_val = 157680000000000;
         let reward_coins = mint_default_coin<RewardCoin>(reward_coins_val);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -921,7 +920,7 @@ module harvest::stake_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 100000000);
@@ -978,7 +977,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check pool exists after register
         let exists = stake::pool_exists<StakeCoin, RewardCoin>(@harvest);
@@ -994,7 +993,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check stake exists before alice stake
         let exists = stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice);
@@ -1019,7 +1018,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 50 StakeCoins from alice
         let coins =
@@ -1060,7 +1059,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -1112,7 +1111,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check is finished
         assert!(!is_finished<StakeCoin, RewardCoin>(@harvest), 1);
@@ -1137,7 +1136,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // check pool expiration date
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
@@ -1242,8 +1241,8 @@ module harvest::stake_tests {
 
         // register staking pool twice
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_1, duration);
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_2, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_1, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_2, duration, option::none());
     }
 
     #[test]
@@ -1254,7 +1253,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = coin::zero<RewardCoin>();
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -1265,7 +1264,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
     }
@@ -1278,7 +1277,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
     }
@@ -1291,7 +1290,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // unstake when stake not exists
         let coins =
@@ -1307,7 +1306,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // harvest when stake not exists
         let coins =
@@ -1325,7 +1324,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 99 StakeCoins from alice
         let coins =
@@ -1349,7 +1348,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 0 StakeCoins
         coin::register<StakeCoin>(&harvest);
@@ -1366,7 +1365,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // unstake 0 StakeCoins
         let coins =
@@ -1382,7 +1381,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // deposit 0 RewardCoins
         let reward_coins = coin::zero<RewardCoin>();
@@ -1401,7 +1400,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -1426,7 +1425,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -1458,7 +1457,7 @@ module harvest::stake_tests {
         // register staking pool without stake coin
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -1474,7 +1473,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = coin::zero<RewardCoin>();
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -1487,7 +1486,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake from alice
         let coins =
@@ -1511,7 +1510,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(12345);
         let duration = 0;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     #[test]
@@ -1522,7 +1521,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // deposit rewards less than rew_per_sec pool rate
         let reward_coins = mint_default_coin<RewardCoin>(999999);
@@ -1537,7 +1536,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // wait until pool expired
         timestamp::update_global_time_for_test_secs(START_TIME + duration);
@@ -1557,7 +1556,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // wait until pool expired
         timestamp::update_global_time_for_test_secs(START_TIME + duration);
@@ -1577,7 +1576,7 @@ module harvest::stake_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
     }
 
     // Withdraw rewards tests.
@@ -1591,10 +1590,9 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
 
@@ -1606,12 +1604,11 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&harvest, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
     }
 
@@ -1623,11 +1620,12 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1640,11 +1638,12 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1657,12 +1656,13 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
         stake_config::enable_global_emergency(&emergency);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
+        assert!(coin::value(&reward_coins) == 157680000000000, 1);
         coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
@@ -1676,12 +1676,11 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257599);
 
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
-        coin::register<RewardCoin>(&treasury);
         coin::deposit(@treasury, reward_coins);
     }
 
@@ -1700,7 +1699,7 @@ module harvest::stake_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         // stake 100 StakeCoins from alice
         let coins =
@@ -1726,6 +1725,61 @@ module harvest::stake_tests {
 
         let coins =
             stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 5000000000);
+        coin::deposit(@bob, coins);
+    }
+
+    #[test]
+    fun test_stake_after_full_unstake() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 5000000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        let coins = stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 100000000);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + (duration / 2 + 3600));
+
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        let (_, unlock_time) = stake::get_user_stake_info<StakeCoin, RewardCoin>(
+            @harvest,
+            @bob,
+        );
+        assert!(unlock_time == timestamp::now_seconds() + WEEK_IN_SECONDS, 1);
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        // take rewards.
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 7882200000000, 1);
+        coin::deposit(@bob, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 7885800000000, 1);
+        coin::deposit(@alice, rewards);
+
+        // unstake.
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
+        coin::deposit(@alice, coins);
+
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 100000000);
         coin::deposit(@bob, coins);
     }
 }

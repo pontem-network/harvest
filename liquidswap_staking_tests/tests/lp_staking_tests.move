@@ -1,5 +1,6 @@
 #[test_only]
 module lp_staking_admin::lp_staking_tests {
+    use std::option;
     use std::string::utf8;
 
     use aptos_framework::coin;
@@ -69,7 +70,7 @@ module lp_staking_admin::lp_staking_tests {
         // register stake pool with 50 000 DGEN rewards. 0,01 DGEN coins per second reward
         let dgen_coins = coin::withdraw<DGEN>(&harvest_acc, 50000000000);
         let duration = 5000000;
-        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, dgen_coins, duration);
+        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, dgen_coins, duration, option::none());
 
         // stake 999.999 LP from alice
         stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest, lp_coins);
