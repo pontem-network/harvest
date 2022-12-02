@@ -320,7 +320,8 @@ module harvest::stake {
             };
 
             // recalculate unobtainable reward after stake amount changed
-            user_stake.unobtainable_reward = (accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
+            user_stake.unobtainable_reward =
+                (accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
             user_stake.unlock_time = current_time + WEEK_IN_SECONDS;
         };
@@ -378,7 +379,8 @@ module harvest::stake {
         };
 
         // recalculate unobtainable reward after stake amount changed
-        user_stake.unobtainable_reward = (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
+        user_stake.unobtainable_reward =
+            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
@@ -469,6 +471,10 @@ module harvest::stake {
         // update user stake and pool after stake boost
         user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
         pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
+
+        // recalculate unobtainable reward after stake boosted changed
+        user_stake.unobtainable_reward =
+            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
     }
 
     /// Removes nft boost.
@@ -496,6 +502,10 @@ module harvest::stake {
         // update user stake and pool after nft claim
         pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
         user_stake.boosted_amount = 0;
+
+        // recalculate unobtainable reward after stake boosted changed
+        user_stake.unobtainable_reward =
+            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
 
         option::extract(&mut user_stake.nft)
     }
@@ -670,7 +680,6 @@ module harvest::stake {
             pool.stake_scale,
             user_stake,
         );
-
         user_stake.earned_reward + to_u64(earned_since_last_update)
     }
 
@@ -781,10 +790,12 @@ module harvest::stake {
         math64::min(pool.end_timestamp, timestamp::now_seconds())
     }
 
+    // todo: comment
     fun pool_total_staked_with_boosted<S, R>(pool: &StakePool<S, R>): u64 {
         coin::value(&pool.stake_coins) + pool.total_boosted
     }
 
+    // todo: comment
     fun user_stake_amount_with_boosted(user_stake: &UserStake): u64 {
         user_stake.amount + user_stake.boosted_amount
     }
