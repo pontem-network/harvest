@@ -1686,4 +1686,48 @@ module harvest::stake_tests {
         let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 157680000000000);
         coin::deposit(@treasury, reward_coins);
     }
+
+    #[test]
+    fun test_withdraw_and_unstake() {
+        // i check users can unstake after i withdraw all rewards in 3 months.
+        let (harvest, _) = initialize_test();
+
+        let treasury = new_account(@treasury);
+        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 5000000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration);
+
+        // stake 100 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 5000000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        // wait 3 months after finish
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
+
+        // waithdraw reward coins
+        let reward_coins = stake::withdraw_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 15768000000000);
+        coin::register<RewardCoin>(&treasury);
+        coin::deposit(@treasury, reward_coins);
+
+        // unstake
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
+        coin::deposit(@alice, coins);
+
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 5000000000);
+        coin::deposit(@bob, coins);
+    }
 }
