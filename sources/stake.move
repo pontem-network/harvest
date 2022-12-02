@@ -99,7 +99,6 @@ module harvest::stake {
     /// When treasury can withdraw rewards (~3 months).
     const WITHDRAW_REWARD_PERIOD_IN_SECONDS: u64 = 7257600;
 
-    // todo: let's discuss values
     /// Minimum percent of stake increase on boost.
     const MIN_NFT_BOOST_PRECENT: u64 = 1;
 
@@ -140,6 +139,8 @@ module harvest::stake {
         unstake_events: EventHandle<UnstakeEvent>,
         deposit_events: EventHandle<DepositRewardEvent>,
         harvest_events: EventHandle<HarvestEvent>,
+        boost_events: EventHandle<BoostEvent>,
+        remove_boost_events: EventHandle<RemoveBoostEvent>,
     }
 
     /// Pool boost config with NFT collection info.
@@ -225,6 +226,8 @@ module harvest::stake {
             unstake_events: account::new_event_handle<UnstakeEvent>(owner),
             deposit_events: account::new_event_handle<DepositRewardEvent>(owner),
             harvest_events: account::new_event_handle<HarvestEvent>(owner),
+            boost_events: account::new_event_handle<BoostEvent>(owner),
+            remove_boost_events: account::new_event_handle<RemoveBoostEvent>(owner),
         };
         move_to(owner, pool);
     }
@@ -437,8 +440,8 @@ module harvest::stake {
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
         assert!(option::is_some(&pool.nft_boost_config), ERR_NON_BOOST_POOL);
 
-        let user_addr = signer::address_of(user);
-        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+        let user_address = signer::address_of(user);
+        assert!(table::contains(&pool.stakes, user_address), ERR_NO_STAKE);
 
         let token_amount = token::get_token_amount(&nft);
         assert!(token_amount == 1, ERR_NFT_AMOUNT_MORE_THAN_ONE);
@@ -458,7 +461,7 @@ module harvest::stake {
         // recalculate pool
         update_accum_reward(pool);
 
-        let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
+        let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
 
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
@@ -475,6 +478,11 @@ module harvest::stake {
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
             (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
+
+        event::emit_event(
+            &mut pool.boost_events,
+            BoostEvent { user_address },
+        );
     }
 
     /// Removes nft boost.
@@ -487,13 +495,13 @@ module harvest::stake {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
-        let user_addr = signer::address_of(user);
-        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+        let user_address = signer::address_of(user);
+        assert!(table::contains(&pool.stakes, user_address), ERR_NO_STAKE);
 
         // recalculate pool
         update_accum_reward(pool);
 
-        let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
+        let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
         assert!(option::is_some(&user_stake.nft), ERR_NOTHING_TO_CLAIM);
 
         // recalculate stake
@@ -506,6 +514,11 @@ module harvest::stake {
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
             (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / to_u128(pool.stake_scale);
+
+        event::emit_event(
+            &mut pool.remove_boost_events,
+            RemoveBoostEvent { user_address },
+        );
 
         option::extract(&mut user_stake.nft)
     }
@@ -755,11 +768,11 @@ module harvest::stake {
         let seconds_passed = current_time - pool.last_updated;
         if (seconds_passed == 0) return 0;
 
-        let total_stake = pool_total_staked_with_boosted(pool);
-        if (total_stake == 0) return 0;
+        let total_boosted_stake = pool_total_staked_with_boosted(pool);
+        if (total_boosted_stake == 0) return 0;
 
         let total_rewards = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * to_u128(pool.stake_scale);
-        total_rewards / to_u128(total_stake)
+        total_rewards / to_u128(total_boosted_stake)
     }
 
     /// Calculates user earnings, updating user stake.
@@ -830,6 +843,14 @@ module harvest::stake {
     struct UnstakeEvent has drop, store {
         user_address: address,
         amount: u64,
+    }
+
+    struct BoostEvent has drop, store {
+        user_address: address
+    }
+
+    struct RemoveBoostEvent has drop, store {
+        user_address: address
     }
 
     struct DepositRewardEvent has drop, store {
