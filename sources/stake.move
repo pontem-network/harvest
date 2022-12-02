@@ -86,6 +86,9 @@ module harvest::stake {
     /// When claiming from non boosted stake.
     const ERR_NOTHING_TO_CLAIM: u64 = 121;
 
+    /// When amount of NFT for boost is more than one.
+    const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
+
     //
     // Constants
     //
@@ -434,6 +437,9 @@ module harvest::stake {
 
         let user_addr = signer::address_of(user);
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let token_amount = token::get_token_amount(&nft);
+        assert!(token_amount == 1, ERR_NFT_AMOUNT_MORE_THAN_ONE);
 
         let token_id = token::get_token_id(&nft);
         let (token_collection_owner, token_collection_name, _, _) = token::get_token_id_fields(&token_id);
