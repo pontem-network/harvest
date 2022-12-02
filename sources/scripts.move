@@ -49,27 +49,27 @@ module harvest::scripts {
     }
 
     /// Stake an `stake_amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
-    /// Adding nft Token with `token_id` for stake boost.
+    /// Adding nft from `collection_name` for stake boost.
     ///     * `user` - stake owner.
     ///     * `pool_addr` - address of the pool to stake.
-    ///     * `stake_amount` - amount of `S` coins to stake.
-    ///     * `creators_address` - collection creator address.
-    ///     * `collection` - collection name.
-    ///     * `name` - token name.
+    ///     * `stake_amount` - amount of `S` coins to stake.\
+    ///     * `collection_owner` - address of nft collection creator.
+    ///     * `collection_name` - nft collection name.
+    ///     * `token_name` - token name.
     ///     * `property_version` - token property version.
     public entry fun stake_and_boost<S, R>(
         user: &signer,
         pool_addr: address,
         stake_amount: u64,
-        creators_address: address,
-        collection: String,
-        name: String,
+        collection_owner: address,
+        collection_name: String,
+        token_name: String,
         property_version: u64,
     ) {
         let coins = coin::withdraw<S>(user, stake_amount);
         stake::stake<S, R>(user, pool_addr, coins);
 
-        let token_id = token::create_token_id_raw(creators_address, collection, name, property_version);
+        let token_id = token::create_token_id_raw(collection_owner, collection_name, token_name, property_version);
         let nft = token::withdraw_token(user, token_id, 1);
 
         stake::boost<S, R>(user, pool_addr, nft);
@@ -125,19 +125,19 @@ module harvest::scripts {
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `token_id` - idetifier of Token for boost.
     ///     * `token_amount` - amount of Token for boost.
-    ///     * `creators_address` - collection creator address.
-    ///     * `collection` - collection name.
-    ///     * `name` - token name.
+    ///     * `collection_owner` - address of nft collection creator.
+    ///     * `collection_name` - nft collection name.
+    ///     * `token_name` - token name.
     ///     * `property_version` - token property version.
     public entry fun boost<S, R>(
         user: &signer,
         pool_addr: address,
-        creators_address: address,
-        collection: String,
-        name: String,
+        collection_owner: address,
+        collection_name: String,
+        token_name: String,
         property_version: u64,
     ) {
-        let token_id = token::create_token_id_raw(creators_address, collection, name, property_version);
+        let token_id = token::create_token_id_raw(collection_owner, collection_name, token_name, property_version);
 
         let nft = token::withdraw_token(user, token_id, 1);
         stake::boost<S, R>(user, pool_addr, nft);

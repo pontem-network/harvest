@@ -5,13 +5,13 @@ module harvest::scripts_tests {
     use aptos_framework::coin;
     use aptos_framework::timestamp;
 
+    use aptos_token::token::{Self, get_token_id};
+
     use harvest::scripts;
     use harvest::stake;
     use harvest::stake_nft_boost_tests::{create_collecton, create_token};
     use harvest::stake_test_helpers::{StakeCoin, RewardCoin, new_account_with_stake_coins, mint_default_coin, new_account};
     use harvest::stake_tests::initialize_test;
-    use aptos_token::token;
-    use aptos_token::token::get_token_id;
 
     const ONE_COIN: u64 = 1000000;
 

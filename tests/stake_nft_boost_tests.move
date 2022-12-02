@@ -369,52 +369,6 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 122 /* ERR_NFT_AMOUNT_MORE_THAN_ONE */)]
-    public fun test_boost_fails_if_amount_more_than_one() {
-        let (harvest, _) = initialize_test();
-        let bob_acc = new_account_with_stake_coins(@bob, 1000);
-
-        let collection_name = string::utf8(b"Test Collection");
-        let collection_owner = create_collecton(@collection_owner, collection_name);
-        let token_name = string::utf8(b"Token");
-
-        token::create_token_script(
-            &collection_owner,
-            collection_name,
-            token_name,
-            string::utf8(b"Some Description"),
-            2,
-            2,
-            string::utf8(b"https://aptos.dev"),
-            @collection_owner,
-            100,
-            0,
-            vector<bool>[ false, false, false, false, false, false ],
-            vector<String>[],
-            vector<vector<u8>>[],
-            vector<String>[],
-        );
-        let token_id = token::create_token_id_raw(@collection_owner, collection_name, token_name, 0);
-        let nft = token::withdraw_token(&collection_owner, token_id, 2);
-
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        let duration = 15768000;
-        let boost_config = stake::create_boost_config(
-            @collection_owner,
-            collection_name,
-            1
-        );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
-
-        // stake 800 StakeCoins from bob
-        let coins =
-            coin::withdraw<StakeCoin>(&bob_acc, 1000);
-        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
-
-        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
-    }
-
-    #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_claim_fails_if_pool_does_not_exist() {
         let (harvest, _) = initialize_test();
@@ -746,5 +700,51 @@ module harvest::stake_nft_boost_tests {
         token::deposit_token(&alice_acc, nft);
         let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         token::deposit_token(&alice_acc, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 122 /* ERR_NFT_AMOUNT_MORE_THAN_ONE */)]
+    public fun test_boost_fails_if_amount_more_than_one() {
+        let (harvest, _) = initialize_test();
+        let bob_acc = new_account_with_stake_coins(@bob, 1000);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let token_name = string::utf8(b"Token");
+
+        token::create_token_script(
+            &collection_owner,
+            collection_name,
+            token_name,
+            string::utf8(b"Some Description"),
+            2,
+            2,
+            string::utf8(b"https://aptos.dev"),
+            @collection_owner,
+            100,
+            0,
+            vector<bool>[ false, false, false, false, false, false ],
+            vector<String>[],
+            vector<vector<u8>>[],
+            vector<String>[],
+        );
+        let token_id = token::create_token_id_raw(@collection_owner, collection_name, token_name, 0);
+        let nft = token::withdraw_token(&collection_owner, token_id, 2);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            1
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // stake 800 StakeCoins from bob
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 1000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
     }
 }
