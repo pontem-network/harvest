@@ -86,11 +86,11 @@ module harvest::stake_nft_boost_tests {
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@alice) == 0, 1);
 
         // check boost config
-        let (boost_percent, collection_owner_addr, coll_name) =
+        let (collection_owner_addr, coll_name, boost_percent) =
             stake::get_boost_config<StakeCoin, RewardCoin>(@alice);
-        assert!(boost_percent == 5, 1);
         assert!(collection_owner_addr == @collection_owner, 1);
         assert!(coll_name == collection_name, 1);
+        assert!(boost_percent == 5, 1);
     }
 
     #[test]

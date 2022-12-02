@@ -575,6 +575,20 @@ module harvest::stake {
     // Getter functions
     //
 
+
+    /// Get NFT boost config parameters for pool.
+    ///     * `pool_addr` - the pool with with NFT boost collection enabled.
+    /// Returns both `collection_owner`, `collection_name` and boost percent.
+    public fun get_boost_config<S, R>(pool_addr: address): (address, String, u64)  acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        assert!(option::is_some(&pool.nft_boost_config), ERR_NON_BOOST_POOL);
+
+        let boost_config = option::borrow(&pool.nft_boost_config);
+        (boost_config.collection_owner, boost_config.collection_name, boost_config.boost_percent)
+    }
+
     /// Checks if harvest on the pool finished.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if harvest finished for the pool.
@@ -848,15 +862,6 @@ module harvest::stake {
 
         (pool.reward_per_sec, pool.accum_reward, pool.last_updated,
             coin::value<R>(&pool.reward_coins), pool.stake_scale)
-    }
-
-    #[test_only]
-    /// Access staking pool nft boost fields.
-    public fun get_boost_config<S, R>(pool_addr: address): (u64, address, String) acquires StakePool {
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        let fields = option::borrow(&pool.nft_boost_config);
-
-        (fields.boost_percent, fields.collection_owner, fields.collection_name)
     }
 
     #[test_only]
