@@ -33,18 +33,6 @@ jobs:
         run: aptos move test
         working-directory: .
 
-      - name: Build ./dgen
-        run: aptos move compile
-        working-directory: ./dgen
-
-      - name: Test ./dgen
-        run: aptos move test
-        working-directory: ./dgen
-
-      - name: Build ./liquidswap_staking_tests
-        run: aptos move compile
-        working-directory: ./liquidswap_staking_tests
-
       - name: Test ./liquidswap_staking_tests
         run: aptos move test
         working-directory: ./liquidswap_staking_tests
