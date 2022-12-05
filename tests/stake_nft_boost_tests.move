@@ -782,12 +782,11 @@ module harvest::stake_nft_boost_tests {
             coin::withdraw<StakeCoin>(&bob_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
 
-        // wait 10 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
-        coin::deposit(@bob, rewards);
+        coin::deposit(@alice, rewards);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
@@ -854,12 +853,11 @@ module harvest::stake_nft_boost_tests {
             coin::withdraw<StakeCoin>(&bob_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
 
-        // wait 10 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
-        coin::deposit(@bob, rewards);
+        coin::deposit(@alice, rewards);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
@@ -929,12 +927,11 @@ module harvest::stake_nft_boost_tests {
             coin::withdraw<StakeCoin>(&bob_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
 
-        // wait 10 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
-        coin::deposit(@bob, rewards);
+        coin::deposit(@alice, rewards);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
@@ -997,12 +994,11 @@ module harvest::stake_nft_boost_tests {
             coin::withdraw<StakeCoin>(&bob_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
 
-        // wait 10 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
-        coin::deposit(@bob, rewards);
+        coin::deposit(@alice, rewards);
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
         assert!(coin::value(&rewards) == 3942000000000, 1);
@@ -1031,6 +1027,6 @@ module harvest::stake_nft_boost_tests {
 
         let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
         assert!(coin::value(&rewards) == 3600000000, 1);
-        coin::deposit(@alice, rewards);
+        coin::deposit(@bob, rewards);
     }
 }
