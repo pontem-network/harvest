@@ -7,7 +7,7 @@ harvest = "0x0f66a21efeeae7adda7688473b140dfae1e42f4a669d5c4026dfc7d12443a6b2"
 stake_emergency_admin = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
 
 # Test addresses.
-treasury = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
+treasury = "0x13"
 alice = "0x10"
 bob = "0x11"
 collection_owner = "0x12"
