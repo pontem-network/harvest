@@ -11,6 +11,3 @@ local = ".."
 [dependencies.Liquidswap]
 git = 'https://github.com/pontem-network/liquidswap.git'
 rev = 'v0.4.3'
-
-[dependencies.DGENCoin]
-local = "../dgen"

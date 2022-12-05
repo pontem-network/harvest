@@ -16,13 +16,6 @@ Supported features:
 * As it's permissionless, we will allowlist only trusted pools on our end (UI).
 * It may not work with exotic coins (large decimals amounts, too large supply), so use on your own risk and double check.
 
-## DGEN coin
-
-The `DGEN` coin is currently placed in [dgen](./dgen) module.
-
-It's our community genesis generation coin which we are going to airdrop and reward
-early adopters, also it will be used in our staking pools as a reward.
-
 ## Liquidswap Staking Tests
 
 End to end tests for Liquidswap LP staking. 
@@ -39,11 +32,6 @@ Core:
 
     aptos move compile
 
-Or DGEN:
-
-    cd dgen
-    aptos move compile
-
 ### Test
 
 Core:
@@ -54,12 +42,6 @@ Or LP staking module:
 
     cd liquidswap_staking_tests
     aptos move test
-
-Or DGEN:
-
-    cd dgen
-    aptos move test
-
 
 ### License
 
