@@ -130,7 +130,7 @@ module harvest::stake_nft_boost_tests {
         timestamp::update_global_time_for_test_secs(START_TIME + 10);
 
         let pending_rewards = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
-        assert!(pending_rewards == 9999675, 1);
+        assert!(pending_rewards == 9999999, 1);
 
         // remove nft boost
         let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
@@ -197,8 +197,8 @@ module harvest::stake_nft_boost_tests {
 
         let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
         let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
-        assert!(pending_rewards_1 == 403233333300, 1);
-        assert!(pending_rewards_2 == 201666666600, 1);
+        assert!(pending_rewards_1 == 403233333333, 1);
+        assert!(pending_rewards_2 == 201666666666, 1);
 
         // unstake 50 StakeCoins from alice
         let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 50000000);
@@ -214,8 +214,8 @@ module harvest::stake_nft_boost_tests {
 
         let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
         let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
-        assert!(pending_rewards_1 == 403233333300, 1);
-        assert!(pending_rewards_2 == 201766666500, 1);
+        assert!(pending_rewards_1 == 403233333333, 1);
+        assert!(pending_rewards_2 == 201766666666, 1);
 
         // stake 150 StakeCoins from alice
         let coins =
@@ -231,8 +231,8 @@ module harvest::stake_nft_boost_tests {
 
         let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
         let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
-        assert!(pending_rewards_1 == 403299999900, 1);
-        assert!(pending_rewards_2 == 201799999800, 1);
+        assert!(pending_rewards_1 == 403300000000, 1);
+        assert!(pending_rewards_2 == 201800000000, 1);
 
         let rewards_1 = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         let rewards_2 = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
@@ -244,14 +244,14 @@ module harvest::stake_nft_boost_tests {
         coin::deposit(@alice, rewards_1);
         coin::deposit(@bob, rewards_2);
 
-        assert!(amount_1 == 403299999900, 1);
-        assert!(amount_2 == 201799999800, 1);
+        assert!(amount_1 == 403300000000, 1);
+        assert!(amount_2 == 201800000000, 1);
 
-        // 0.0003 RewardCoin lost during calculations
+        // 0 RewardCoin lost during calculations
         let total_rewards = (WEEK_IN_SECONDS + 300) * 1000000;
         let total_earned = amount_1 + amount_2;
         let losed_rewards =  total_rewards - total_earned;
-        assert!(losed_rewards == 300, 1);
+        assert!(losed_rewards == 0, 1);
     }
 
     #[test]
