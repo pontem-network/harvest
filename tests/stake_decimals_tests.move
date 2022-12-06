@@ -751,6 +751,7 @@ module harvest::stake_decimals_tests {
         let carol_acc = new_account_with_stake_coins(@0x1234, 1000000000);
 
         coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
 
         timestamp::update_global_time_for_test_secs(START_TIME);
 
@@ -874,7 +875,7 @@ module harvest::stake_decimals_tests {
 
         // check stake amounts after harvest
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob) == 0, 1);
-        assert!(coin::value(&coins) == 12, 1);
+        assert!(coin::value(&coins) == 15, 1);
 
         coin::deposit<RewardCoin>(@bob, coins);
     }
