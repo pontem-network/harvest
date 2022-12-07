@@ -85,8 +85,8 @@ module lp_staking_admin::lp_staking_tests {
         let coins =
             stake::harvest<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest);
         assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
-        // 6047.999951 DGEN coins
-        assert!(coin::value(&coins) == 6047999951, 1);
+        // 6047.999999 DGEN coins
+        assert!(coin::value(&coins) == 6047999999, 1);
         coin::deposit(@alice, coins);
 
         // unstake all 999.999 LP coins from alice
@@ -97,11 +97,11 @@ module lp_staking_admin::lp_staking_tests {
         assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest) == 0, 1);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
-        // 0.000049 RewardCoin lost during calculations
+        // 0.000001 RewardCoin lost during calculations
         let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<DGEN>(@alice);
 
-        assert!(losed_rewards == 49, 1);
+        assert!(losed_rewards == 1, 1);
     }
 }
