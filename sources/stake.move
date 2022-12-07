@@ -23,7 +23,7 @@ module harvest::stake {
     /// Pool does not exist.
     const ERR_NO_POOL: u64 = 100;
 
-    /// Pool already exists.
+    /// Pool already exists on resource account.
     const ERR_POOL_ALREADY_EXISTS: u64 = 101;
 
     /// Pool reward can't be zero.
@@ -207,13 +207,15 @@ module harvest::stake {
         duration: u64,
         nft_boost_config: Option<NFTBoostConfig>
     ) {
-        assert!(signer::address_of(pools_admin) == @harvest, ERR_NO_PERMISSIONS);
+        let pool_admin_addr = signer::address_of(pools_admin);
 
-        // todo: check already exists for same seed
-        // assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
+        assert!(pool_admin_addr == @harvest, ERR_NO_PERMISSIONS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
         assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
+
+        let storage_addr = account::create_resource_address(&pool_admin_addr, storage_seed);
+        assert!(!account::exists_at(storage_addr), ERR_POOL_ALREADY_EXISTS);
 
         // create account to store pool resource
         let (_, signer_cap) =

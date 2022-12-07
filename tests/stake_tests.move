@@ -1414,23 +1414,35 @@ module harvest::stake_tests {
         stake::get_end_timestamp<StakeCoin, RewardCoin>(@pool_storage);
     }
 
-    // todo: repair
-    // #[test]
-    // #[expected_failure(abort_code = 101 /* ERR_POOL_ALREADY_EXISTS */)]
-    // public fun test_register_fails_if_pool_already_exists() {
-    //     initialize_test();
-    //
-    //     let alice_acc = new_account(@alice);
-    //
-    //     // get reward coins
-    //     let reward_coins_1 = mint_default_coin<RewardCoin>(12345);
-    //     let reward_coins_2 = mint_default_coin<RewardCoin>(12345);
-    //
-    //     // register staking pool twice
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_1, duration, option::none());
-    //     stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins_2, duration, option::none());
-    // }
+    #[test]
+    #[expected_failure(abort_code = 101 /* ERR_POOL_ALREADY_EXISTS */)]
+    public fun test_register_fails_if_pool_already_exists_1() {
+        let (harvest, _) = initialize_test();
+
+        // get reward coins
+        let reward_coins_1 = mint_default_coin<RewardCoin>(12345);
+        let reward_coins_2 = mint_default_coin<RewardCoin>(12345);
+
+        // register staking pool twice
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, b"some_seed", reward_coins_1, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, b"some_seed", reward_coins_2, duration, option::none());
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 101 /* ERR_POOL_ALREADY_EXISTS */)]
+    public fun test_register_fails_if_pool_already_exists_2() {
+        let (harvest, _) = initialize_test();
+
+        // get reward coins
+        let reward_coins_1 = mint_default_coin<RewardCoin>(12345);
+        let reward_coins_2 = mint_default_coin<StakeCoin>(12345);
+
+        // register staking pool twice
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, b"some_seed", reward_coins_1, duration, option::none());
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, b"some_seed", reward_coins_2, duration, option::none());
+    }
 
     #[test]
     #[expected_failure(abort_code = 102 /* ERR_REWARD_CANNOT_BE_ZERO */)]
