@@ -613,27 +613,41 @@ module harvest::emergency_tests {
         coin::deposit(@alice, coins);
     }
 
-    // todo: repair test
-    // #[test]
-    // fun test_emergency_is_local_to_a_pool() {
-    //     let (harvest, emergency_admin) = initialize_test();
-    //
-    //     let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-    //
-    //     // register staking pool
-    //     let reward_coins_1 = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let reward_coins_2 = mint_default_coin<StakeCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins_1, duration, option::none());
-    //     stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins_2, duration, option::none());
-    //
-    //     stake::enable_emergency<RewardCoin, StakeCoin>(&emergency_admin, @harvest);
-    //
-    //     let coins =
-    //         coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-    //     stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-    //     assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 1 * ONE_COIN, 3);
-    // }
+    #[test]
+    fun test_emergency_is_local_to_a_pool() {
+        let (harvest, emergency_admin) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
+
+        let res_acc_addr_1 = @0x51441c1d7933033cbc6cecf7e255a670adcc6cb18c88838a8b3f147f3cfb616b;
+        let res_acc_addr_2 = @0x2548ca468d04206f9162f5897fc0b69de75e035fc7236a5db9874f3f0eb23718;
+
+        // register staking pool
+        let reward_coins_1 = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let reward_coins_2 = mint_default_coin<StakeCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed_1",
+            reward_coins_1,
+            duration,
+            option::none()
+        );
+        stake::register_pool<RewardCoin, StakeCoin>(
+            &harvest,
+            b"some_seed_2",
+            reward_coins_2,
+            duration,
+            option::none()
+        );
+
+        stake::enable_emergency<RewardCoin, StakeCoin>(&emergency_admin, res_acc_addr_2);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, res_acc_addr_1, coins);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(res_acc_addr_1, @alice) == 1 * ONE_COIN, 3);
+    }
 
     #[test]
     #[expected_failure(abort_code = 202)]
@@ -749,29 +763,28 @@ module harvest::emergency_tests {
         stake_config::set_emergency_admin_address(&alice, @alice);
     }
 
-    // todo: do we need it?
-    // #[test]
-    // fun test_enable_emergency_with_changed_admin_account() {
-    //     let (_, emergency_admin) = initialize_test();
-    //     stake_config::set_emergency_admin_address(&emergency_admin, @alice);
-    //
-    //     let alice = new_account(@alice);
-    //
-    //     let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(
-    //         &alice,
-    //         b"some_seed",
-    //         reward_coins,
-    //         duration,
-    //         option::none()
-    //     );
-    //     stake::enable_emergency<StakeCoin, RewardCoin>(&alice, @alice);
-    //
-    //     assert!(stake::is_local_emergency<StakeCoin, RewardCoin>(@alice), 1);
-    //     assert!(stake::is_emergency<StakeCoin, RewardCoin>(@alice), 2);
-    //     assert!(!stake_config::is_global_emergency(), 3);
-    // }
+    #[test]
+    fun test_enable_emergency_with_changed_admin_account() {
+        let (harvest, emergency_admin) = initialize_test();
+        stake_config::set_emergency_admin_address(&emergency_admin, @alice);
+
+        let alice = new_account(@alice);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
+        stake::enable_emergency<StakeCoin, RewardCoin>(&alice, @pool_storage);
+
+        assert!(stake::is_local_emergency<StakeCoin, RewardCoin>(@pool_storage), 1);
+        assert!(stake::is_emergency<StakeCoin, RewardCoin>(@pool_storage), 2);
+        assert!(!stake_config::is_global_emergency(), 3);
+    }
 
     #[test]
     fun test_enable_global_emergency_with_changed_admin_account_no_pool() {
@@ -784,30 +797,29 @@ module harvest::emergency_tests {
         assert!(stake_config::is_global_emergency(), 3);
     }
 
-    // todo: do we need it?
-    // #[test]
-    // fun test_enable_global_emergency_with_changed_admin_account_with_pool() {
-    //     let (_, emergency_admin) = initialize_test();
-    //     stake_config::set_emergency_admin_address(&emergency_admin, @alice);
-    //
-    //     let alice = new_account(@alice);
-    //
-    //     let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-    //     let duration = 12345;
-    //     stake::register_pool<StakeCoin, RewardCoin>(
-    //         &alice,
-    //         b"some_seed",
-    //         reward_coins,
-    //         duration,
-    //         option::none()
-    //     );
-    //
-    //     stake_config::enable_global_emergency(&alice);
-    //
-    //     assert!(!stake::is_local_emergency<StakeCoin, RewardCoin>(@alice), 1);
-    //     assert!(stake::is_emergency<StakeCoin, RewardCoin>(@alice), 2);
-    //     assert!(stake_config::is_global_emergency(), 3);
-    // }
+    #[test]
+    fun test_enable_global_emergency_with_changed_admin_account_with_pool() {
+        let (harvest, emergency_admin) = initialize_test();
+        stake_config::set_emergency_admin_address(&emergency_admin, @alice);
+
+        let alice = new_account(@alice);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
+
+        stake_config::enable_global_emergency(&alice);
+
+        assert!(!stake::is_local_emergency<StakeCoin, RewardCoin>(@pool_storage), 1);
+        assert!(stake::is_emergency<StakeCoin, RewardCoin>(@pool_storage), 2);
+        assert!(stake_config::is_global_emergency(), 3);
+    }
 
     // Cases for ERR_NOT_INITIALIZED.
 

@@ -31,10 +31,9 @@ module lp_staking_admin::lp_staking_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
-        // todo: why helpers?
-        let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
-        let harvest_acc = stake_test_helpers::new_account(@harvest);
-        let alice_acc = stake_test_helpers::new_account(@alice);
+        let lp_staking_admin_acc = new_account(@lp_staking_admin);
+        let harvest_acc = new_account(@harvest);
+        let alice_acc = new_account(@alice);
 
         let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::initialize(&emergency_admin, @treasury);
@@ -108,7 +107,6 @@ module lp_staking_admin::lp_staking_tests {
         let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<DGEN>(@alice);
-
         assert!(losed_rewards == 1, 1);
     }
 }
