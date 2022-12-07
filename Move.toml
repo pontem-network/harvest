@@ -11,6 +11,7 @@ treasury = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
 alice = "0x10"
 bob = "0x11"
 collection_owner = "0x12"
+pool_storage = "0x3d8bae1cb74f2db9aa4cbb30c3037e4063e753554f55babcbd6829530118e4e2"
 
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'

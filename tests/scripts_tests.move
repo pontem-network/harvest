@@ -29,20 +29,25 @@ module harvest::scripts_tests {
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            1000 * ONE_COIN,
+            duration
+        );
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
         let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
-            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+            stake::get_pool_info<StakeCoin, RewardCoin>(@pool_storage);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@pool_storage);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(s_scale == 1000000, 1);
-        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@pool_storage), 1);
     }
 
     #[test]
@@ -53,13 +58,13 @@ module harvest::scripts_tests {
 
         let collection_name = string::utf8(b"Test Collection");
         create_collecton(@collection_owner, collection_name);
-
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             1000 * ONE_COIN,
             duration,
             @collection_owner,
@@ -70,18 +75,18 @@ module harvest::scripts_tests {
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
         let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
-            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+            stake::get_pool_info<StakeCoin, RewardCoin>(@pool_storage);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@pool_storage);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(s_scale == 1000000, 1);
-        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@pool_storage), 1);
 
         let (collection_owner_addr, coll_name, boost_percent) =
-                stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
+                stake::get_boost_config<StakeCoin, RewardCoin>(@pool_storage);
         assert!(collection_owner_addr == @collection_owner, 1);
         assert!(coll_name == collection_name, 1);
         assert!(boost_percent == 10, 1);
@@ -93,20 +98,25 @@ module harvest::scripts_tests {
 
         coin::register<RewardCoin>(&harvest);
 
-        let pool_address = @harvest;
+        let pool_address = @pool_storage;
 
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
 
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            1000 * ONE_COIN,
+            duration
+        );
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
         let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(pool_address);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 10, 1);
         assert!(accum_reward == 0, 1);
@@ -129,22 +139,22 @@ module harvest::scripts_tests {
         // wait one week to unstake
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
 
-        scripts::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 5 * ONE_COIN);
+        scripts::unstake<StakeCoin, RewardCoin>(&alice_acc, pool_address, 5 * ONE_COIN);
 
-        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice) == 5 * ONE_COIN, 1);
-        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 5 * ONE_COIN, 1);
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(pool_address, @alice) == 5 * ONE_COIN, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(pool_address) == 5 * ONE_COIN, 1);
 
         coin::register<RewardCoin>(&alice_acc);
 
-        scripts::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        scripts::harvest<StakeCoin, RewardCoin>(&alice_acc, pool_address);
 
         assert!(coin::balance<RewardCoin>(@alice) == 6048000, 1);
 
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
-        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, pool_address);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, pool_address);
 
-        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 1);
-        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(pool_address, @alice), 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(pool_address) == 0, 1);
         assert!(coin::balance<StakeCoin>(@alice) == 100 * ONE_COIN, 1);
     }
 
@@ -162,6 +172,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -171,19 +182,19 @@ module harvest::scripts_tests {
 
         // check pool statistics
         let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
-            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+            stake::get_pool_info<StakeCoin, RewardCoin>(@pool_storage);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@pool_storage);
         assert!(end_ts == START_TIME + 15768000, 1);
         assert!(reward_per_sec == 1000000, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == START_TIME, 1);
         assert!(reward_amount == 15768000000000, 1);
         assert!(s_scale == 1000000, 1);
-        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage) == 0, 1);
 
         // check boost config
         let (collection_owner_addr, coll_name, boost_percent, ) =
-            stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
+            stake::get_boost_config<StakeCoin, RewardCoin>(@pool_storage);
         assert!(collection_owner_addr == @collection_owner, 1);
         assert!(coll_name == collection_name, 1);
         assert!(boost_percent == 5, 1);
@@ -198,23 +209,24 @@ module harvest::scripts_tests {
         coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
 
-        // register staking pool with rewards and boost config
+        // register staking pool with rewards
         scripts::register_pool<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
         );
 
-        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
-        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_staked == 10 * ONE_COIN, 1);
         assert!(user_staked == 10 * ONE_COIN, 1);
         assert!(total_boosted == 0, 1);
@@ -231,16 +243,17 @@ module harvest::scripts_tests {
         coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
 
-        // register staking pool with rewards and boost config
+        // register staking pool with rewards
         scripts::register_pool<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
         );
 
@@ -248,14 +261,14 @@ module harvest::scripts_tests {
 
         scripts::unstake<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
         );
 
-        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
-        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_staked == 0, 1);
         assert!(user_staked == 0, 1);
         assert!(total_boosted == 0, 1);
@@ -272,17 +285,18 @@ module harvest::scripts_tests {
         coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
 
-        // register staking pool with rewards and boost config
+        // register staking pool with rewards
         let duration = 15768000;
         scripts::register_pool<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
         );
 
@@ -290,7 +304,7 @@ module harvest::scripts_tests {
 
         scripts::harvest<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest
+            @pool_storage
         );
 
         assert!(coin::balance<RewardCoin>(@alice) == 15768000000000, 1);
@@ -307,17 +321,18 @@ module harvest::scripts_tests {
         coin::register<RewardCoin>(&harvest);
         coin::deposit(@harvest, reward_coins);
 
-        // register staking pool with rewards and boost config
+        // register staking pool with rewards
         let duration = 15768000;
         scripts::register_pool<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
         );
 
@@ -325,7 +340,7 @@ module harvest::scripts_tests {
 
         scripts::harvest<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest
+            @pool_storage
         );
 
         assert!(coin::balance<RewardCoin>(@alice) == 15768000000000, 1);
@@ -351,6 +366,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -360,7 +376,7 @@ module harvest::scripts_tests {
 
         scripts::stake_and_boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
             @collection_owner,
             collection_name,
@@ -368,10 +384,10 @@ module harvest::scripts_tests {
             0
         );
 
-        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
-        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_staked == 10 * ONE_COIN, 1);
         assert!(user_staked == 10 * ONE_COIN, 1);
         assert!(total_boosted == 500000, 1);
@@ -399,6 +415,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -408,7 +425,7 @@ module harvest::scripts_tests {
 
         scripts::stake_and_boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             10 * ONE_COIN,
             @collection_owner,
             collection_name,
@@ -421,14 +438,14 @@ module harvest::scripts_tests {
 
         scripts::unstake_and_remove_boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             5 * ONE_COIN,
         );
 
-        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest);
-        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_staked = stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage);
+        let user_staked = stake::get_user_stake<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_staked == 5 * ONE_COIN, 1);
         assert!(user_staked == 5 * ONE_COIN, 1);
         assert!(total_boosted == 0, 1);
@@ -456,6 +473,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -463,18 +481,18 @@ module harvest::scripts_tests {
             5,
         );
 
-        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 10 * ONE_COIN);
         scripts::boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             @collection_owner,
             collection_name,
             token_name,
             0
         );
 
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 500000, 1);
         assert!(user_boosted == 500000, 1);
         assert!(token::balance_of(@alice, token_id) == 0, 1);
@@ -499,6 +517,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -506,19 +525,19 @@ module harvest::scripts_tests {
             5,
         );
 
-        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 10 * ONE_COIN);
         scripts::boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             @collection_owner,
             collection_name,
             token_name,
             0,
         );
-        scripts::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        scripts::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
 
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 0, 1);
         assert!(user_boosted == 0, 1);
         assert!(token::balance_of(@alice, token_id) == 1, 1);
@@ -535,14 +554,19 @@ module harvest::scripts_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            1000 * ONE_COIN,
+            duration
+        );
 
         let reward_coins = mint_default_coin<RewardCoin>(1 * ONE_COIN);
         coin::deposit(@alice, reward_coins);
         assert!(coin::balance<RewardCoin>(@alice) == 1000000, 1);
-        scripts::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, 1 * ONE_COIN);
+        scripts::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 1 * ONE_COIN);
 
-        let (_, _, _, reward_coin_amount, _) = stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        let (_, _, _, reward_coin_amount, _) = stake::get_pool_info<StakeCoin, RewardCoin>(@pool_storage);
         assert!(reward_coin_amount == 1001000000, 1);
         assert!(coin::balance<RewardCoin>(@alice) == 0, 1);
     }
@@ -556,11 +580,16 @@ module harvest::scripts_tests {
         coin::deposit(@harvest, reward_coins);
 
         // register staking pool with rewards
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            15768000000000,
+            15768000
+        );
 
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @pool_storage);
 
-        assert!(stake::is_emergency<StakeCoin, RewardCoin>(@harvest), 1);
+        assert!(stake::is_emergency<StakeCoin, RewardCoin>(@pool_storage), 1);
     }
 
     #[test]
@@ -573,11 +602,16 @@ module harvest::scripts_tests {
         coin::deposit(@harvest, reward_coins);
 
         // register staking pool with rewards
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            15768000000000,
+            15768000
+        );
 
-        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
-        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 10 * ONE_COIN);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @pool_storage);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
 
         assert!(coin::balance<StakeCoin>(@alice) == 10 * ONE_COIN, 1);
     }
@@ -601,6 +635,7 @@ module harvest::scripts_tests {
         // register staking pool with rewards and boost config
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
+            b"some_seed",
             15768000000000,
             15768000,
             @collection_owner,
@@ -608,17 +643,17 @@ module harvest::scripts_tests {
             5,
         );
 
-        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
+        scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 10 * ONE_COIN);
         scripts::boost<StakeCoin, RewardCoin>(
             &alice_acc,
-            @harvest,
+            @pool_storage,
             @collection_owner,
             collection_name,
             token_name,
             0
         );
-        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
-        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @pool_storage);
+        scripts::emergency_unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
 
         assert!(coin::balance<StakeCoin>(@alice) == 10 * ONE_COIN, 1);
         assert!(token::balance_of(@alice, token_id) == 1, 1);
@@ -635,11 +670,16 @@ module harvest::scripts_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            1000 * ONE_COIN,
+            duration
+        );
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 
-        scripts::withdraw_reward_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 1000000000);
+        scripts::withdraw_reward_to_treasury<StakeCoin, RewardCoin>(&treasury, @pool_storage, 1000000000);
         assert!(coin::balance<RewardCoin>(@treasury) == 1000000000, 1);
     }
 
@@ -653,11 +693,16 @@ module harvest::scripts_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            1000 * ONE_COIN,
+            duration
+        );
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 
-        scripts::withdraw_reward_to_treasury<StakeCoin, RewardCoin>(&treasury, @harvest, 1000000000);
+        scripts::withdraw_reward_to_treasury<StakeCoin, RewardCoin>(&treasury, @pool_storage, 1000000000);
         assert!(coin::balance<RewardCoin>(@treasury) == 1000000000, 1);
     }
 }

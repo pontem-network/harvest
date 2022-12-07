@@ -192,20 +192,29 @@ module harvest::stake {
     }
 
     /// Registering pool for specific coin.
-    ///     * `owner` - pool creator account, under which the pool will be stored.
+    ///     * `pools_admin` - pools admin, used to create resource accounts for pool storage.
+    ///     * `storage_seed` - a seed used to generate resource account for pool storage.
     ///     * `reward_coins` - R coins which are used in distribution as reward.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
     ///     * `nft_boost_config` - optional boost configuration. Allows users to stake nft and get more rewards.
     public fun register_pool<S, R>(
-        owner: &signer,
+        pools_admin: &signer,
+        storage_seed: vector<u8>,
         reward_coins: Coin<R>,
         duration: u64,
         nft_boost_config: Option<NFTBoostConfig>
     ) {
-        assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
+        // todo: add only admin
+        // todo: check already exists for same seed
+        // assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);
         assert!(!stake_config::is_global_emergency(), ERR_EMERGENCY);
         assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
+
+        // create account to store pool resource
+        let (_, signer_cap) =
+            account::create_resource_account(pools_admin, storage_seed);
+        let storage_acc = &account::create_signer_with_capability(&signer_cap);
 
         let reward_per_sec = coin::value(&reward_coins) / duration;
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
@@ -213,10 +222,8 @@ module harvest::stake {
         let current_time = timestamp::now_seconds();
         let end_timestamp = current_time + duration;
 
+        // todo: check with different R decimals
         let reward_scale = ACCUM_REWARD_SCALE / to_u128(math64::pow(10, (coin::decimals<R>() as u64)));
-
-        // std::debug::print(&math64::pow(10, (coin::decimals<R>() as u64)));
-        // std::debug::print(&reward_scale);
 
         let pool = StakePool<S, R> {
             reward_per_sec,
@@ -233,14 +240,14 @@ module harvest::stake {
             nft_boost_config,
 
             emergency_locked: false,
-            stake_events: account::new_event_handle<StakeEvent>(owner),
-            unstake_events: account::new_event_handle<UnstakeEvent>(owner),
-            deposit_events: account::new_event_handle<DepositRewardEvent>(owner),
-            harvest_events: account::new_event_handle<HarvestEvent>(owner),
-            boost_events: account::new_event_handle<BoostEvent>(owner),
-            remove_boost_events: account::new_event_handle<RemoveBoostEvent>(owner),
+            stake_events: account::new_event_handle<StakeEvent>(storage_acc),
+            unstake_events: account::new_event_handle<UnstakeEvent>(storage_acc),
+            deposit_events: account::new_event_handle<DepositRewardEvent>(storage_acc),
+            harvest_events: account::new_event_handle<HarvestEvent>(storage_acc),
+            boost_events: account::new_event_handle<BoostEvent>(storage_acc),
+            remove_boost_events: account::new_event_handle<RemoveBoostEvent>(storage_acc),
         };
-        move_to(owner, pool);
+        move_to(storage_acc, pool);
     }
 
     /// Depositing reward coins to specific pool, updates pool duration.

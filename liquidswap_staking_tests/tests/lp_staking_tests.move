@@ -31,6 +31,7 @@ module lp_staking_admin::lp_staking_tests {
         let start_time = 682981200;
         timestamp::update_global_time_for_test_secs(start_time);
 
+        // todo: why helpers?
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
         let alice_acc = stake_test_helpers::new_account(@alice);
@@ -70,35 +71,41 @@ module lp_staking_admin::lp_staking_tests {
         // register stake pool with 50 000 DGEN rewards. 0,01 DGEN coins per second reward
         let dgen_coins = coin::withdraw<DGEN>(&harvest_acc, 50000000000);
         let duration = 5000000;
-        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(&harvest_acc, dgen_coins, duration, option::none());
+        stake::register_pool<LP<BTC, USDT, Uncorrelated>, DGEN>(
+            &harvest_acc,
+            b"some_seed",
+            dgen_coins,
+            duration,
+            option::none()
+        );
 
         // stake 999.999 LP from alice
-        stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest, lp_coins);
+        stake::stake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @pool_storage, lp_coins);
         assert!(coin::balance<LP<BTC, USDT, Uncorrelated>>(@alice) == 0, 1);
-        assert!(stake::get_user_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 999999000, 1);
-        assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest) == 999999000, 1);
+        assert!(stake::get_user_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage, @alice) == 999999000, 1);
+        assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage) == 999999000, 1);
 
         // wait one week
         timestamp::update_global_time_for_test_secs(start_time + 604800);
 
         // harvest from alice
         let coins =
-            stake::harvest<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest);
-        assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
+            stake::harvest<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @pool_storage);
+        assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage, @alice) == 0, 1);
         // 6047.999999 DGEN coins
         assert!(coin::value(&coins) == 6047999999, 1);
         coin::deposit(@alice, coins);
 
         // unstake all 999.999 LP coins from alice
         let coins =
-            stake::unstake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @harvest, 999999000);
+            stake::unstake<LP<BTC, USDT, Uncorrelated>, DGEN>(&alice_acc, @pool_storage, 999999000);
         assert!(coin::value(&coins) == 999999000, 1);
-        assert!(stake::get_user_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest, @alice) == 0, 1);
-        assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest) == 0, 1);
+        assert!(stake::get_user_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage, @alice) == 0, 1);
+        assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage) == 0, 1);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
         // 0.000001 RewardCoin lost during calculations
-        let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@harvest);
+        let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, DGEN>(@pool_storage);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<DGEN>(@alice);
 

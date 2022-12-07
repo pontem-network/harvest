@@ -56,9 +56,7 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     public fun test_register_with_boost_config() {
-        initialize_test();
-
-        let alice_acc = new_account(@alice);
+        let (harvest, _) = initialize_test();
 
         let collection_name = string::utf8(b"Test Collection");
         create_collecton(@collection_owner, collection_name);
@@ -71,23 +69,29 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // check pool statistics
         let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
-            stake::get_pool_info<StakeCoin, RewardCoin>(@alice);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@alice);
+            stake::get_pool_info<StakeCoin, RewardCoin>(@pool_storage);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@pool_storage);
         assert!(end_ts == START_TIME + duration, 1);
         assert!(reward_per_sec == 1000000, 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == START_TIME, 1);
         assert!(reward_amount == 15768000000000, 1);
         assert!(s_scale == 1000000, 1);
-        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@alice) == 0, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage) == 0, 1);
 
         // check boost config
         let (collection_owner_addr, coll_name, boost_percent) =
-            stake::get_boost_config<StakeCoin, RewardCoin>(@alice);
+            stake::get_boost_config<StakeCoin, RewardCoin>(@pool_storage);
         assert!(collection_owner_addr == @collection_owner, 1);
         assert!(coll_name == collection_name, 1);
         assert!(boost_percent == 5, 1);
@@ -110,35 +114,41 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 25000000, 1);
         assert!(user_boosted == 25000000, 1);
 
         // wait 10 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + 10);
 
-        let pending_rewards = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
+        let pending_rewards = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(pending_rewards == 9999999, 1);
 
         // remove nft boost
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
         token::deposit_token(&alice_acc, nft);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 0, 1);
         assert!(user_boosted == 0, 1);
     }
@@ -162,80 +172,86 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             100
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 100 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 100000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // stake 100 StakeCoins from bob
         let coins =
             coin::withdraw<StakeCoin>(&bob_acc, 100000000);
-        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, coins);
 
         // boost stake with nft from alice
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft_1);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft_1);
 
         // wait one week seconds
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
 
-        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
-        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
+        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(pending_rewards_1 == 403200000000, 1);
         assert!(pending_rewards_2 == 201600000000, 1);
 
         // unstake 50 StakeCoins from alice
-        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 50000000);
+        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 50000000);
         coin::deposit(@alice, coins);
 
         // boost stake with nft from bob
-        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft_2);
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, nft_2);
 
         // wait 100 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS + 100);
 
-        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
-        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
+        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(pending_rewards_1 == 403233333333, 1);
         assert!(pending_rewards_2 == 201666666666, 1);
 
         // unstake 50 StakeCoins from alice
-        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 50000000);
+        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 50000000);
         coin::deposit(@alice, coins);
 
         // stake 50 StakeCoins from bob
         let coins =
             coin::withdraw<StakeCoin>(&bob_acc, 50000000);
-        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, coins);
 
         // wait 100 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS + 200);
 
-        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
-        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
+        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(pending_rewards_1 == 403233333333, 1);
         assert!(pending_rewards_2 == 201766666666, 1);
 
         // stake 150 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 150000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // remove nft boost from bob
-        let nft_2 = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        let nft_2 = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @pool_storage);
         token::deposit_token(&bob_acc, nft_2);
 
         // wait 100 seconds
         timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS + 300);
 
-        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
-        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @bob);
+        let pending_rewards_1 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @alice);
+        let pending_rewards_2 = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(pending_rewards_1 == 403300000000, 1);
         assert!(pending_rewards_2 == 201800000000, 1);
 
-        let rewards_1 = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-        let rewards_2 = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        let rewards_1 = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
+        let rewards_2 = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @pool_storage);
         let amount_1 = coin::value(&rewards_1);
         let amount_2 = coin::value(&rewards_2);
 
@@ -273,60 +289,66 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             1
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 0, 1);
         assert!(user_boosted == 0, 1);
 
         // boost alice stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft_1);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft_1);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 5000000, 1);
         assert!(user_boosted == 5000000, 1);
 
         // stake 10 StakeCoin from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 10000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 5100000, 1);
         assert!(user_boosted == 5100000, 1);
 
         // stake 800 StakeCoins from bob
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 800000000);
-        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, coins);
 
         // boost bob stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft_2);
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, nft_2);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @bob);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(total_boosted == 13100000, 1);
         assert!(user_boosted == 8000000, 1);
 
         // remove boost from bob
-        let nft_2 = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        let nft_2 = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @pool_storage);
         token::deposit_token(&bob_acc, nft_2);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @bob);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @bob);
         assert!(total_boosted == 5100000, 1);
         assert!(user_boosted == 0, 1);
 
@@ -335,23 +357,23 @@ module harvest::stake_nft_boost_tests {
 
         // unstake 255 StakeCoins from alice
         let coins =
-            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 255000000);
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 255000000);
         coin::deposit(@alice, coins);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 2550000, 1);
         assert!(user_boosted == 2550000, 1);
 
         // unstake 255 StakeCoins from alice
         let coins =
-            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 255000000);
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, 255000000);
         coin::deposit(@alice, coins);
 
         // check values
-        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
-        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
         assert!(total_boosted == 0, 1);
         assert!(user_boosted == 0, 1);
     }
@@ -365,7 +387,7 @@ module harvest::stake_nft_boost_tests {
         let collection_owner = create_collecton(@collection_owner, collection_name);
         let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
 
-        stake::boost<StakeCoin, RewardCoin>(&harvest, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&harvest, @pool_storage, nft);
     }
 
     #[test]
@@ -373,20 +395,20 @@ module harvest::stake_nft_boost_tests {
     public fun test_claim_fails_if_pool_does_not_exist() {
         let (harvest, _) = initialize_test();
 
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @pool_storage);
         token::deposit_token(&harvest, nft);
     }
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pool_total_boosted_fails_if_pool_does_not_exist() {
-        stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@pool_storage);
     }
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_user_boosted_fails_if_pool_does_not_exist() {
-        stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
     }
 
     #[test]
@@ -406,9 +428,15 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
-        stake::boost<StakeCoin, RewardCoin>(&harvest, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&harvest, @pool_storage, nft);
     }
 
     #[test]
@@ -422,9 +450,15 @@ module harvest::stake_nft_boost_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
 
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @pool_storage);
         token::deposit_token(&harvest, nft);
     }
 
@@ -436,9 +470,15 @@ module harvest::stake_nft_boost_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
 
-        stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        stake::get_user_boosted<StakeCoin, RewardCoin>(@pool_storage, @alice);
     }
 
     #[test]
@@ -453,7 +493,13 @@ module harvest::stake_nft_boost_tests {
             string::utf8(b"Wrong Collection"),
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, coin::zero<RewardCoin>(), 12345, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            coin::zero<RewardCoin>(),
+            12345,
+            option::some(boost_config)
+        );
     }
 
     #[test]
@@ -466,7 +512,13 @@ module harvest::stake_nft_boost_tests {
             string::utf8(b"Test Collection"),
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, coin::zero<RewardCoin>(), 12345, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            coin::zero<RewardCoin>(),
+            12345,
+            option::some(boost_config)
+        );
     }
 
     #[test]
@@ -482,7 +534,13 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             0
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, coin::zero<RewardCoin>(), 12345, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            coin::zero<RewardCoin>(),
+            12345,
+            option::some(boost_config)
+        );
     }
 
     #[test]
@@ -498,7 +556,13 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             101
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, coin::zero<RewardCoin>(), 12345, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            coin::zero<RewardCoin>(),
+            12345,
+            option::some(boost_config)
+        );
     }
 
     #[test]
@@ -514,15 +578,21 @@ module harvest::stake_nft_boost_tests {
         // register staking pool with rewards
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft);
     }
 
     #[test]
@@ -544,16 +614,22 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft twice
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft_1);
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft_2);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft_1);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft_2);
     }
 
     #[test]
@@ -576,15 +652,21 @@ module harvest::stake_nft_boost_tests {
             collection_name_1,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft);
     }
 
     #[test]
@@ -606,15 +688,21 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft);
     }
 
     #[test]
@@ -626,15 +714,21 @@ module harvest::stake_nft_boost_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // claim nft
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
         token::deposit_token(&alice_acc, nft);
     }
 
@@ -655,15 +749,21 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // remove boost
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
         token::deposit_token(&alice_acc, nft);
     }
 
@@ -685,20 +785,26 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 500 StakeCoins from alice
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, coins);
 
         // boost stake with nft
-        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage, nft);
 
         // remove nft boost twice
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
         token::deposit_token(&alice_acc, nft);
-        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @pool_storage);
         token::deposit_token(&alice_acc, nft);
     }
 
@@ -738,13 +844,19 @@ module harvest::stake_nft_boost_tests {
             collection_name,
             1
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::some(boost_config)
+        );
 
         // stake 800 StakeCoins from bob
         let coins =
             coin::withdraw<StakeCoin>(&bob_acc, 1000);
-        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, coins);
 
-        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @pool_storage, nft);
     }
 }

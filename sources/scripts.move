@@ -11,32 +11,40 @@ module harvest::scripts {
     use harvest::stake;
 
     /// Register new staking pool with staking coin `S` and reward coin `R` without nft boost.
-    ///     * `pool_owner` - account which will be used as a pool storage.
+    ///     * `pools_admin` - pools admin, used to create resource accounts for pool storage.
+    ///     * `storage_seed` - a seed used to generate resource account for pool storage.
     ///     * `reward_amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
-    public entry fun register_pool<S, R>(pool_owner: &signer, reward_amount: u64, duration: u64) {
-        let rewards = coin::withdraw<R>(pool_owner, reward_amount);
-        stake::register_pool<S, R>(pool_owner, rewards, duration, option::none());
+    public entry fun register_pool<S, R>(
+        pools_admin: &signer,
+        storage_seed: vector<u8>,
+        reward_amount: u64,
+        duration: u64
+    ) {
+        let rewards = coin::withdraw<R>(pools_admin, reward_amount);
+        stake::register_pool<S, R>(pools_admin, storage_seed, rewards, duration, option::none());
     }
 
     /// Register new staking pool with staking coin `S` and reward coin `R` with nft boost.
-    ///     * `pool_owner` - account which will be used as a pool storage.
+    ///     * `pools_admin` - pools admin, used to create resource accounts for pool storage.
+    ///     * `storage_seed` - a seed used to generate resource account for pool storage.
     ///     * `reward_amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
     ///     * `collection_owner` - address of nft collection creator.
     ///     * `collection_name` - nft collection name.
     ///     * `boost_percent` - percentage of increasing user stake "power" after nft stake.
     public entry fun register_pool_with_collection<S, R>(
-        pool_owner: &signer,
+        pools_admin: &signer,
+        storage_seed: vector<u8>,
         reward_amount: u64,
         duration: u64,
         collection_owner: address,
         collection_name: String,
         boost_percent: u64
     ) {
-        let rewards = coin::withdraw<R>(pool_owner, reward_amount);
+        let rewards = coin::withdraw<R>(pools_admin, reward_amount);
         let boost_config = stake::create_boost_config(collection_owner, collection_name, boost_percent);
-        stake::register_pool<S, R>(pool_owner, rewards, duration, option::some(boost_config));
+        stake::register_pool<S, R>(pools_admin, storage_seed, rewards, duration, option::some(boost_config));
     }
 
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
