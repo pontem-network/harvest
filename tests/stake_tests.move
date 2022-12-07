@@ -60,40 +60,89 @@ module harvest::stake_tests {
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@pool_storage) == 0, 1);
     }
 
-    // todo: rework this test
-    // #[test]
-    // public fun test_register_two_pools() {
-    //     initialize_test();
-    //
-    //     let alice_acc = new_account(@alice);
-    //     let bob_acc = new_account(@bob);
-    //
-    //     // register staking pool 1 with rewards
-    //     let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-    //     let duration = 15768000;
-    //     stake::register_pool<StakeCoin, RewardCoin>(
-    //         &alice_acc,
-    //         b"some_seed",
-    //         reward_coins,
-    //         duration,
-    //         option::none()
-    //     );
-    //
-    //     // register staking pool 2 with rewards
-    //     let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
-    //     let duration = 15768000;
-    //     stake::register_pool<RewardCoin, StakeCoin>(
-    //         &bob_acc,
-    //         b"some_seed",
-    //         reward_coins,
-    //         duration,
-    //         option::none()
-    //     );
-    //
-    //     // check pools exist
-    //     assert!(stake::pool_exists<StakeCoin, RewardCoin>(@alice), 1);
-    //     assert!(stake::pool_exists<RewardCoin,StakeCoin>(@bob), 1);
-    // }
+    #[test]
+    public fun test_register_two_different_pools() {
+        let (harvest, _) = initialize_test();
+
+        let res_acc_addr_1 = @0x51441c1d7933033cbc6cecf7e255a670adcc6cb18c88838a8b3f147f3cfb616b;
+        let res_acc_addr_2 = @0x2548ca468d04206f9162f5897fc0b69de75e035fc7236a5db9874f3f0eb23718;
+
+        // register staking pool 1 with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed_1",
+            reward_coins,
+            duration,
+            option::none()
+        );
+
+        // register staking pool 2 with rewards
+        let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<RewardCoin, StakeCoin>(
+            &harvest,
+            b"some_seed_2",
+            reward_coins,
+            duration,
+            option::none()
+        );
+
+        // check pools exist
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(res_acc_addr_1), 1);
+        assert!(stake::pool_exists<RewardCoin,StakeCoin>(res_acc_addr_2), 1);
+        assert!(!stake::pool_exists<RewardCoin, StakeCoin>(res_acc_addr_1), 1);
+        assert!(!stake::pool_exists<StakeCoin, RewardCoin>(res_acc_addr_2), 1);
+    }
+
+    #[test]
+    public fun test_register_two_same_pools() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 500000000);
+
+        let res_acc_addr_1 = @0x51441c1d7933033cbc6cecf7e255a670adcc6cb18c88838a8b3f147f3cfb616b;
+        let res_acc_addr_2 = @0x2548ca468d04206f9162f5897fc0b69de75e035fc7236a5db9874f3f0eb23718;
+
+        // register staking pool 1 with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed_1",
+            reward_coins,
+            duration,
+            option::none()
+        );
+
+        // register staking pool 2 with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            b"some_seed_2",
+            reward_coins,
+            duration,
+            option::none()
+        );
+
+        // check pools exist
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(res_acc_addr_1), 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(res_acc_addr_2), 1);
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, res_acc_addr_1, coins);
+
+        // check pool with stake
+        assert!(stake::get_user_stake<StakeCoin, RewardCoin>(res_acc_addr_1, @alice) == 500000000, 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(res_acc_addr_1) == 500000000, 1);
+
+        // check pool without stake
+        assert!(!stake::stake_exists<StakeCoin, RewardCoin>(res_acc_addr_2, @alice), 1);
+        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(res_acc_addr_2) == 0, 1);
+    }
 
     #[test]
     public fun test_deposit_reward_coins() {
