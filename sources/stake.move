@@ -89,6 +89,9 @@ module harvest::stake {
     /// When amount of NFT for boost is more than one.
     const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
 
+    /// When executed not by admin.
+    const ERR_NO_PERMISSIONS: u64 = 123;
+
     //
     // Constants
     //
@@ -204,7 +207,8 @@ module harvest::stake {
         duration: u64,
         nft_boost_config: Option<NFTBoostConfig>
     ) {
-        // todo: add only admin
+        assert!(signer::address_of(pools_admin) == @harvest, ERR_NO_PERMISSIONS);
+
         // todo: check already exists for same seed
         // assert!(!exists<StakePool<S, R>>(signer::address_of(owner)), ERR_POOL_ALREADY_EXISTS);
         assert!(coin::is_coin_initialized<S>() && coin::is_coin_initialized<R>(), ERR_IS_NOT_COIN);

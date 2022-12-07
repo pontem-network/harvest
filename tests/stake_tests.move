@@ -1863,6 +1863,25 @@ module harvest::stake_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = 123 /* ERR_NO_PERMISSIONS */)]
+    public fun test_register_pool_fails_if_executed_not_by_admin() {
+        initialize_test();
+
+        let alice_acc = new_account(@alice);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(12345);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(
+            &alice_acc,
+            b"some_seed",
+            reward_coins,
+            duration,
+            option::none()
+        );
+    }
+
+    #[test]
     #[expected_failure(abort_code = 201 /* ERR_NOT_INITIALIZED */)]
     fun test_register_without_config_initialization_fails() {
         let harvest = new_account(@harvest);
