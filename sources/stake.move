@@ -733,6 +733,20 @@ module harvest::stake {
         user_stake.earned_reward + to_u64(earned_since_last_update)
     }
 
+    /// Checks stake unlock time in specific pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns stake unlock time.
+    public fun get_unlock_time<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        table::borrow(&pool.stakes, user_addr).unlock_time
+    }
+
     /// Checks if stake is unlocked.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -905,15 +919,14 @@ module harvest::stake {
     }
 
     #[test_only]
-    /// Access user stake fields with no getters.
-    public fun get_user_stake_info<S, R>(
+    /// Access unobtainable_reward field in user stake.
+    public fun get_unobtainable_reward<S, R>(
         pool_addr: address,
         user_addr: address
-    ): (u128, u64) acquires StakePool {
+    ): u128 acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        let fields = table::borrow(&pool.stakes, user_addr);
 
-        (fields.unobtainable_reward, fields.unlock_time)
+        table::borrow(&pool.stakes, user_addr).unobtainable_reward
     }
 
     #[test_only]
