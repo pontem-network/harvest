@@ -254,34 +254,6 @@ module harvest::stake_nft_boost_tests {
         assert!(losed_rewards == 300, 1);
     }
 
-    // todo: update this test after PR35 merge
-    #[test]
-    public fun test_is_boostable() {
-        let (harvest, _) = initialize_test();
-
-        let collection_name = string::utf8(b"Test Collection");
-        create_collecton(@collection_owner, collection_name);
-
-        // register staking pool 1 with rewards and boost config
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        let duration = 15768000;
-        let boost_config = stake::create_boost_config(
-            @collection_owner,
-            collection_name,
-            100
-        );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
-
-        // register staking pool 2 with rewards no boost config
-        let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
-        let duration = 15768000;
-        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins, duration, option::none());
-
-        // check is boostable
-        assert!(stake::is_boostable<StakeCoin, RewardCoin>(@harvest), 1);
-        assert!(!stake::is_boostable<RewardCoin, StakeCoin>(@harvest), 1);
-    }
-
     #[test]
     public fun test_boosted_amount_calculation() {
         let (harvest, _) = initialize_test();
@@ -384,6 +356,66 @@ module harvest::stake_nft_boost_tests {
         assert!(user_boosted == 0, 1);
     }
 
+    // todo: update this test after PR35 merge
+    #[test]
+    public fun test_is_boostable() {
+        let (harvest, _) = initialize_test();
+
+        let collection_name = string::utf8(b"Test Collection");
+        create_collecton(@collection_owner, collection_name);
+
+        // register staking pool 1 with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // register staking pool 2 with rewards no boost config
+        let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins, duration, option::none());
+
+        // check is boostable
+        assert!(stake::is_boostable<StakeCoin, RewardCoin>(@harvest), 1);
+        assert!(!stake::is_boostable<RewardCoin, StakeCoin>(@harvest), 1);
+    }
+
+    #[test]
+    public fun test_is_boosted() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 500000000);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft_1 = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        assert!(!stake::is_boosted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+
+        // boost alice stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft_1);
+
+        assert!(stake::is_boosted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+    }
+
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_boost_fails_if_pool_does_not_exist() {
@@ -421,6 +453,12 @@ module harvest::stake_nft_boost_tests {
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pool_total_boosted_fails_if_pool_does_not_exist() {
         stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_is_boosted_fails_if_pool_does_not_exist() {
+        stake::is_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]
@@ -466,6 +504,19 @@ module harvest::stake_nft_boost_tests {
 
         let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @harvest);
         token::deposit_token(&harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    public fun test_is_boosted_fails_if_stake_not_exists() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]

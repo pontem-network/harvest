@@ -682,6 +682,20 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
+    /// Checks if user user stake is boosted.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns true if stake is boosted.
+    public fun is_boosted<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        option::is_some(&table::borrow(&pool.stakes, user_addr).nft)
+    }
+
     /// Checks current user boosted amount in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
