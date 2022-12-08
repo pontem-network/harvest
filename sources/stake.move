@@ -733,6 +733,23 @@ module harvest::stake {
         user_stake.earned_reward + to_u64(earned_since_last_update)
     }
 
+    /// Checks if stake is unlocked.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns true if user can unstake.
+    public fun is_unlocked<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let current_time = timestamp::now_seconds();
+        let unlock_time = table::borrow(&pool.stakes, user_addr).unlock_time;
+
+        is_finished_inner(pool) || current_time >= unlock_time
+    }
+
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if emergency happened (local or global).

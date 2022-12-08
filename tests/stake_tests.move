@@ -299,6 +299,56 @@ module harvest::stake_tests {
     }
 
     #[test]
+    public fun test_is_unlocked() {
+        let (harvest, _) = initialize_test();
+
+        let alice_acc = new_account_with_stake_coins(@alice, 500000);
+        let bob_acc = new_account_with_stake_coins(@bob, 500000);
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(604805000000);
+        let duration = 604805;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        // stake from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        assert!(!stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+
+        // wait almost a week
+        timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS - 1);
+
+        assert!(!stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+
+        // stake from bob
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        assert!(!stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+
+        // wait a second
+        timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
+
+        assert!(stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(!stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+
+        // wait until pool expired
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        assert!(stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+
+        // wait a week more
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS);
+
+        assert!(stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+    }
+
+    #[test]
     public fun test_reward_calculation() {
         let (harvest, _) = initialize_test();
 
@@ -1218,6 +1268,12 @@ module harvest::stake_tests {
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_is_unlocked_fails_if_pool_does_not_exist() {
+        stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_is_finished_fails_if_pool_does_not_exist() {
         stake::is_finished<StakeCoin, RewardCoin>(@harvest);
     }
@@ -1280,6 +1336,19 @@ module harvest::stake_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    public fun test_is_unlocked_fails_if_stake_does_not_exist() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(12345);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]
