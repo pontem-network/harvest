@@ -763,7 +763,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
     public fun test_remove_boost_fails_when_executed_with_non_boost_pool() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -784,7 +784,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
     public fun test_remove_boost_fails_if_executed_before_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -813,7 +813,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
+    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
     public fun test_remove_boost_fails_when_executed_twice() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);

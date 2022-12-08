@@ -84,7 +84,7 @@ module harvest::stake {
     const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
 
     /// When removing boost from non boosted stake.
-    const ERR_NOTHING_TO_CLAIM: u64 = 121;
+    const ERR_NO_BOOST: u64 = 121;
 
     /// When amount of NFT for boost is more than one.
     const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
@@ -502,7 +502,7 @@ module harvest::stake {
         update_accum_reward(pool);
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
-        assert!(option::is_some(&user_stake.nft), ERR_NOTHING_TO_CLAIM);
+        assert!(option::is_some(&user_stake.nft), ERR_NO_BOOST);
 
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
