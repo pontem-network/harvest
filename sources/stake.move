@@ -588,11 +588,20 @@ module harvest::stake {
     // Getter functions
     //
 
+    /// Checks if user can boost own stake in pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns true if pool accepts boosts.
+    public fun is_boostable<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        option::is_some(&pool.nft_boost_config)
+    }
 
     /// Get NFT boost config parameters for pool.
     ///     * `pool_addr` - the pool with with NFT boost collection enabled.
     /// Returns both `collection_owner`, `collection_name` and boost percent.
-    public fun get_boost_config<S, R>(pool_addr: address): (address, String, u64)  acquires StakePool {
+    public fun get_boost_config<S, R>(pool_addr: address): (address, String, u64) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);

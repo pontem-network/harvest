@@ -1218,7 +1218,7 @@ module harvest::stake_tests {
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
-    public fun test_if_finished_fails_if_pool_does_not_exist() {
+    public fun test_is_finished_fails_if_pool_does_not_exist() {
         stake::is_finished<StakeCoin, RewardCoin>(@harvest);
     }
 

@@ -94,7 +94,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    public fun test_boost_and_claim() {
+    public fun test_boost_and_remove_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
@@ -254,6 +254,34 @@ module harvest::stake_nft_boost_tests {
         assert!(losed_rewards == 300, 1);
     }
 
+    // todo: update this test after PR35 merge
+    #[test]
+    public fun test_is_boostable() {
+        let (harvest, _) = initialize_test();
+
+        let collection_name = string::utf8(b"Test Collection");
+        create_collecton(@collection_owner, collection_name);
+
+        // register staking pool 1 with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // register staking pool 2 with rewards no boost config
+        let reward_coins = mint_default_coin<StakeCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins, duration, option::none());
+
+        // check is boostable
+        assert!(stake::is_boostable<StakeCoin, RewardCoin>(@harvest), 1);
+        assert!(!stake::is_boostable<RewardCoin, StakeCoin>(@harvest), 1);
+    }
+
     #[test]
     public fun test_boosted_amount_calculation() {
         let (harvest, _) = initialize_test();
@@ -370,11 +398,17 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
-    public fun test_claim_fails_if_pool_does_not_exist() {
+    public fun test_remove_boost_fails_if_pool_does_not_exist() {
         let (harvest, _) = initialize_test();
 
         let nft = stake::remove_boost<StakeCoin, RewardCoin>(&harvest, @harvest);
         token::deposit_token(&harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_is_boostable_fails_if_pool_does_not_exist() {
+        stake::is_boostable<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
@@ -413,7 +447,7 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
-    public fun test_claim_fails_if_stake_does_not_exist() {
+    public fun test_remove_boost_fails_if_stake_does_not_exist() {
         let (harvest, _) = initialize_test();
 
         let collection_name = string::utf8(b"Test Collection");
@@ -619,7 +653,7 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
-    public fun test_claim_fails_when_executed_with_non_boost_pool() {
+    public fun test_remove_boost_fails_when_executed_with_non_boost_pool() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
@@ -633,14 +667,14 @@ module harvest::stake_nft_boost_tests {
             coin::withdraw<StakeCoin>(&alice_acc, 500000000);
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
-        // claim nft
+        // remove boost
         let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
         token::deposit_token(&alice_acc, nft);
     }
 
     #[test]
     #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
-    public fun test_claim_fails_if_executed_before_boost() {
+    public fun test_remove_boost_fails_if_executed_before_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
@@ -669,7 +703,7 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 121 /* ERR_NOTHING_TO_CLAIM */)]
-    public fun test_claim_fails_when_executed_twice() {
+    public fun test_remove_boost_fails_when_executed_twice() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
 
