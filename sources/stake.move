@@ -83,7 +83,7 @@ module harvest::stake {
     /// When token collection not match pool.
     const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
 
-    /// When claiming from non boosted stake.
+    /// When removing boost from non boosted stake.
     const ERR_NOTHING_TO_CLAIM: u64 = 121;
 
     /// When amount of NFT for boost is more than one.

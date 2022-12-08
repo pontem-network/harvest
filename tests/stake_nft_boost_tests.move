@@ -413,6 +413,12 @@ module harvest::stake_nft_boost_tests {
 
     #[test]
     #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    public fun test_get_boost_config_fails_if_pool_does_not_exist() {
+        stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
     public fun test_get_pool_total_boosted_fails_if_pool_does_not_exist() {
         stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
     }
@@ -557,6 +563,19 @@ module harvest::stake_nft_boost_tests {
 
         // boost stake with nft
         stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 118 /* ERR_NON_BOOST_POOL */)]
+    public fun test_get_boost_config_fails_when_non_boost_pool() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
