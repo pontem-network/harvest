@@ -144,6 +144,47 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
+    public fun test_remove_boost_works_after_pool_duration_end() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        // register staking pool with rewards and boost config
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            5
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        // stake 500 StakeCoins from alice
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        // boost stake with nft
+        stake::boost<StakeCoin, RewardCoin>(&alice_acc, @harvest, nft);
+
+        // wait until pool expired and a week more
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS);
+
+        // remove nft boost
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        token::deposit_token(&alice_acc, nft);
+
+        // check values
+        let total_boosted = stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
+        let user_boosted = stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
+        assert!(total_boosted == 0, 1);
+        assert!(user_boosted == 0, 1);
+    }
+
+    #[test]
     public fun test_reward_calculation_with_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 150000000);
