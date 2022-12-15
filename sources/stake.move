@@ -325,7 +325,7 @@ module harvest::stake {
 
             // recalculate unobtainable reward after stake amount changed
             user_stake.unobtainable_reward =
-                (accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / pool.stake_scale;
+                (accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
 
             user_stake.unlock_time = current_time + WEEK_IN_SECONDS;
         };
@@ -384,7 +384,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake amount changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
@@ -478,7 +478,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
 
         event::emit_event(
             &mut pool.boost_events,
@@ -514,7 +514,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * to_u128(user_stake_amount_with_boosted(user_stake))) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
 
         event::emit_event(
             &mut pool.remove_boost_events,
@@ -793,7 +793,7 @@ module harvest::stake {
     ///     * `user_stake` - stake to update earnings.
     /// Returns new stake earnings.
     fun user_earned_since_last_update(accum_reward: u128, stake_scale: u128, user_stake: &UserStake): u128 {
-        (accum_reward * (to_u128(user_stake_amount_with_boosted(user_stake))) / stake_scale)
+        ((accum_reward * user_stake_amount_with_boosted(user_stake)) / stake_scale)
             - user_stake.unobtainable_reward
     }
 
@@ -828,8 +828,8 @@ module harvest::stake {
     /// Get total staked amount + boosted amount by the user.
     ///     * `user_stake` - the user stake.
     /// Returns amount.
-    fun user_stake_amount_with_boosted(user_stake: &UserStake): u64 {
-        user_stake.amount + user_stake.boosted_amount
+    fun user_stake_amount_with_boosted(user_stake: &UserStake): u128 {
+        to_u128(user_stake.amount + user_stake.boosted_amount)
     }
 
     //
