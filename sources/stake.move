@@ -775,7 +775,7 @@ module harvest::stake {
         if (total_boosted_stake == 0) return 0;
 
         let total_rewards = to_u128(pool.reward_per_sec) * to_u128(seconds_passed) * pool.stake_scale;
-        total_rewards / to_u128(total_boosted_stake)
+        total_rewards / total_boosted_stake
     }
 
     /// Calculates user earnings, updating user stake.
@@ -823,8 +823,8 @@ module harvest::stake {
     /// Get total staked amount + boosted amount in the pool.
     ///     * `pool` - the pool itself.
     /// Returns amount.
-    fun pool_total_staked_with_boosted<S, R>(pool: &StakePool<S, R>): u64 {
-        coin::value(&pool.stake_coins) + pool.total_boosted
+    fun pool_total_staked_with_boosted<S, R>(pool: &StakePool<S, R>): u128 {
+        to_u128(coin::value(&pool.stake_coins) + pool.total_boosted)
     }
 
     /// Get total staked amount + boosted amount by the user.
