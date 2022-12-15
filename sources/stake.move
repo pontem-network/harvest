@@ -316,10 +316,11 @@ module harvest::stake {
             user_stake.amount = user_stake.amount + amount;
 
             if (option::is_some(&user_stake.nft)) {
-                let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
+                let boost_percent = to_u128(option::borrow(&pool.nft_boost_config).boost_percent);
 
                 pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
-                user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
+                // calculate user boosted_amount using u128 to prevent overflow
+                user_stake.boosted_amount = to_u64((to_u128(user_stake.amount) * boost_percent) / 100);
                 pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
             };
 
@@ -375,10 +376,11 @@ module harvest::stake {
         user_stake.amount = user_stake.amount - amount;
 
         if (option::is_some(&user_stake.nft)) {
-            let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
+            let boost_percent = to_u128(option::borrow(&pool.nft_boost_config).boost_percent);
 
             pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
-            user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
+            // calculate user boosted_amount using u128 to prevent overflow
+            user_stake.boosted_amount = to_u64((to_u128(user_stake.amount) * boost_percent) / 100);
             pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
         };
 
@@ -451,7 +453,7 @@ module harvest::stake {
         let (token_collection_owner, token_collection_name, _, _) = token::get_token_id_fields(&token_id);
 
         let params = option::borrow(&pool.nft_boost_config);
-        let boost_percent = params.boost_percent;
+        let boost_percent = to_u128(params.boost_percent);
         let collection_owner = params.collection_owner;
         let collection_name = params.collection_name;
 
@@ -472,8 +474,8 @@ module harvest::stake {
 
         option::fill(&mut user_stake.nft, nft);
 
-        // update user stake and pool after stake boost
-        user_stake.boosted_amount = (user_stake.amount * boost_percent) / 100;
+        // update user stake and pool after stake boost using u128 to prevent overflow
+        user_stake.boosted_amount = to_u64((to_u128(user_stake.amount) * boost_percent) / 100);
         pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
 
         // recalculate unobtainable reward after stake boosted changed
