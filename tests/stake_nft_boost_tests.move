@@ -458,7 +458,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_boost_fails_if_pool_does_not_exist() {
         let (harvest, _) = initialize_test();
 
@@ -470,7 +470,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_remove_boost_fails_if_pool_does_not_exist() {
         let (harvest, _) = initialize_test();
 
@@ -479,37 +479,37 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_is_boostable_fails_if_pool_does_not_exist() {
         stake::is_boostable<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_get_boost_config_fails_if_pool_does_not_exist() {
         stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_get_pool_total_boosted_fails_if_pool_does_not_exist() {
         stake::get_pool_total_boosted<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_is_boosted_fails_if_pool_does_not_exist() {
         stake::is_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]
-    #[expected_failure(abort_code = 100 /* ERR_NO_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_get_user_boosted_fails_if_pool_does_not_exist() {
         stake::get_user_boosted<StakeCoin, RewardCoin>(@harvest, @alice);
     }
 
     #[test]
-    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    #[expected_failure(abort_code = stake::ERR_NO_STAKE)]
     public fun test_boost_fails_if_stake_does_not_exist() {
         let (harvest, _) = initialize_test();
 
@@ -531,7 +531,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    #[expected_failure(abort_code = stake::ERR_NO_STAKE)]
     public fun test_remove_boost_fails_if_stake_does_not_exist() {
         let (harvest, _) = initialize_test();
 
@@ -548,7 +548,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    #[expected_failure(abort_code = stake::ERR_NO_STAKE)]
     public fun test_is_boosted_fails_if_stake_not_exists() {
         let (harvest, _) = initialize_test();
 
@@ -561,7 +561,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 103 /* ERR_NO_STAKE */)]
+    #[expected_failure(abort_code = stake::ERR_NO_STAKE)]
     public fun test_get_user_boosted_fails_if_stake_not_exists() {
         let (harvest, _) = initialize_test();
 
@@ -574,7 +574,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 116 /* ERR_NO_COLLECTION */)]
+    #[expected_failure(abort_code = stake::ERR_NO_COLLECTION)]
     public fun test_create_boost_config_fails_if_colleciont_does_not_exist_1() {
         let (harvest, _) = initialize_test();
 
@@ -589,7 +589,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 0x60001 /* ECOLLECTIONS_NOT_PUBLISHED token.move */)]
+    #[expected_failure(abort_code = 0x60001, location = aptos_token::token)]
     public fun test_create_boost_config_fails_if_colleciont_does_not_exist_2() {
         let (harvest, _) = initialize_test();
 
@@ -602,7 +602,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 117 /* ERR_INVALID_BOOST_PERCENT */)]
+    #[expected_failure(abort_code = stake::ERR_INVALID_BOOST_PERCENT)]
     public fun test_create_boost_config_fails_if_boost_percent_less_then_min() {
         let (harvest, _) = initialize_test();
 
@@ -618,7 +618,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 117 /* ERR_INVALID_BOOST_PERCENT */)]
+    #[expected_failure(abort_code = stake::ERR_INVALID_BOOST_PERCENT)]
     public fun test_create_boost_config_fails_if_boost_percent_more_then_max() {
         let (harvest, _) = initialize_test();
 
@@ -634,7 +634,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 118 /* ERR_NON_BOOST_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NON_BOOST_POOL)]
     public fun test_boost_fails_when_non_boost_pool() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 500000000);
@@ -658,7 +658,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 118 /* ERR_NON_BOOST_POOL */)]
+    #[expected_failure(abort_code = stake::ERR_NON_BOOST_POOL)]
     public fun test_get_boost_config_fails_when_non_boost_pool() {
         let (harvest, _) = initialize_test();
 
@@ -671,7 +671,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 119 /* ERR_ALREADY_BOOSTED */)]
+    #[expected_failure(abort_code = stake::ERR_ALREADY_BOOSTED)]
     public fun test_boost_fails_if_already_boosted() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -702,7 +702,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 120 /* ERR_WRONG_TOKEN_COLLECTION */)]
+    #[expected_failure(abort_code = stake::ERR_WRONG_TOKEN_COLLECTION)]
     public fun test_boost_fails_if_token_from_wrong_collection_1() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -733,7 +733,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 120 /* ERR_WRONG_TOKEN_COLLECTION */)]
+    #[expected_failure(abort_code = stake::ERR_WRONG_TOKEN_COLLECTION)]
     public fun test_boost_fails_if_token_from_wrong_collection_2() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -763,7 +763,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
+    #[expected_failure(abort_code = stake::ERR_NO_BOOST)]
     public fun test_remove_boost_fails_when_executed_with_non_boost_pool() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -784,7 +784,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
+    #[expected_failure(abort_code = stake::ERR_NO_BOOST)]
     public fun test_remove_boost_fails_if_executed_before_boost() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -813,7 +813,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 121 /* ERR_NO_BOOST */)]
+    #[expected_failure(abort_code = stake::ERR_NO_BOOST)]
     public fun test_remove_boost_fails_when_executed_twice() {
         let (harvest, _) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
@@ -848,7 +848,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 122 /* ERR_NFT_AMOUNT_MORE_THAN_ONE */)]
+    #[expected_failure(abort_code = stake::ERR_NFT_AMOUNT_MORE_THAN_ONE)]
     public fun test_boost_fails_if_amount_more_than_one() {
         let (harvest, _) = initialize_test();
         let bob_acc = new_account_with_stake_coins(@bob, 1000);

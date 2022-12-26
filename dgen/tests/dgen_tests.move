@@ -60,7 +60,7 @@ module dgen_coin::dgen_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 300 /* ERR_NO_PERMISSIONS */)]
+    #[expected_failure(abort_code = dgen::ERR_NO_PERMISSIONS)]
     public fun test_initialize_fails_if_executed_not_by_coin_owner() {
         let alice = account::create_account_for_test(@alice);
         // initialize coin from wrong account
@@ -68,14 +68,14 @@ module dgen_coin::dgen_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 301 /* ERR_NO_COIN */)]
+    #[expected_failure(abort_code = dgen::ERR_NO_COIN)]
     public fun test_burn_fails_if_executed_before_initialization() {
         // burn before initialization
         dgen::burn(coin::zero<DGEN>());
     }
 
     #[test]
-    #[expected_failure(abort_code = 524290)]
+    #[expected_failure(abort_code = 524290, location = aptos_framework::coin)]
     public fun test_initialize_fails_if_executed_twice() {
         let dgen_admin = account::create_account_for_test(@dgen_coin);
 
