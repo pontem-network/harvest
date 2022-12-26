@@ -744,7 +744,7 @@ module harvest::stake {
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
-        table::borrow(&pool.stakes, user_addr).unlock_time
+        math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time)
     }
 
     /// Checks if stake is unlocked.
@@ -759,7 +759,7 @@ module harvest::stake {
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         let current_time = timestamp::now_seconds();
-        let unlock_time = table::borrow(&pool.stakes, user_addr).unlock_time;
+        let unlock_time = math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time);
 
         is_finished_inner(pool) || current_time >= unlock_time
     }
