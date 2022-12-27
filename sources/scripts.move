@@ -32,7 +32,7 @@ module harvest::scripts {
         duration: u64,
         collection_owner: address,
         collection_name: String,
-        boost_percent: u64
+        boost_percent: u128
     ) {
         let rewards = coin::withdraw<R>(pool_owner, reward_amount);
         let boost_config = stake::create_boost_config(collection_owner, collection_name, boost_percent);
