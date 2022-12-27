@@ -101,10 +101,10 @@ module harvest::stake {
     const WITHDRAW_REWARD_PERIOD_IN_SECONDS: u64 = 7257600;
 
     /// Minimum percent of stake increase on boost.
-    const MIN_NFT_BOOST_PRECENT: u64 = 1;
+    const MIN_NFT_BOOST_PRECENT: u128 = 1;
 
     /// Maximum percent of stake increase on boost.
-    const MAX_NFT_BOOST_PERCENT: u64 = 100;
+    const MAX_NFT_BOOST_PERCENT: u128 = 100;
 
     //
     // Core data structures
@@ -146,7 +146,7 @@ module harvest::stake {
 
     /// Pool boost config with NFT collection info.
     struct NFTBoostConfig has store {
-        boost_percent: u64,
+        boost_percent: u128,
         collection_owner: address,
         collection_name: String,
     }
@@ -174,7 +174,7 @@ module harvest::stake {
     public fun create_boost_config(
         collection_owner: address,
         collection_name: String,
-        boost_percent: u64
+        boost_percent: u128
     ): NFTBoostConfig {
         assert!(token::check_collection_exists(collection_owner, collection_name), ERR_NO_COLLECTION);
         assert!(boost_percent >= MIN_NFT_BOOST_PRECENT, ERR_INVALID_BOOST_PERCENT);
@@ -316,7 +316,7 @@ module harvest::stake {
             user_stake.amount = user_stake.amount + amount;
 
             if (option::is_some(&user_stake.nft)) {
-                let boost_percent = (option::borrow(&pool.nft_boost_config).boost_percent as u128);
+                let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
 
                 pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
                 // calculate user boosted_amount using u128 to prevent overflow
@@ -376,7 +376,7 @@ module harvest::stake {
         user_stake.amount = user_stake.amount - amount;
 
         if (option::is_some(&user_stake.nft)) {
-            let boost_percent = (option::borrow(&pool.nft_boost_config).boost_percent as u128);
+            let boost_percent = option::borrow(&pool.nft_boost_config).boost_percent;
 
             pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
             // calculate user boosted_amount using u128 to prevent overflow
@@ -453,7 +453,7 @@ module harvest::stake {
         let (token_collection_owner, token_collection_name, _, _) = token::get_token_id_fields(&token_id);
 
         let params = option::borrow(&pool.nft_boost_config);
-        let boost_percent = (params.boost_percent as u128);
+        let boost_percent = params.boost_percent;
         let collection_owner = params.collection_owner;
         let collection_name = params.collection_name;
 
@@ -595,7 +595,7 @@ module harvest::stake {
     /// Get NFT boost config parameters for pool.
     ///     * `pool_addr` - the pool with with NFT boost collection enabled.
     /// Returns both `collection_owner`, `collection_name` and boost percent.
-    public fun get_boost_config<S, R>(pool_addr: address): (address, String, u64)  acquires StakePool {
+    public fun get_boost_config<S, R>(pool_addr: address): (address, String, u128)  acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
