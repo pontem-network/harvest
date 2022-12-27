@@ -32,6 +32,7 @@ module lp_staking_admin::lp_staking_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
+        let dgen_coin_acc = stake_test_helpers::new_account(@dgen_coin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
         let alice_acc = stake_test_helpers::new_account(@alice);
 
@@ -39,7 +40,10 @@ module lp_staking_admin::lp_staking_tests {
         stake_config::initialize(&emergency_admin, @treasury);
 
         // initialize DGEN coin with premint for admin
-        dgen::initialize(&harvest_acc);
+        dgen::initialize(&dgen_coin_acc);
+
+        coin::register<DGEN>(&harvest_acc);
+        coin::transfer<DGEN>(&dgen_coin_acc, @harvest, coin::balance<DGEN>(@dgen_coin));
 
         // get LP coins
         stake_test_helpers::initialize_coin<BTC>(

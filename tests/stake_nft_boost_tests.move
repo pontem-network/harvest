@@ -892,4 +892,286 @@ module harvest::stake_nft_boost_tests {
 
         stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
     }
+
+    #[test]
+    public fun test_stake_and_boost_two_accounts_in_time() {
+        // * stake two accounts.
+        // * after some time add boost.
+        // * remove boost.
+        // * check values during steps.
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 1500000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@bob, rewards);
+
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration - 3600);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 2626800000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 5253600000000, 1);
+        coin::deposit(@bob, rewards);
+
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        token::deposit_token(&bob_acc, nft);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 1800000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 1800000000, 1);
+        coin::deposit(@bob, rewards);
+    }
+
+    #[test]
+    public fun test_stake_and_boost_two_accounts_and_additional_stake() {
+        // * stake two accounts.
+        // * after some time add boost.
+        // * add additional stake.
+        // * remove stake.
+        // * check values during steps.
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 1500000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@bob, rewards);
+
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration - 3600);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 1576080000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 6304320000000, 1);
+        coin::deposit(@bob, rewards);
+
+        let nft = stake::remove_boost<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        token::deposit_token(&bob_acc, nft);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 1200000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 2400000000, 1);
+        coin::deposit(@bob, rewards);
+    }
+
+    #[test]
+    public fun test_stake_and_boost_two_accounts_and_unstake() {
+        // * stake two accounts.
+        // * after some time add boost.
+        // * unstake.
+        // * check values during steps.
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 1500000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@bob, rewards);
+
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration - 3600);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 2626800000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 5253600000000, 1);
+        coin::deposit(@bob, rewards);
+
+        let stake_coins = stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 500000000);
+        coin::deposit(@bob, stake_coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3600000000, 1);
+        coin::deposit(@alice, rewards);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 106 /* ERR_NOTHING_TO_HARVEST */)]
+    public fun test_stake_and_boost_two_accounts_and_unstake_harvest_fails() {
+        // * stake two accounts.
+        // * after some time add boost.
+        // * unstake.
+        // * trying to harvest just keeping nft later.
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 1500000000);
+        let bob_acc = new_account_with_stake_coins(@bob, 1500000000);
+
+        coin::register<RewardCoin>(&alice_acc);
+        coin::register<RewardCoin>(&bob_acc);
+
+        let collection_name = string::utf8(b"Test Collection");
+        let collection_owner = create_collecton(@collection_owner, collection_name);
+        let nft = create_token(&collection_owner, collection_name, string::utf8(b"Token"));
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        let duration = 15768000;
+        let boost_config = stake::create_boost_config(
+            @collection_owner,
+            collection_name,
+            100
+        );
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let coins =
+            coin::withdraw<StakeCoin>(&bob_acc, 500000000);
+        stake::stake<StakeCoin, RewardCoin>(&bob_acc, @harvest, coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 3942000000000, 1);
+        coin::deposit(@bob, rewards);
+
+        stake::boost<StakeCoin, RewardCoin>(&bob_acc, @harvest, nft);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration - 3600);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 2626800000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 5253600000000, 1);
+        coin::deposit(@bob, rewards);
+
+        let stake_coins = stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 500000000);
+        coin::deposit(@bob, stake_coins);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        assert!(coin::value(&rewards) == 3600000000, 1);
+        coin::deposit(@alice, rewards);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&bob_acc, @harvest);
+        assert!(coin::value(&rewards) == 3600000000, 1);
+        coin::deposit(@bob, rewards);
+    }
 }
