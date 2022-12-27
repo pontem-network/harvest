@@ -3,8 +3,8 @@ name = 'Harvest'
 version = '1.0.0'
 
 [addresses]
-harvest = "0x0f66a21efeeae7adda7688473b140dfae1e42f4a669d5c4026dfc7d12443a6b2"
-stake_emergency_admin = "0xc5f39b983cf06b9e26dc149b3a8c0d7fcb27733954fa86eff7f3c70427644b1f"
+harvest = "0xbaaf53f7b9017ec4be9623c60b6182f2ffba1f01bc67f292295bcfe17f327701"
+stake_emergency_admin = "0xbaaf53f7b9017ec4be9623c60b6182f2ffba1f01bc67f292295bcfe17f327701"
 
 # Test addresses.
 treasury = "0x13"
