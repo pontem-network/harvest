@@ -1105,7 +1105,7 @@ module harvest::stake_nft_boost_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 106 /* ERR_NOTHING_TO_HARVEST */)]
+    #[expected_failure(abort_code = stake::ERR_NOTHING_TO_HARVEST)]
     public fun test_stake_and_boost_two_accounts_and_unstake_harvest_fails() {
         // * stake two accounts.
         // * after some time add boost.
