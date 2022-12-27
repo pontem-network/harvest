@@ -774,7 +774,7 @@ module harvest::stake {
         let current_time = timestamp::now_seconds();
         let unlock_time = math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time);
 
-        is_finished_inner(pool) || current_time >= unlock_time
+        current_time >= unlock_time
     }
 
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
