@@ -84,8 +84,8 @@ module harvest::stake {
     /// When token collection not match pool.
     const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
 
-    /// When claiming from non boosted stake.
-    const ERR_NOTHING_TO_CLAIM: u64 = 121;
+    /// When removing boost from non boosted stake.
+    const ERR_NO_BOOST: u64 = 121;
 
     /// When amount of NFT for boost is more than one.
     const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
@@ -117,6 +117,8 @@ module harvest::stake {
         accum_reward: u128,
         // last accum_reward update time
         last_updated: u64,
+        // start timestamp.
+        start_timestamp: u64,
         // when harvest will be finished.
         end_timestamp: u64,
 
@@ -213,6 +215,7 @@ module harvest::stake {
             reward_per_sec,
             accum_reward: 0,
             last_updated: current_time,
+            start_timestamp: current_time,
             end_timestamp,
             stakes: table::new(),
             stake_coins: coin::zero(),
@@ -505,7 +508,7 @@ module harvest::stake {
         update_accum_reward(pool);
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
-        assert!(option::is_some(&user_stake.nft), ERR_NOTHING_TO_CLAIM);
+        assert!(option::is_some(&user_stake.nft), ERR_NO_BOOST);
 
         // recalculate stake
         update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
@@ -591,6 +594,25 @@ module harvest::stake {
     // Getter functions
     //
 
+    /// Get timestamp of pool creation.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns timestamp contains date when pool created.
+    public fun get_start_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.start_timestamp
+    }
+
+    /// Checks if user can boost own stake in pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns true if pool accepts boosts.
+    public fun is_boostable<S, R>(pool_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        option::is_some(&pool.nft_boost_config)
+    }
 
     /// Get NFT boost config parameters for pool.
     ///     * `pool_addr` - the pool with with NFT boost collection enabled.
@@ -676,6 +698,20 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
+    /// Checks if user user stake is boosted.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns true if stake is boosted.
+    public fun is_boosted<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        option::is_some(&table::borrow(&pool.stakes, user_addr).nft)
+    }
+
     /// Checks current user boosted amount in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -711,6 +747,37 @@ module harvest::stake {
             user_stake,
         );
         user_stake.earned_reward + (earned_since_last_update as u64)
+    }
+
+    /// Checks stake unlock time in specific pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns stake unlock time.
+    public fun get_unlock_time<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time)
+    }
+
+    /// Checks if stake is unlocked.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns true if user can unstake.
+    public fun is_unlocked<S, R>(pool_addr: address, user_addr: address): bool acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let current_time = timestamp::now_seconds();
+        let unlock_time = math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time);
+
+        current_time >= unlock_time
     }
 
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
@@ -854,15 +921,14 @@ module harvest::stake {
     }
 
     #[test_only]
-    /// Access user stake fields with no getters.
-    public fun get_user_stake_info<S, R>(
+    /// Access unobtainable_reward field in user stake.
+    public fun get_unobtainable_reward<S, R>(
         pool_addr: address,
         user_addr: address
-    ): (u128, u64) acquires StakePool {
+    ): u128 acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        let fields = table::borrow(&pool.stakes, user_addr);
 
-        (fields.unobtainable_reward, fields.unlock_time)
+        table::borrow(&pool.stakes, user_addr).unobtainable_reward
     }
 
     #[test_only]

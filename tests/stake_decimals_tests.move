@@ -61,8 +61,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(unobtainable_reward == 0, 1);
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
 
@@ -81,8 +81,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME + 10, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 38 RewardCoins
         assert!(unobtainable_reward == 38, 1);
@@ -105,8 +105,8 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 58 RewardCoins
         assert!(unobtainable_reward == 58, 1);
@@ -132,8 +132,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters after partial unstake
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 938493 RewardCoins
         assert!(unobtainable_reward == 938493, 1);
@@ -160,8 +160,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // ((acc_reward * stake_amount) - previous_unobtainable_reward) + previous_earned_reward
@@ -179,8 +179,8 @@ module harvest::stake_decimals_tests {
         coin::deposit<RewardCoin>(@alice, coins);
 
         // check stake parameters after harvest
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // 0 after harvest
@@ -238,8 +238,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(unobtainable_reward == 0, 1);
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
 
@@ -258,8 +258,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME + 10, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 19.99999999 RewardCoins
         assert!(unobtainable_reward == 1999999999, 1);
@@ -282,8 +282,8 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 30,00500249 RewardCoins
         assert!(unobtainable_reward == 3000500249, 1);
@@ -309,8 +309,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters after partial unstake
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 402941.10536758 RewardCoins
         assert!(unobtainable_reward == 40294110536758, 1);
@@ -337,8 +337,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // ((acc_reward * stake_amount) - previous_unobtainable_reward) + previous_earned_reward
@@ -356,8 +356,8 @@ module harvest::stake_decimals_tests {
         coin::deposit<RewardCoin>(@alice, coins);
 
         // check stake parameters after harvest
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // 0 after harvest
@@ -415,8 +415,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(unobtainable_reward == 0, 1);
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
 
@@ -435,8 +435,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME + 10, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 9.99999999999 RewardCoins
         assert!(unobtainable_reward == 99999999999, 1);
@@ -459,8 +459,8 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 15.0000002499 RewardCoins
         assert!(unobtainable_reward == 150000002499, 1);
@@ -486,8 +486,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters after partial unstake
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 201604.9865597493 RewardCoins
         assert!(unobtainable_reward == 2016049865597493, 1);
@@ -514,8 +514,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // ((acc_reward * stake_amount) - previous_unobtainable_reward) + previous_earned_reward
@@ -532,8 +532,8 @@ module harvest::stake_decimals_tests {
         coin::deposit<RewardCoin>(@alice, coins);
 
         // check stake parameters after harvest
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // 0 after harvest
@@ -591,8 +591,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(unobtainable_reward == 0, 1);
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
 
@@ -611,8 +611,8 @@ module harvest::stake_decimals_tests {
         assert!(last_updated == START_TIME + 10, 1);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 34.99 RewardCoins
         assert!(unobtainable_reward == 3499, 1);
@@ -635,8 +635,8 @@ module harvest::stake_decimals_tests {
         stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
 
         // check stake parameters
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 52.49 RewardCoins
         assert!(unobtainable_reward == 5249, 1);
@@ -662,8 +662,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters after partial unstake
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 705617,49 RewardCoins
         assert!(unobtainable_reward == 70561749, 1);
@@ -690,8 +690,8 @@ module harvest::stake_decimals_tests {
 
         // check stake parameters
         // note: earned_rewards recalculated before stake_amount was decreased by user unstake
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // ((acc_reward * stake_amount) - previous_unobtainable_reward) + previous_earned_reward
@@ -709,8 +709,8 @@ module harvest::stake_decimals_tests {
         coin::deposit<RewardCoin>(@alice, coins);
 
         // check stake parameters after harvest
-        let (unobtainable_reward, _) =
-            stake::get_user_stake_info<StakeCoin, RewardCoin>(@harvest, @alice);
+        let unobtainable_reward =
+            stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // 0 after full unstake
         assert!(unobtainable_reward == 0, 1);
         // 0 after harvest
