@@ -295,6 +295,28 @@ module harvest::stake_tests {
     }
 
     #[test]
+    public fun test_get_start_timestamp() {
+        let (harvest, _) = initialize_test();
+
+        // register staking pool with rewards
+        let reward_coins = mint_default_coin<RewardCoin>(604805000000);
+        let duration = 604805;
+        let start_ts = timestamp::now_seconds();
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        assert!(stake::get_start_timestamp<StakeCoin, RewardCoin>(@harvest) == start_ts, 1);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + WEEK_IN_SECONDS);
+        assert!(stake::get_start_timestamp<StakeCoin, RewardCoin>(@harvest) == start_ts, 1);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
+    public fun test_get_start_timestamp_fails_no_pool_exists() {
+        let _ = stake::get_start_timestamp<StakeCoin, RewardCoin>(@harvest);
+    }
+
+    #[test]
     public fun test_is_unlocked() {
         let (harvest, _) = initialize_test();
 

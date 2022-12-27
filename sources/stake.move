@@ -116,6 +116,8 @@ module harvest::stake {
         accum_reward: u128,
         // last accum_reward update time
         last_updated: u64,
+        // start timestamp.
+        start_timestamp: u64,
         // when harvest will be finished.
         end_timestamp: u64,
 
@@ -212,6 +214,7 @@ module harvest::stake {
             reward_per_sec,
             accum_reward: 0,
             last_updated: current_time,
+            start_timestamp: current_time,
             end_timestamp,
             stakes: table::new(),
             stake_coins: coin::zero(),
@@ -587,6 +590,16 @@ module harvest::stake {
     //
     // Getter functions
     //
+
+    /// Get timestamp of pool creation.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns timestamp contains date when pool created.
+    public fun get_start_timestamp<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        pool.start_timestamp
+    }
 
     /// Checks if user can boost own stake in pool.
     ///     * `pool_addr` - address under which pool are stored.
