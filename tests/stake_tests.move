@@ -1931,4 +1931,49 @@ module harvest::stake_tests {
             stake::unstake<StakeCoin, RewardCoin>(&bob_acc, @harvest, 100000000);
         coin::deposit(@bob, coins);
     }
+
+    #[test]
+    fun test_stake_aptos_real_value() {
+        // We need to stake Aptos on 20k USD (it's 6060 APT = 8 decimals).
+        // Than we need to check how it will work with 30M LP coins (6 decimals).
+        // We just checking it not fails, because if it fails, it means it's possible to block rewards.
+
+        let duration = 7890000;
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 30000000000000 + duration);
+
+        coin::register<RewardCoin>(&alice_acc);
+
+        let reward_coins = mint_default_coin<RewardCoin>(606000000000);
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+
+        let coins =
+            coin::withdraw<StakeCoin>(&alice_acc, 30000000000000);
+
+        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+        let i = 1;
+        while (i <= 3600) {
+            timestamp::update_global_time_for_test_secs(START_TIME + i);
+
+            let coins = coin::withdraw<StakeCoin>(&alice_acc, 1);
+            stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+
+            i = i + 1;
+        };
+
+        // take rewards.
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit(@alice, rewards);
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        let rewards = stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
+        coin::deposit(@alice, rewards);
+
+        // unstake.
+        let coins =
+            stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
+        coin::deposit(@alice, coins);
+    }
 }
