@@ -879,4 +879,43 @@ module harvest::stake_decimals_tests {
 
         coin::deposit<RewardCoin>(@bob, coins);
     }
+
+    #[test]
+    fun test_register_with_10_decimals_reward_coin_works() {
+        genesis::setup();
+        timestamp::update_global_time_for_test_secs(START_TIME);
+
+        let harvest = new_account(@harvest);
+        let emergency_admin = new_account(@stake_emergency_admin);
+
+        // create coins for pool
+        initialize_reward_coin(&harvest, 10);
+        initialize_stake_coin(&harvest, 6);
+
+        stake_config::initialize(&emergency_admin, @treasury);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+    }
+
+    #[test]
+    #[expected_failure(abort_code = stake::ERR_INVALID_REWARD_DECIMALS /* ERR_INVALID_REWARD_DECIMALS */)]
+    fun test_register_with_invalid_reward_decimals_fails() {
+        genesis::setup();
+        timestamp::update_global_time_for_test_secs(START_TIME);
+
+        let harvest = new_account(@harvest);
+        let emergency_admin = new_account(@stake_emergency_admin);
+
+        // create coins for pool
+        initialize_reward_coin(&harvest, 11);
+        initialize_stake_coin(&harvest, 6);
+
+        stake_config::initialize(&emergency_admin, @treasury);
+
+        let reward_coins = mint_default_coin<RewardCoin>(12345);
+        let duration = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+    }
 }

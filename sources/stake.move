@@ -90,6 +90,9 @@ module harvest::stake {
     /// When amount of NFT for boost is more than one.
     const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
 
+    /// When reward coin has more than 10 decimals.
+    const ERR_INVALID_REWARD_DECIMALS: u64 = 123;
+
     //
     // Constants
     //
@@ -215,7 +218,10 @@ module harvest::stake {
         let current_time = timestamp::now_seconds();
         let end_timestamp = current_time + duration;
 
-        let reward_scale = ACCUM_REWARD_SCALE / math128::pow(10, (coin::decimals<R>() as u128));
+        let origin_decimals = (coin::decimals<R>() as u128);
+        assert!(origin_decimals <= 10, ERR_INVALID_REWARD_DECIMALS);
+
+        let reward_scale = ACCUM_REWARD_SCALE / math128::pow(10, origin_decimals);
         let stake_scale = math128::pow(10, (coin::decimals<S>() as u128));
 
         let pool = StakePool<S, R> {
