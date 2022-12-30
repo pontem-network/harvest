@@ -790,7 +790,7 @@ module harvest::stake {
     }
 
     /// Checks whether a specific `<S, R>` pool at the `pool_addr` has an "emergency state" enabled.
-    ///     * `pool` - pool to check emergency.
+    ///     * `pool_addr` - address of the pool to check emergency.
     /// Returns true if local emergency enabled for pool.
     public fun is_local_emergency<S, R>(pool_addr: address): bool acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
