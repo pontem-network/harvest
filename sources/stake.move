@@ -106,7 +106,7 @@ module harvest::stake {
     /// Maximum percent of stake increase on boost.
     const MAX_NFT_BOOST_PERCENT: u128 = 100;
 
-    // todo: comment if it will work
+    /// Scale of pool accumulated reward field.
     const ACCUM_REWARD_SCALE: u128 = 1000000000000;
 
     //
@@ -227,8 +227,8 @@ module harvest::stake {
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins,
-            reward_scale,
             stake_scale,
+            reward_scale,
 
             total_boosted: 0,
             nft_boost_config,
@@ -850,7 +850,8 @@ module harvest::stake {
         let total_boosted_stake = pool_total_staked_with_boosted(pool);
         if (total_boosted_stake == 0) return 0;
 
-        let total_rewards = (pool.reward_per_sec as u128) * (seconds_passed as u128) * pool.stake_scale * pool.reward_scale;
+        let total_rewards =
+            (pool.reward_per_sec as u128) * (seconds_passed as u128) * pool.stake_scale * pool.reward_scale;
         total_rewards / total_boosted_stake
     }
 
