@@ -90,6 +90,9 @@ module harvest::stake {
     /// When amount of NFT for boost is more than one.
     const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
 
+    /// When reward coin has more than 10 decimals.
+    const ERR_INVALID_REWARD_DECIMALS: u64 = 123;
+
     //
     // Constants
     //
@@ -105,6 +108,9 @@ module harvest::stake {
 
     /// Maximum percent of stake increase on boost.
     const MAX_NFT_BOOST_PERCENT: u128 = 100;
+
+    /// Scale of pool accumulated reward field.
+    const ACCUM_REWARD_SCALE: u128 = 1000000000000;
 
     //
     // Core data structures
@@ -126,6 +132,7 @@ module harvest::stake {
         stake_coins: Coin<S>,
         reward_coins: Coin<R>,
         stake_scale: u128,
+        reward_scale: u128,
 
         total_boosted: u128,
 
@@ -211,6 +218,12 @@ module harvest::stake {
         let current_time = timestamp::now_seconds();
         let end_timestamp = current_time + duration;
 
+        let origin_decimals = (coin::decimals<R>() as u128);
+        assert!(origin_decimals <= 10, ERR_INVALID_REWARD_DECIMALS);
+
+        let reward_scale = ACCUM_REWARD_SCALE / math128::pow(10, origin_decimals);
+        let stake_scale = math128::pow(10, (coin::decimals<S>() as u128));
+
         let pool = StakePool<S, R> {
             reward_per_sec,
             accum_reward: 0,
@@ -220,7 +233,8 @@ module harvest::stake {
             stakes: table::new(),
             stake_coins: coin::zero(),
             reward_coins,
-            stake_scale: math128::pow(10, (coin::decimals<S>() as u128)),
+            stake_scale,
+            reward_scale,
 
             total_boosted: 0,
             nft_boost_config,
@@ -308,13 +322,13 @@ module harvest::stake {
             };
 
             // calculate unobtainable reward for new stake
-            new_stake.unobtainable_reward = (accum_reward * (amount as u128)) / pool.stake_scale;
+            new_stake.unobtainable_reward = (accum_reward * (amount as u128)) / pool.stake_scale / pool.reward_scale;
             table::add(&mut pool.stakes, user_address, new_stake);
         } else {
             let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
 
             // update earnings
-            update_user_earnings(accum_reward, pool.stake_scale, user_stake);
+            update_user_earnings(accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
 
             user_stake.amount = user_stake.amount + amount;
 
@@ -329,7 +343,7 @@ module harvest::stake {
 
             // recalculate unobtainable reward after stake amount changed
             user_stake.unobtainable_reward =
-                (accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
+                (accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale / pool.reward_scale;
 
             user_stake.unlock_time = current_time + WEEK_IN_SECONDS;
         };
@@ -374,7 +388,7 @@ module harvest::stake {
         };
 
         // update earnings
-        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
 
         user_stake.amount = user_stake.amount - amount;
 
@@ -389,7 +403,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake amount changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale / pool.reward_scale;
 
         event::emit_event<UnstakeEvent>(
             &mut pool.unstake_events,
@@ -418,7 +432,7 @@ module harvest::stake {
         let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
 
         // update earnings
-        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
 
         let earned = user_stake.earned_reward;
         assert!(earned > 0, ERR_NOTHING_TO_HARVEST);
@@ -470,7 +484,7 @@ module harvest::stake {
         let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
 
         // recalculate stake
-        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
 
         // check if stake boosted before
         assert!(option::is_none(&user_stake.nft), ERR_ALREADY_BOOSTED);
@@ -483,7 +497,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale / pool.reward_scale;
 
         event::emit_event(
             &mut pool.boost_events,
@@ -511,7 +525,7 @@ module harvest::stake {
         assert!(option::is_some(&user_stake.nft), ERR_NO_BOOST);
 
         // recalculate stake
-        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
 
         // update user stake and pool after nft claim
         pool.total_boosted = pool.total_boosted - user_stake.boosted_amount;
@@ -519,7 +533,7 @@ module harvest::stake {
 
         // recalculate unobtainable reward after stake boosted changed
         user_stake.unobtainable_reward =
-            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale;
+            (pool.accum_reward * user_stake_amount_with_boosted(user_stake)) / pool.stake_scale / pool.reward_scale;
 
         event::emit_event(
             &mut pool.remove_boost_events,
@@ -744,6 +758,7 @@ module harvest::stake {
         let earned_since_last_update = user_earned_since_last_update(
             pool.accum_reward + new_accum_rewards,
             pool.stake_scale,
+            pool.reward_scale,
             user_stake,
         );
         user_stake.earned_reward + (earned_since_last_update as u64)
@@ -841,17 +856,19 @@ module harvest::stake {
         let total_boosted_stake = pool_total_staked_with_boosted(pool);
         if (total_boosted_stake == 0) return 0;
 
-        let total_rewards = (pool.reward_per_sec as u128) * (seconds_passed as u128) * pool.stake_scale;
+        let total_rewards =
+            (pool.reward_per_sec as u128) * (seconds_passed as u128) * pool.stake_scale * pool.reward_scale;
         total_rewards / total_boosted_stake
     }
 
     /// Calculates user earnings, updating user stake.
     ///     * `accum_reward` - reward accumulated by pool.
     ///     * `stake_scale` - multiplier to count S coin decimals.
+    ///     * `reward_scale` - multiplier to count R coin decimals.
     ///     * `user_stake` - stake to update earnings.
-    fun update_user_earnings(accum_reward: u128, stake_scale: u128, user_stake: &mut UserStake) {
+    fun update_user_earnings(accum_reward: u128, stake_scale: u128, reward_scale: u128, user_stake: &mut UserStake) {
         let earned =
-            user_earned_since_last_update(accum_reward, stake_scale, user_stake);
+            user_earned_since_last_update(accum_reward, stake_scale, reward_scale, user_stake);
         user_stake.earned_reward = user_stake.earned_reward + (earned as u64);
         user_stake.unobtainable_reward = user_stake.unobtainable_reward + earned;
     }
@@ -859,10 +876,16 @@ module harvest::stake {
     /// Calculates user earnings without stake update.
     ///     * `accum_reward` - reward accumulated by pool.
     ///     * `stake_scale` - multiplier to count S coin decimals.
+    ///     * `reward_scale` - multiplier to count R coin decimals.
     ///     * `user_stake` - stake to update earnings.
     /// Returns new stake earnings.
-    fun user_earned_since_last_update(accum_reward: u128, stake_scale: u128, user_stake: &UserStake): u128 {
-        ((accum_reward * user_stake_amount_with_boosted(user_stake)) / stake_scale)
+    fun user_earned_since_last_update(
+        accum_reward: u128,
+        stake_scale: u128,
+        reward_scale: u128,
+        user_stake: &UserStake
+    ): u128 {
+        ((accum_reward * user_stake_amount_with_boosted(user_stake)) / stake_scale / reward_scale)
             - user_stake.unobtainable_reward
     }
 
@@ -947,6 +970,6 @@ module harvest::stake {
         update_accum_reward(pool);
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
-        update_user_earnings(pool.accum_reward, pool.stake_scale, user_stake);
+        update_user_earnings(pool.accum_reward, pool.stake_scale, pool.reward_scale, user_stake);
     }
 }
