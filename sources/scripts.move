@@ -32,7 +32,7 @@ module harvest::scripts {
         duration: u64,
         collection_owner: address,
         collection_name: String,
-        boost_percent: u64
+        boost_percent: u128
     ) {
         let rewards = coin::withdraw<R>(pool_owner, reward_amount);
         let boost_config = stake::create_boost_config(collection_owner, collection_name, boost_percent);
@@ -123,8 +123,6 @@ module harvest::scripts {
     /// Boosts user stake with nft.
     ///     * `user` - stake owner account.
     ///     * `pool_addr` - address under which pool are stored.
-    ///     * `token_id` - idetifier of Token for boost.
-    ///     * `token_amount` - amount of Token for boost.
     ///     * `collection_owner` - address of nft collection creator.
     ///     * `collection_name` - nft collection name.
     ///     * `token_name` - token name.
