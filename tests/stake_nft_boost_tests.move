@@ -74,7 +74,7 @@ module harvest::stake_nft_boost_tests {
         stake::register_pool<StakeCoin, RewardCoin>(&alice_acc, reward_coins, duration, option::some(boost_config));
 
         // check pool statistics
-        let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_amount, scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@alice);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@alice);
         assert!(end_ts == START_TIME + duration, 1);
@@ -82,7 +82,7 @@ module harvest::stake_nft_boost_tests {
         assert!(accum_reward == 0, 1);
         assert!(last_updated == START_TIME, 1);
         assert!(reward_amount == 15768000000000, 1);
-        assert!(s_scale == 1000000, 1);
+        assert!(scale == 1000000000000, 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@alice) == 0, 1);
 
         // check boost config
