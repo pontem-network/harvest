@@ -35,7 +35,6 @@ module lp_staking_admin::lp_staking_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
-        let dgen_coin_acc = stake_test_helpers::new_account(@dgen_coin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
         let alice_acc = stake_test_helpers::new_account(@alice);
 
@@ -47,6 +46,7 @@ module lp_staking_admin::lp_staking_tests {
         coin::register<AptosCoin>(&harvest_acc);
         coin::deposit(@harvest, minted_aptos_coins);
         coin::destroy_mint_cap(mint_cap);
+        coin::destroy_burn_cap(burn_cap);
 
         // get LP coins
         stake_test_helpers::initialize_coin<BTC>(
@@ -93,8 +93,8 @@ module lp_staking_admin::lp_staking_tests {
         let coins =
             stake::harvest<LP<BTC, USDT, Uncorrelated>, AptosCoin>(&alice_acc, @harvest);
         assert!(stake::get_pending_user_rewards<LP<BTC, USDT, Uncorrelated>, AptosCoin>(@harvest, @alice) == 0, 1);
-        // ~60.47 APT coins
-        assert!(coin::value(&coins) == 6047999951, 1);
+        // ~60.479 APT coins
+        assert!(coin::value(&coins) == 6047999999, 1);
         coin::deposit(@alice, coins);
 
         // unstake all 999.999 LP coins from alice
@@ -105,7 +105,7 @@ module lp_staking_admin::lp_staking_tests {
         assert!(stake::get_pool_total_stake<LP<BTC, USDT, Uncorrelated>, AptosCoin>(@harvest) == 0, 1);
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
-        // 0.00000049 APT lost during calculations
+        // 0.00000001 APT lost during calculations
         let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, AptosCoin>(@harvest);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<AptosCoin>(@alice);
