@@ -35,6 +35,7 @@ module lp_staking_admin::lp_staking_tests {
         timestamp::update_global_time_for_test_secs(start_time);
 
         let lp_staking_admin_acc = stake_test_helpers::new_account(@lp_staking_admin);
+        let dgen_coin_acc = stake_test_helpers::new_account(@dgen_coin);
         let harvest_acc = stake_test_helpers::new_account(@harvest);
         let alice_acc = stake_test_helpers::new_account(@alice);
 
@@ -46,7 +47,6 @@ module lp_staking_admin::lp_staking_tests {
         coin::register<AptosCoin>(&harvest_acc);
         coin::deposit(@harvest, minted_aptos_coins);
         coin::destroy_mint_cap(mint_cap);
-        coin::destroy_burn_cap(burn_cap);
 
         // get LP coins
         stake_test_helpers::initialize_coin<BTC>(
@@ -110,6 +110,6 @@ module lp_staking_admin::lp_staking_tests {
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<AptosCoin>(@alice);
 
-        assert!(losed_rewards == 49, 1);
+        assert!(losed_rewards == 1, 1);
     }
 }

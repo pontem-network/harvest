@@ -33,7 +33,7 @@ module harvest::scripts_tests {
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -41,7 +41,7 @@ module harvest::scripts_tests {
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
-        assert!(s_scale == 1000000, 1);
+        assert!(scale == 1000000000000, 1);
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
     }
 
@@ -69,7 +69,7 @@ module harvest::scripts_tests {
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -77,7 +77,7 @@ module harvest::scripts_tests {
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
-        assert!(s_scale == 1000000, 1);
+        assert!(scale == 1000000000000, 1);
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
 
         let (collection_owner_addr, coll_name, boost_percent) =
@@ -104,7 +104,7 @@ module harvest::scripts_tests {
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, s_scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -112,7 +112,7 @@ module harvest::scripts_tests {
         assert!(accum_reward == 0, 1);
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
-        assert!(s_scale == 1000000, 1);
+        assert!(scale == 1000000000000, 1);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100 * ONE_COIN);
 
@@ -146,47 +146,6 @@ module harvest::scripts_tests {
         assert!(!stake::stake_exists<StakeCoin, RewardCoin>(@harvest, @alice), 1);
         assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
         assert!(coin::balance<StakeCoin>(@alice) == 100 * ONE_COIN, 1);
-    }
-
-    #[test]
-    fun test_script_register_pool_with_collection() {
-        let (harvest, _) = initialize_test();
-
-        let collection_name = string::utf8(b"Test Collection");
-        create_collecton(@collection_owner, collection_name);
-
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        coin::register<RewardCoin>(&harvest);
-        coin::deposit(@harvest, reward_coins);
-
-        // register staking pool with rewards and boost config
-        scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
-            &harvest,
-            15768000000000,
-            15768000,
-            @collection_owner,
-            collection_name,
-            5,
-        );
-
-        // check pool statistics
-        let (reward_per_sec, accum_reward, last_updated, reward_amount, s_scale) =
-            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
-        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
-        assert!(end_ts == START_TIME + 15768000, 1);
-        assert!(reward_per_sec == 1000000, 1);
-        assert!(accum_reward == 0, 1);
-        assert!(last_updated == START_TIME, 1);
-        assert!(reward_amount == 15768000000000, 1);
-        assert!(s_scale == 1000000, 1);
-        assert!(stake::get_pool_total_stake<StakeCoin, RewardCoin>(@harvest) == 0, 1);
-
-        // check boost config
-        let (collection_owner_addr, coll_name, boost_percent, ) =
-            stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
-        assert!(collection_owner_addr == @collection_owner, 1);
-        assert!(coll_name == collection_name, 1);
-        assert!(boost_percent == 5, 1);
     }
 
     #[test]

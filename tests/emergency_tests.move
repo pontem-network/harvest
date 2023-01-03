@@ -51,7 +51,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 200)]
+    #[expected_failure(abort_code = stake_config::ERR_NO_PERMISSIONS)]
     fun test_set_treasury_admin_address_from_no_permission_account_fails() {
         let emergency_admin = new_account(@stake_emergency_admin);
         let alice_acc = new_account(@alice);
@@ -65,7 +65,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_register_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -78,7 +78,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_stake_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -97,7 +97,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_unstake_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -119,7 +119,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_add_rewards_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -135,7 +135,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_harvest_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -160,7 +160,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_boost_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
@@ -190,7 +190,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_claim_with_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
@@ -224,7 +224,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_stake_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -243,7 +243,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_unstake_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -265,7 +265,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_add_rewards_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -281,7 +281,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_harvest_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -306,7 +306,7 @@ module harvest::emergency_tests {
     }
 
         #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_boost_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
@@ -336,7 +336,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_claim_with_global_emergency() {
         let (harvest, emergency_admin) = initialize_test();
         let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
@@ -370,7 +370,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_enable_local_emergency_if_global_is_enabled() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -385,7 +385,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 111)]
+    #[expected_failure(abort_code = stake::ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY)]
     fun test_cannot_enable_emergency_with_non_admin_account() {
         let (harvest, _) = initialize_test();
 
@@ -400,7 +400,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 109)]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
     fun test_cannot_enable_emergency_twice() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -479,7 +479,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 110)]
+    #[expected_failure(abort_code = stake::ERR_NO_EMERGENCY)]
     fun test_cannot_emergency_unstake_in_non_emergency() {
         let (harvest, _) = initialize_test();
 
@@ -521,7 +521,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 202)]
+    #[expected_failure(abort_code = stake_config::ERR_GLOBAL_EMERGENCY)]
     fun test_cannot_enable_global_emergency_twice() {
         let (harvest, emergency_admin) = initialize_test();
 
@@ -601,7 +601,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 200)]
+    #[expected_failure(abort_code = stake_config::ERR_NO_PERMISSIONS)]
     fun test_cannot_enable_global_emergency_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
@@ -609,7 +609,7 @@ module harvest::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 200)]
+    #[expected_failure(abort_code = stake_config::ERR_NO_PERMISSIONS)]
     fun test_cannot_change_admin_with_non_admin_account() {
         let (_, _) = initialize_test();
         let alice = new_account(@alice);
@@ -666,39 +666,39 @@ module harvest::emergency_tests {
     // Cases for ERR_NOT_INITIALIZED.
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_enable_global_emergency_not_initialized_fails() {
         let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::enable_global_emergency(&emergency_admin);
     }
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_is_global_emergency_not_initialized_fails() {
         stake_config::is_global_emergency();
     }
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_get_emergency_admin_address_not_initialized_fails() {
         stake_config::get_emergency_admin_address();
     }
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_get_treasury_admin_address_not_initialized_fails() {
         stake_config::get_treasury_admin_address();
     }
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_set_emergency_admin_address_not_initialized_fails() {
         let emergency_admin = new_account(@stake_emergency_admin);
         stake_config::set_emergency_admin_address(&emergency_admin, @alice);
     }
 
     #[test]
-    #[expected_failure(abort_code=201)]
+    #[expected_failure(abort_code = stake_config::ERR_NOT_INITIALIZED)]
     fun test_set_treasury_admin_address_not_initialized_fails() {
         let treasury_admin = new_account(@treasury);
         stake_config::set_emergency_admin_address(&treasury_admin, @alice);
