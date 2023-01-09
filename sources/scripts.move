@@ -123,8 +123,6 @@ module harvest::scripts {
     /// Boosts user stake with nft.
     ///     * `user` - stake owner account.
     ///     * `pool_addr` - address under which pool are stored.
-    ///     * `token_id` - idetifier of Token for boost.
-    ///     * `token_amount` - amount of Token for boost.
     ///     * `collection_owner` - address of nft collection creator.
     ///     * `collection_name` - nft collection name.
     ///     * `token_name` - token name.

@@ -1,6 +1,7 @@
 [package]
-name = 'Harvest'
-version = '1.0.0'
+name = "Harvest"
+version = "1.0.0"
+upgrade_policy = "compatible"
 
 [addresses]
 harvest = "0xbaaf53f7b9017ec4be9623c60b6182f2ffba1f01bc67f292295bcfe17f327701"
@@ -13,11 +14,11 @@ bob = "0x11"
 collection_owner = "0x12"
 
 [dependencies.AptosFramework]
-git = 'https://github.com/aptos-labs/aptos-core.git'
-rev = 'a2a3bf79b68823287f962bded2abfaefc688e71c'
-subdir = 'aptos-move/framework/aptos-framework'
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.AptosToken]
-git = 'https://github.com/aptos-labs/aptos-core.git'
-rev = 'a2a3bf79b68823287f962bded2abfaefc688e71c'
-subdir = 'aptos-move/framework/aptos-token'
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-token"
