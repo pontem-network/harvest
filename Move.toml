@@ -4,8 +4,8 @@ version = "1.0.0"
 upgrade_policy = "compatible"
 
 [addresses]
-harvest = "0xbaaf53f7b9017ec4be9623c60b6182f2ffba1f01bc67f292295bcfe17f327701"
-stake_emergency_admin = "0xbaaf53f7b9017ec4be9623c60b6182f2ffba1f01bc67f292295bcfe17f327701"
+harvest = "0xc4d5cb0e84c7dfc3498d38dcbe1a898b694c2a8c274fbc99696b7773fe75b381"
+stake_emergency_admin = "0xc4d5cb0e84c7dfc3498d38dcbe1a898b694c2a8c274fbc99696b7773fe75b381"
 
 # Test addresses.
 treasury = "0x13"
