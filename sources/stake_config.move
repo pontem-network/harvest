@@ -3,9 +3,13 @@
 ///     except for the `emergency_unstake()`.
 ///   * allows to specify custom `emergency_admin` account.
 module harvest::stake_config {
-    use std::signer;
 
     // Errors.
+
+    use sui::tx_context::{TxContext, sender};
+    use sui::transfer;
+    use sui::object::UID;
+    use sui::object;
 
     /// Doesn't have enough permissions: not a current admin account.
     const ERR_NO_PERMISSIONS: u64 = 200;
@@ -16,10 +20,14 @@ module harvest::stake_config {
     /// Operation is not accessible as "global emergency state" is enabled.
     const ERR_GLOBAL_EMERGENCY: u64 = 202;
 
+    ///Witness
+    struct STAKE_CONFIG has drop {}
+
     // Resources.
 
     /// Global config: contains emergency lock and admin address.
-    struct GlobalConfig has key {
+    struct GlobalConfig has key, store {
+        id: UID,
         emergency_admin_address: address,
         treasury_admin_address: address,
         global_emergency_locked: bool,
@@ -30,81 +38,64 @@ module harvest::stake_config {
     /// Initializes global configuration.
     ///     * `emergency_admin` - initial emergency admin account.
     ///     * `treasury_admin` - initial treasury admin address.
-    public entry fun initialize(emergency_admin: &signer, treasury_admin: address) {
-        assert!(
-            signer::address_of(emergency_admin) == @stake_emergency_admin,
-            ERR_NO_PERMISSIONS
-        );
-        move_to(emergency_admin, GlobalConfig {
+    fun init(_witness: STAKE_CONFIG, ctx: &mut TxContext){
+        assert!(sender(ctx) == @stake_emergency_admin, ERR_NO_PERMISSIONS);
+        transfer::share_object(GlobalConfig {
+            id: object::new(ctx),
             emergency_admin_address: @stake_emergency_admin,
-            treasury_admin_address: treasury_admin,
+            treasury_admin_address: @treasury_admin,
             global_emergency_locked: false,
         })
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(STAKE_CONFIG {}, ctx)
     }
 
     /// Sets `emergency_admin` account.
     /// Should be signed with current `emergency_admin` account.
     ///     * `emergency_admin` - current emergency admin account.
     ///     * `new_address` - new emergency admin address.
-    public entry fun set_emergency_admin_address(emergency_admin: &signer, new_address: address) acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
-        assert!(
-            signer::address_of(emergency_admin) == global_config.emergency_admin_address,
-            ERR_NO_PERMISSIONS
-        );
+    public entry fun set_emergency_admin_address(global_config: &mut GlobalConfig, new_address: address, ctx: &mut TxContext) {
+        assert!(sender(ctx) == global_config.emergency_admin_address, ERR_NO_PERMISSIONS);
         global_config.emergency_admin_address = new_address;
     }
 
     /// Gets current address of `emergency_admin` account.
     /// Returns address of emergency admin account.
-    public fun get_emergency_admin_address(): address acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global<GlobalConfig>(@stake_emergency_admin);
+    public fun get_emergency_admin_address(global_config: &GlobalConfig): address {
         global_config.emergency_admin_address
     }
 
     /// Sets `treasury_admin` account.
     /// Should be signed with current `treasury_admin` account.
-    ///     * `treasury_admin` - current treasury admin account.
+    ///     * `global_config` - current treasury admin account.
     ///     * `new_address` - new treasury admin address.
-    public entry fun set_treasury_admin_address(treasury_admin: &signer, new_address: address) acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
-        assert!(
-            signer::address_of(treasury_admin) == global_config.treasury_admin_address,
-            ERR_NO_PERMISSIONS
-        );
+    ///     * ctx: current treasury_admin
+    public entry fun set_treasury_admin_address(global_config: &mut GlobalConfig, new_address: address, ctx: &mut TxContext) {
+        assert!(sender(ctx) == global_config.treasury_admin_address, ERR_NO_PERMISSIONS);
         global_config.treasury_admin_address = new_address;
     }
 
     /// Gets current address of `treasury admin` account.
     /// Returns address of treasury admin.
-    public fun get_treasury_admin_address(): address acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global<GlobalConfig>(@stake_emergency_admin);
+    public fun get_treasury_admin_address(global_config: &GlobalConfig): address {
         global_config.treasury_admin_address
     }
 
     /// Enables "global emergency state". All the pools' operations are disabled except for `emergency_unstake()`.
     /// This state cannot be disabled, use with caution.
     ///     * `emergency_admin` - current emergency admin account.
-    public entry fun enable_global_emergency(emergency_admin: &signer) acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global_mut<GlobalConfig>(@stake_emergency_admin);
-        assert!(
-            signer::address_of(emergency_admin) == global_config.emergency_admin_address,
-            ERR_NO_PERMISSIONS
-        );
+    public entry fun enable_global_emergency(global_config: &mut GlobalConfig, ctx: &mut TxContext) {
+        assert!(sender(ctx) == global_config.emergency_admin_address, ERR_NO_PERMISSIONS);
         assert!(!global_config.global_emergency_locked, ERR_GLOBAL_EMERGENCY);
         global_config.global_emergency_locked = true;
     }
 
     /// Checks whether global "emergency state" is enabled.
     /// Returns true if emergency enabled.
-    public fun is_global_emergency(): bool acquires GlobalConfig {
-        assert!(exists<GlobalConfig>(@stake_emergency_admin), ERR_NOT_INITIALIZED);
-        let global_config = borrow_global<GlobalConfig>(@stake_emergency_admin);
+    public fun is_global_emergency(global_config: &GlobalConfig): bool {
         global_config.global_emergency_locked
     }
 }
