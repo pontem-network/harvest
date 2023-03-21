@@ -180,14 +180,10 @@ module staking::stake {
             coin_r_addr: object::id_address(coin_metadata_r),
             name,
             reward_per_sec,
-            accum_reward: 0,
-            last_updated: current_time,
             start_timestamp: current_time,
             end_timestamp,
-            stake_coins: 0,
             reward_coins: coin::value(&pool.reward_coins),
             scale,
-            emergency_locked: false,
         });
         share_object(pool);
     }
@@ -642,20 +638,15 @@ module staking::stake {
         coin_r_addr: address,
         name: vector<u8>,
         reward_per_sec: u64,
-        // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
-        accum_reward: u128,
-        // last accum_reward update time
-        last_updated: u64,
         // start timestamp.
         start_timestamp: u64,
+
         // when harvest will be finished.
         end_timestamp: u64,
 
-        stake_coins: u64,
         reward_coins: u64,
         // multiplier to handle decimals
-        scale: u128,
-        emergency_locked: bool,
+        scale: u128
     }
 
     struct StakeEvent has drop, store, copy {
