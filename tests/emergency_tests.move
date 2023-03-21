@@ -1,10 +1,10 @@
 #[test_only]
-module harvest::emergency_tests {
+module staking::emergency_tests {
     use sui::test_scenario::{Scenario, next_tx, ctx};
     use sui::test_scenario;
-    use harvest::stake_config;
-    use harvest::stake_config::GlobalConfig;
-    use harvest::stake;
+    use staking::config;
+    use staking::config::GlobalConfig;
+    use staking::stake;
 
 
     /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
@@ -51,15 +51,15 @@ module harvest::emergency_tests {
         let (stake_emergency_admin, _) = admins();
         next_tx(scenario, stake_emergency_admin);
             {
-                stake_config::init_for_testing(ctx(scenario));
+                config::init_for_testing(ctx(scenario));
             };
 
         next_tx(scenario, stake_emergency_admin);
             {
                 let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
-                assert!(stake_config::get_treasury_admin_address(&gConfig) == @treasury_admin, 1);
-                assert!(stake_config::get_emergency_admin_address(&gConfig) == @stake_emergency_admin, 1);
-                assert!(!stake_config::is_global_emergency(&gConfig), 1);
+                assert!(config::get_treasury_admin_address(&gConfig) == @treasury_admin, 1);
+                assert!(config::get_emergency_admin_address(&gConfig) == @stake_emergency_admin, 1);
+                assert!(!config::is_global_emergency(&gConfig), 1);
                 test_scenario::return_shared(gConfig)
             };
     }
@@ -69,14 +69,14 @@ module harvest::emergency_tests {
 
         next_tx(scenario, stake_emergency_admin);
             {
-                stake_config::init_for_testing(ctx(scenario));
+                config::init_for_testing(ctx(scenario));
             };
 
         next_tx(scenario, stake_emergency_admin);
             {
                 let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
-                stake_config::set_treasury_admin_address(&mut gConfig, @alice, ctx(scenario));
-                assert!(stake_config::get_treasury_admin_address(&mut gConfig) == @alice, 1);
+                config::set_treasury_admin_address(&mut gConfig, @alice, ctx(scenario));
+                assert!(config::get_treasury_admin_address(&mut gConfig) == @alice, 1);
                 test_scenario::return_shared(gConfig)
             };
     }
@@ -86,13 +86,13 @@ module harvest::emergency_tests {
 
         next_tx(scenario, stake_emergency_admin);
             {
-                stake_config::init_for_testing(ctx(scenario));
+                config::init_for_testing(ctx(scenario));
             };
 
         next_tx(scenario, @treasury);
             {
                 let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
-                stake_config::set_treasury_admin_address(&mut gConfig, @treasury,  ctx(scenario));
+                config::set_treasury_admin_address(&mut gConfig, @treasury,  ctx(scenario));
                 test_scenario::return_shared(gConfig)
             };
     }
@@ -105,7 +105,7 @@ module harvest::emergency_tests {
 
         next_tx(scenario, stake_emergency_admin);
             {
-                stake_config::init_for_testing(ctx(scenario));
+                config::init_for_testing(ctx(scenario));
             };
 
         next_tx(scenario, stake_emergency_admin);

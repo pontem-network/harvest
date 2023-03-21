@@ -2,7 +2,7 @@
 ///   * allows to enable "global emergency state", which disables all the operations on the `StakePool` instances,
 ///     except for the `emergency_unstake()`.
 ///   * allows to specify custom `emergency_admin` account.
-module harvest::stake_config {
+module staking::config {
 
     // Errors.
 
@@ -21,7 +21,7 @@ module harvest::stake_config {
     const ERR_GLOBAL_EMERGENCY: u64 = 202;
 
     ///Witness
-    struct STAKE_CONFIG has drop {}
+    struct CONFIG has drop {}
 
     // Resources.
 
@@ -38,7 +38,7 @@ module harvest::stake_config {
     /// Initializes global configuration.
     ///     * `emergency_admin` - initial emergency admin account.
     ///     * `treasury_admin` - initial treasury admin address.
-    fun init(_witness: STAKE_CONFIG, ctx: &mut TxContext){
+    fun init(_witness: CONFIG, ctx: &mut TxContext){
         assert!(sender(ctx) == @stake_emergency_admin, ERR_NO_PERMISSIONS);
         transfer::share_object(GlobalConfig {
             id: object::new(ctx),
@@ -50,7 +50,7 @@ module harvest::stake_config {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(STAKE_CONFIG {}, ctx)
+        init(CONFIG {}, ctx)
     }
 
     /// Sets `emergency_admin` account.

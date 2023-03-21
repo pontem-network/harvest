@@ -1,32 +1,32 @@
-# Harvest
+# Staking
 
-The current repository contains the first basic version of Liquidswap Harvest (Staking) contracts.
+The current repository contains the first basic version of HypeRex Staking contracts.
 The main purpose of contracts is to allow the staking of LP coins and earn community/3rd party project reward coins.
 
 ## Docs
 
-Documentation is available at [official docs portal](https://docs.liquidswap.com/staking-harvest).
+Documentation is available at [official docs portal](https://docs.hyperex.com/staking).
 
 ### Build
 
-[Aptos CLI](https://github.com/aptos-labs/aptos-core/releases) required.
+[Sui CLI](https://github.com/seapad-fund/staking) required.
 
 Core:
 
-    aptos move compile
+    sui move build
 
 ### Test
 
 Core:
 
-    aptos move test
+    sui move test
 
-**Liquidswap Staking Tests**
+**HypeRex Staking Tests**
 
-Placed in [liquiswap_staking_tests/](liquidswap_staking_tests) module.
+Placed in [hyperex_staking_tests/](hyperex_staking_tests) module.
 
-    cd liquidswap_staking_tests
-    aptos move test
+    cd hyperex_staking_tests
+    sui move test
 
 ### License
 

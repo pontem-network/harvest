@@ -1,11 +1,11 @@
 /// Collection of entrypoints to handle staking pools.
-module harvest::scripts {
-    use harvest::stake;
+module staking::scripts {
+    use staking::stake;
     use sui::tx_context::{TxContext, sender};
     use sui::coin::{Coin, CoinMetadata};
-    use harvest::stake_config::GlobalConfig;
+    use staking::config::GlobalConfig;
     use sui::clock::Clock;
-    use harvest::stake::StakePool;
+    use staking::stake::StakePool;
     use sui::transfer;
 
     /// Register new staking pool with staking coin `S` and reward coin `R`.

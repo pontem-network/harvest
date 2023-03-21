@@ -1,15 +1,15 @@
-module harvest::stake {
+module staking::stake {
     // !!! FOR AUDITOR!!!
     // Look at math part of this module.
 
-    use harvest::stake_config;
+    use staking::config;
     use sui::coin::{Coin, CoinMetadata};
     use sui::tx_context::{TxContext, sender};
-    use harvest::stake_config::GlobalConfig;
+    use staking::config::GlobalConfig;
     use sui::coin;
     use sui::clock::Clock;
     use sui::clock;
-    use harvest::math128;
+    use w3libs::math128;
     use sui::table;
     use sui::transfer::share_object;
     use sui::object::UID;
@@ -142,7 +142,7 @@ module harvest::stake {
         system_clock: &Clock,
         ctx: &mut TxContext
     ) {
-        assert!(!stake_config::is_global_emergency(global_config), ERR_EMERGENCY);
+        assert!(!config::is_global_emergency(global_config), ERR_EMERGENCY);
         assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
         let reward_per_sec = coin::value(&reward_coins) / duration;
@@ -360,7 +360,7 @@ module harvest::stake {
                                       global_config: &GlobalConfig,
                                       ctx: &mut TxContext) {
         assert!(
-            sender(ctx) == stake_config::get_emergency_admin_address(global_config),
+            sender(ctx) == config::get_emergency_admin_address(global_config),
             ERR_NOT_ENOUGH_PERMISSIONS_FOR_EMERGENCY
         );
 
@@ -403,7 +403,7 @@ module harvest::stake {
                                           global_config: &GlobalConfig,
                                           system_clock: &Clock,
                                           ctx: &mut TxContext): Coin<R> {
-        assert!(sender(ctx) == stake_config::get_treasury_admin_address(global_config), ERR_NOT_TREASURY);
+        assert!(sender(ctx) == config::get_treasury_admin_address(global_config), ERR_NOT_TREASURY);
 
         if (!is_emergency_inner(pool, global_config)) {
             let now = clock::timestamp_ms(system_clock)/1000; //@todo review math
@@ -529,7 +529,7 @@ module harvest::stake {
     ///     * `pool` - pool to check emergency.
     /// Returns true of any kind or both of emergency enabled.
     fun is_emergency_inner<S, R>(pool: &StakePool<S, R>, global_config: &GlobalConfig): bool {
-        pool.emergency_locked || stake_config::is_global_emergency(global_config)
+        pool.emergency_locked || config::is_global_emergency(global_config)
     }
 
     /// Internal function to check if harvest finished on the pool.

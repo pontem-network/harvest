@@ -5,10 +5,11 @@ version = "1.0.0"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "devnet" }
+W3libs = { git = "https://github.com/seapad-fund/w3libs", rev = "devnet0xc5fe6" }
 
 [addresses]
 sui =  "0x02"
-harvest = "0x00"
+staking = "0x00"
 
 treasury_admin = "0x385514285b7b7499455c8c395c4995baf7ab97ba"
 stake_emergency_admin = "0x385514285b7b7499455c8c395c4995baf7ab97ba"

@@ -1,0 +1,13 @@
+[package]
+name = 'HyperexStakingTests'
+version = '1.0.0'
+
+[addresses]
+lp_staking_admin = "0x03"
+
+[dependencies.Staking]
+local = ".."
+
+[dependencies.HyperEx]
+git = 'https://github.com/seapad-fund/hyperex.git'
+rev = 'port2sui'

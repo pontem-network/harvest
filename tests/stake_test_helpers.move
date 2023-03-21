@@ -1,5 +1,5 @@
 #[test_only]
-module harvest::stake_test_helpers {
+module staking::stake_test_helpers {
 //    use std::signer;
 //    use std::string::{String, utf8};
 //
