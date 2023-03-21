@@ -12,11 +12,10 @@ module staking::stake {
     use w3libs::math128;
     use sui::table;
     use sui::transfer::share_object;
-    use sui::object::UID;
+    use sui::object::{UID, uid_to_address};
     use sui::object;
     use sui::event;
     use sui::math;
-
     //
     // Errors
     //
@@ -92,6 +91,7 @@ module staking::stake {
     /// Stake pool, stores stake, reward coins and related info.
     struct StakePool<phantom S, phantom R> has key, store {
         id: UID,
+        name: vector<u8>,
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
         accum_reward: u128,
@@ -134,6 +134,7 @@ module staking::stake {
     ///     * `coin_metadata_r` - coin metadata R.
     ///     * `system_clock` - shared singleton system clock.
     public fun register_pool<S, R>(
+        name: vector<u8>,
         reward_coins: Coin<R>,
         duration: u64,
         global_config: &GlobalConfig,
@@ -160,6 +161,7 @@ module staking::stake {
 
         let pool = StakePool<S, R> {
             id: object::new(ctx),
+            name,
             reward_per_sec,
             accum_reward: 0,
             last_updated: current_time,
@@ -172,6 +174,21 @@ module staking::stake {
             emergency_locked: false,
         };
 
+        event::emit(RegisterPoolEvent<S, R> {
+            pool_id: uid_to_address(&pool.id),
+            coin_s_addr: object::id_address(coin_metadata_s),
+            coin_r_addr: object::id_address(coin_metadata_r),
+            name,
+            reward_per_sec,
+            accum_reward: 0,
+            last_updated: current_time,
+            start_timestamp: current_time,
+            end_timestamp,
+            stake_coins: 0,
+            reward_coins: coin::value(&pool.reward_coins),
+            scale,
+            emergency_locked: false,
+        });
         share_object(pool);
     }
 
@@ -618,6 +635,28 @@ module staking::stake {
     //
     // Events
     //
+
+    struct RegisterPoolEvent<phantom S, phantom T> has drop, store, copy {
+        pool_id: address,
+        coin_s_addr: address,
+        coin_r_addr: address,
+        name: vector<u8>,
+        reward_per_sec: u64,
+        // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
+        accum_reward: u128,
+        // last accum_reward update time
+        last_updated: u64,
+        // start timestamp.
+        start_timestamp: u64,
+        // when harvest will be finished.
+        end_timestamp: u64,
+
+        stake_coins: u64,
+        reward_coins: u64,
+        // multiplier to handle decimals
+        scale: u128,
+        emergency_locked: bool,
+    }
 
     struct StakeEvent has drop, store, copy {
         user_address: address,
