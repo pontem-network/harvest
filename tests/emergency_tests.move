@@ -5,6 +5,13 @@ module staking::emergency_tests {
     use staking::config;
     use staking::config::GlobalConfig;
     use staking::stake;
+    use staking::coin_stake;
+    use staking::coin_reward;
+    use sui::coin::{CoinMetadata, TreasuryCap, Coin};
+    use sui::coin;
+    use staking::coin_stake::COIN_STAKE;
+    use staking::coin_reward::COIN_REWARD;
+    use staking::stake::StakePool;
 
 
     /// this is number of decimals in both StakeCoin and RewardCoin by default, named like that for readability
@@ -31,7 +38,7 @@ module staking::emergency_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = stake_config::ERR_NO_PERMISSIONS)]
+    #[expected_failure(abort_code = config::ERR_NO_PERMISSIONS)]
     fun test_set_treasury_admin_address_from_no_permission_account_fails() {
         let scenario = test_scenario::begin(@treasury_admin);
         test_set_treasury_admin_address_from_no_permission_account_fails_(&mut scenario);
@@ -97,8 +104,7 @@ module staking::emergency_tests {
             };
     }
 
-    struct  REWARD_COIN has drop {}
-    struct  STAKE_COIN has drop {}
+    const NOW: u64 = 1679479604000;
 
     fun test_cannot_register_with_global_emergency_(scenario: &mut Scenario) {
         let (stake_emergency_admin, _) = admins();
@@ -106,45 +112,104 @@ module staking::emergency_tests {
         next_tx(scenario, stake_emergency_admin);
             {
                 config::init_for_testing(ctx(scenario));
+                coin_stake::create_coin(scenario);
+                coin_reward::create_coin(scenario);
             };
 
         next_tx(scenario, stake_emergency_admin);
             {
                 let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
+                let metaS = test_scenario::take_shared<CoinMetadata<COIN_STAKE>>(scenario);
+                let metaR = test_scenario::take_shared<CoinMetadata<COIN_REWARD>>(scenario);
+                let treasuryR = test_scenario::take_shared<TreasuryCap<COIN_REWARD>>(scenario);
 
-//                let clock = test_scenario::take_shared<Clock>(scenario);
-//
-//                stake_config::enable_global_emergency(&mut gConfig, ctx(scenario));
-//                // register staking pool
-//                let reward_coins = mint_for_testing<REWARD_COIN>(12345 * ONE_COIN, ctx(scenario));
-//                let (_cap, _metadataS) = coin::create_currency(STAKE_COIN {}, 8, b"SPT", b"SPT", b"SPT", option::none<Url>(), ctx(scenario));
-//                let metaR = coin::create_currency(REWARD_COIN {}, 8, b"SPT", b"SPT", b"SPT", option::none<Url>(), ctx(scenario));
-//
-//                let duration = 12345;
-//                stake::register_pool<StakeCoin, RewardCoin>(reward_coins, duration, gConfig, metaS, metaR);
+                config::enable_global_emergency(&mut gConfig, ctx(scenario));
+
+                let reward_coins = coin::mint<COIN_REWARD>(&mut treasuryR, 12345 * ONE_COIN, ctx(scenario));
+
+                let duration = 12345;
+
+                stake::register_pool<COIN_STAKE, COIN_REWARD>(b"pool001",
+                    reward_coins,
+                    duration,
+                    &gConfig,
+                    &metaS,
+                    &metaR,
+                    NOW,
+                    ctx(scenario));
                 test_scenario::return_shared(gConfig);
-//                test_scenario::return_shared(clock);
+                test_scenario::return_shared(metaS);
+                test_scenario::return_shared(metaR);
+                test_scenario::return_shared(treasuryR);
             };
     }
 
-//    #[test]
-//    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
-//    fun test_cannot_stake_with_emergency() {
-//        let (harvest, emergency_admin) = initialize_test();
-//
-//        let alice_acc = new_account_with_stake_coins(@alice, 1 * ONE_COIN);
-//
-//        // register staking pool
-//        let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-//        let duration = 12345;
-//        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-//
-//        stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
-//
-//        let coins =
-//            coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
-//        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-//    }
+    #[test]
+    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]
+    fun test_cannot_stake_with_emergency() {
+        let scenario = test_scenario::begin(@treasury_admin);
+        test_cannot_stake_with_emergency_(&mut scenario);
+        test_scenario::end(scenario);
+    }
+
+    fun test_cannot_stake_with_emergency_(scenario: &mut Scenario) {
+
+        let (stake_emergency_admin, _) = admins();
+
+        next_tx(scenario, stake_emergency_admin);
+            {
+                config::init_for_testing(ctx(scenario));
+                coin_stake::create_coin(scenario);
+                coin_reward::create_coin(scenario);
+            };
+
+        next_tx(scenario, stake_emergency_admin);
+            {
+                let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
+                let metaS = test_scenario::take_shared<CoinMetadata<COIN_STAKE>>(scenario);
+                let metaR = test_scenario::take_shared<CoinMetadata<COIN_REWARD>>(scenario);
+                let treasuryR = test_scenario::take_shared<TreasuryCap<COIN_REWARD>>(scenario);
+                let treasuryS = test_scenario::take_shared<TreasuryCap<COIN_STAKE>>(scenario);
+
+                coin::mint_and_transfer(&mut treasuryS, 1 * ONE_COIN, @alice, ctx(scenario));
+
+                let reward_coins = coin::mint<COIN_REWARD>(&mut treasuryR, 12345 * ONE_COIN, ctx(scenario));
+
+                let duration = 12345;
+                stake::register_pool<COIN_STAKE, COIN_REWARD>(b"pool001", reward_coins, duration, &mut gConfig, &metaS, &metaR, NOW, ctx(scenario));
+
+                test_scenario::return_shared(gConfig);
+                test_scenario::return_shared(metaS);
+                test_scenario::return_shared(metaR);
+                test_scenario::return_shared(treasuryS);
+                test_scenario::return_shared(treasuryR);
+            };
+
+        next_tx(scenario, stake_emergency_admin);
+            {
+                let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
+                let treasuryS = test_scenario::take_shared<TreasuryCap<COIN_STAKE>>(scenario);
+                let pool = test_scenario::take_shared<StakePool<COIN_STAKE, COIN_REWARD>>(scenario);
+
+                stake::enable_emergency<COIN_STAKE, COIN_REWARD>(&mut pool, &gConfig, ctx(scenario));
+                coin::mint_and_transfer<COIN_STAKE>(&mut treasuryS, 1 * ONE_COIN, @alice, ctx(scenario));
+
+                test_scenario::return_shared(gConfig);
+                test_scenario::return_shared(treasuryS);
+                test_scenario::return_shared(pool);
+            };
+
+        next_tx(scenario, @alice);
+            {
+                let gConfig = test_scenario::take_shared<GlobalConfig>(scenario);
+                let pool = test_scenario::take_shared<StakePool<COIN_STAKE, COIN_REWARD>>(scenario);
+                let coins = test_scenario::take_from_sender<Coin<COIN_STAKE>>(scenario);
+                stake::stake<COIN_STAKE, COIN_REWARD>(&mut pool, coins, &mut gConfig, NOW, ctx(scenario));
+
+                test_scenario::return_shared(gConfig);
+                test_scenario::return_shared(pool);
+            }
+    }
 //
 //    #[test]
 //    #[expected_failure(abort_code = stake::ERR_EMERGENCY)]

@@ -136,7 +136,7 @@ module staking::stake {
     public fun register_pool<S, R>(
         name: vector<u8>,
         reward_coins: Coin<R>,
-        duration: u64,
+        duration_second: u64,
         global_config: &GlobalConfig,
         coin_metadata_s: &CoinMetadata<S>,
         coin_metadata_r: &CoinMetadata<R>,
@@ -144,13 +144,13 @@ module staking::stake {
         ctx: &mut TxContext
     ) {
         assert!(!config::is_global_emergency(global_config), ERR_EMERGENCY);
-        assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
+        assert!(duration_second > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
-        let reward_per_sec = coin::value(&reward_coins) / duration;
+        let reward_per_sec = coin::value(&reward_coins) / duration_second;
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
 
         let current_time= system_clock/1000; //@todo review math div
-        let end_timestamp = current_time + duration;
+        let end_timestamp = current_time + duration_second;
 
         let origin_decimals = (coin::get_decimals(coin_metadata_r) as u128);
         assert!(origin_decimals <= 10, ERR_INVALID_REWARD_DECIMALS);
