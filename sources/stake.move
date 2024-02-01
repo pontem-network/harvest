@@ -62,38 +62,35 @@ module harvest::stake {
     /// Duration can't be zero.
     const ERR_DURATION_CANNOT_BE_ZERO: u64 = 112;
 
-    /// When harvest finished for a pool.
-    const ERR_HARVEST_FINISHED: u64 = 113;
-
     /// When withdrawing at wrong period.
-    const ERR_NOT_WITHDRAW_PERIOD: u64 = 114;
+    const ERR_NOT_WITHDRAW_PERIOD: u64 = 113;
 
     /// When not treasury withdrawing.
-    const ERR_NOT_TREASURY: u64 = 115;
+    const ERR_NOT_TREASURY: u64 = 114;
 
     /// When NFT collection does not exist.
-    const ERR_NO_COLLECTION: u64 = 116;
+    const ERR_NO_COLLECTION: u64 = 115;
 
     /// When boost percent is not in required range.
-    const ERR_INVALID_BOOST_PERCENT: u64 = 117;
+    const ERR_INVALID_BOOST_PERCENT: u64 = 116;
 
     /// When boosting stake in pool without specified nft collection.
-    const ERR_NON_BOOST_POOL: u64 = 118;
+    const ERR_NON_BOOST_POOL: u64 = 117;
 
     /// When boosting same stake again.
-    const ERR_ALREADY_BOOSTED: u64 = 119;
+    const ERR_ALREADY_BOOSTED: u64 = 118;
 
     /// When token collection not match pool.
-    const ERR_WRONG_TOKEN_COLLECTION: u64 = 120;
+    const ERR_WRONG_TOKEN_COLLECTION: u64 = 119;
 
     /// When removing boost from non boosted stake.
-    const ERR_NO_BOOST: u64 = 121;
+    const ERR_NO_BOOST: u64 = 120;
 
     /// When amount of NFT for boost is more than one.
-    const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 122;
+    const ERR_NFT_AMOUNT_MORE_THAN_ONE: u64 = 121;
 
     /// When reward coin has more than 10 decimals.
-    const ERR_INVALID_REWARD_DECIMALS: u64 = 123;
+    const ERR_INVALID_REWARD_DECIMALS: u64 = 122;
 
     //
     // Constants
@@ -120,7 +117,7 @@ module harvest::stake {
 
     struct Epoch<phantom R> has store {
         rewards_amount: u64,
-        rewards_to_distribute: Coin<R>,
+        // rewards_to_distribute: Coin<R>,
 
         reward_per_sec: u64,
         // pool reward ((reward_per_sec * time) / total_staked) + accum_reward (previous period)
@@ -143,12 +140,12 @@ module harvest::stake {
         current_epoch: u64, // todo: max vec len
         epochs: vector<Epoch<R>>,
 
-        // last accum_reward update time
-        last_updated: u64,
-        // start timestamp.
-        start_timestamp: u64,
-        // when harvest will be finished.
-        end_timestamp: u64,
+        // // last accum_reward update time
+        // last_updated: u64,
+        // // start timestamp.
+        // start_timestamp: u64,
+        // // when harvest will be finished.
+        // end_timestamp: u64,
 
         stakes: table::Table<address, UserStake>,
         stake_coins: Coin<S>,
@@ -250,7 +247,7 @@ module harvest::stake {
 
         let epoch = Epoch {
             rewards_amount,
-            rewards_to_distribute: reward_coins,
+            // rewards_to_distribute: reward_coins,
 
             reward_per_sec,
             accum_reward: 0,
@@ -272,12 +269,12 @@ module harvest::stake {
             current_epoch: 0,
             epochs: vector[epoch],
 
-            last_updated: current_time,
-            start_timestamp: current_time,
-            end_timestamp,
+            // last_updated: current_time,
+            // start_timestamp: current_time,
+            // end_timestamp,
             stakes: table::new(),
             stake_coins: coin::zero(),
-            reward_coins: coin::zero(),
+            reward_coins,// coin::zero(),
             scale,
             total_boosted: 0,
             nft_boost_config,
@@ -309,11 +306,6 @@ module harvest::stake {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
 
-        // TODO: remove is_finished_inner logic. now pool are infinite
-        // it's forbidden to deposit more rewards (extend pool duration) after previous pool duration passed
-        // preventing unfair reward distribution
-        // assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
-
         let amount = coin::value(&coins);
         assert!(amount > 0, ERR_AMOUNT_CANNOT_BE_ZERO);
 
@@ -325,20 +317,17 @@ module harvest::stake {
         let epoch = vector::borrow_mut(epochs, pool.current_epoch);
 
         let undistrib_rewards_amount = 0;
-        let undistrib_rewards = coin::zero();
-        // close ghost epoch or redirect rewards from reward epoch
 
+        // close ghost epoch or redirect rewards from reward epoch
         if (epoch.reward_per_sec == 0) {
             epoch.ended_at = current_time;
             epoch.end_time = current_time;
         } else {
             let epoch_time_left = epoch.end_time - epoch.last_update_time;
 
-            // take undistributed rewards from prev epoch
+            // get undistributed rewards from prev epoch
             if (epoch_time_left > 0) {
                 undistrib_rewards_amount = epoch_time_left * epoch.reward_per_sec;
-
-                coin::merge(&mut undistrib_rewards, coin::extract(&mut epoch.rewards_to_distribute, undistrib_rewards_amount));
             };
 
             // end current epoch
@@ -346,17 +335,19 @@ module harvest::stake {
             epoch.ended_at = current_time;
         };
 
-        // merge prev & curr rewards
-        coin::merge(&mut coins, undistrib_rewards);
-        let total_rewards = coin::value(&coins);
+        // merge undistributed & curr rewards into new reward_per_sec
+        let total_rewards = coin::value(&coins) + undistrib_rewards_amount;
         let reward_per_sec = total_rewards / duration;
         assert!(reward_per_sec > 0, ERR_REWARD_CANNOT_BE_ZERO);
+
+        // add new rewards to pool
+        coin::merge(&mut pool.reward_coins, coins);
 
         // create new epoch
         let epoch_duration = current_time + duration;
         let next_epoch = Epoch<R> {
             rewards_amount: total_rewards,
-            rewards_to_distribute: coins,
+            // rewards_to_distribute: coins,
 
             reward_per_sec,
             accum_reward: 0,
@@ -402,7 +393,6 @@ module harvest::stake {
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
-        assert!(!is_finished_inner(pool), ERR_HARVEST_FINISHED);
 
         // update pool accum_reward and timestamp
         update_accum_reward(pool);
@@ -424,7 +414,7 @@ module harvest::stake {
             };
 
             // calculate unobtainable reward for new stake
-            let epoch_count = pool.current_epoch;
+            let epoch_count = pool.current_epoch + 1;
             let epochs = &mut pool.epochs;
             let i = 0;
             while (i < epoch_count) {
@@ -454,7 +444,7 @@ module harvest::stake {
             };
 
             // recalculate unobtainable reward after stake amount changed
-            let epoch_count = pool.current_epoch;
+            let epoch_count = pool.current_epoch + 1;
             let epochs = &mut pool.epochs;
             let i = 0;
             while (i < epoch_count) {
@@ -504,10 +494,7 @@ module harvest::stake {
         assert!(amount <= user_stake.amount, ERR_NOT_ENOUGH_S_BALANCE);
 
         // check unlock timestamp
-        let current_time = timestamp::now_seconds();
-        if (pool.end_timestamp >= current_time) {
-            assert!(current_time >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
-        };
+        assert!(timestamp::now_seconds() >= user_stake.unlock_time, ERR_TOO_EARLY_UNSTAKE);
 
         // update earnings
         updated_earnings_epochs(pool, user_address);
@@ -525,7 +512,7 @@ module harvest::stake {
         };
 
         // recalculate unobtainable reward after stake amount changed
-        let epoch_count = pool.current_epoch;
+        let epoch_count = pool.current_epoch + 1;
         let epochs = &mut pool.epochs;
         let i = 0;
         while (i < epoch_count) {
@@ -578,7 +565,6 @@ module harvest::stake {
 
         // !!!FOR AUDITOR!!!
         // Double check that always enough rewards.
-
         coin::extract(&mut pool.reward_coins, earned)
     }
 
@@ -628,7 +614,7 @@ module harvest::stake {
         pool.total_boosted = pool.total_boosted + user_stake.boosted_amount;
 
         // recalculate unobtainable reward after stake boosted changed
-        let epoch_count = pool.current_epoch;
+        let epoch_count = pool.current_epoch + 1;
         let epochs = &mut pool.epochs;
         let i = 0;
         while (i < epoch_count) {
@@ -675,7 +661,7 @@ module harvest::stake {
         user_stake.boosted_amount = 0;
 
         // recalculate unobtainable reward after stake boosted changed
-        let epoch_count = pool.current_epoch;
+        let epoch_count = pool.current_epoch + 1;
         let epochs = &mut pool.epochs;
         let i = 0;
         while (i < epoch_count) {
@@ -751,7 +737,8 @@ module harvest::stake {
 
         if (!is_emergency_inner(pool)) {
             let now = timestamp::now_seconds();
-            assert!(now >= (pool.end_timestamp + WITHDRAW_REWARD_PERIOD_IN_SECONDS), ERR_NOT_WITHDRAW_PERIOD);
+            let last_epoch_endtime = vector::borrow(&pool.epochs, pool.current_epoch).end_time;
+            assert!(now >= (last_epoch_endtime + WITHDRAW_REWARD_PERIOD_IN_SECONDS), ERR_NOT_WITHDRAW_PERIOD);
         };
 
         coin::extract(&mut pool.reward_coins, amount)
@@ -768,7 +755,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        pool.start_timestamp
+        vector::borrow(&pool.epochs, 0).start_time
     }
 
     /// Checks if user can boost own stake in pool.
@@ -794,16 +781,6 @@ module harvest::stake {
         (boost_config.collection_owner, boost_config.collection_name, boost_config.boost_percent)
     }
 
-    /// Checks if harvest on the pool finished.
-    ///     * `pool_addr` - address under which pool are stored.
-    /// Returns true if harvest finished for the pool.
-    public fun is_finished<S, R>(pool_addr: address): bool acquires StakePool {
-        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-
-        let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        is_finished_inner(pool)
-    }
-
     /// Gets timestamp when harvest will be finished for the pool.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns timestamp.
@@ -811,7 +788,7 @@ module harvest::stake {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
 
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-        pool.end_timestamp
+        vector::borrow(&pool.epochs, pool.current_epoch).end_time
     }
 
     /// Checks if pool exists.
@@ -893,40 +870,53 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).boosted_amount
     }
 
-    // TODO: restore
-    // /// Checks current pending user reward in specific pool.
-    // ///     * `pool_addr` - address under which pool are stored.
-    // ///     * `user_addr` - stake owner address.
-    // /// Returns reward amount that can be harvested by stake owner.
-    // public fun get_pending_user_rewards<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
-    //     assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
-    //
-    //     let pool = borrow_global<StakePool<S, R>>(pool_addr);
-    //     assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
-    //
-    //     let epoch = vector::borrow(&pool.epochs, pool.current_epoch);
-    //
-    //     let user_stake = table::borrow(&pool.stakes, user_addr);
-    //     let current_time = get_time_for_last_update(pool);
-    //
-    //     let pool_total_staked_with_boosted =
-    //             (coin::value(&pool.stake_coins) as u128) + pool.total_boosted;
-    //     let new_accum_rewards =
-    //         accum_rewards_since_last_updated(
-    //             pool_total_staked_with_boosted,
-    //             epoch.last_update_time,
-    //             epoch.reward_per_sec,
-    //             current_time,
-    //             pool.scale
-    //         );
-    //
-    //     let earned_since_last_update = user_earned_since_last_update(
-    //         epoch.accum_reward + new_accum_rewards,
-    //         pool.scale,
-    //         user_stake,
-    //     );
-    //     user_stake.earned_reward + (earned_since_last_update as u64)
-    // }
+    /// Checks current pending user reward in specific pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    ///     * `user_addr` - stake owner address.
+    /// Returns reward amount that can be harvested by stake owner.
+    public fun get_pending_user_rewards<S, R>(pool_addr: address, user_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+        assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
+
+        let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
+        let current_time = timestamp::now_seconds();
+
+        let earnings = 0;
+        let scale = pool.scale;
+        let epoch_count = pool.current_epoch + 1;
+        let epochs = &mut pool.epochs;
+        let i = 0;
+        while (i < epoch_count) {
+            let epoch = vector::borrow_mut(epochs, i);
+
+            // get new accum reward for last epoch
+            let new_earnings = if (i + 1 == epoch_count) {
+                let epoch_end_time = epoch.end_time;
+                let reward_time = math64::min(epoch_end_time, current_time);
+
+                let pool_total_staked_with_boosted =
+                    (coin::value(&pool.stake_coins) as u128) + pool.total_boosted;
+                let new_accum_rewards =
+                    accum_rewards_since_last_updated(
+                        pool_total_staked_with_boosted,
+                        epoch.last_update_time,
+                        epoch.reward_per_sec,
+                        reward_time,
+                        pool.scale
+                    );
+                let accum_reward = epoch.accum_reward + new_accum_rewards;
+                user_earned_since_last_update(accum_reward, scale, user_stake, i)
+            } else {
+                user_earned_since_last_update(epoch.accum_reward, scale, user_stake, i)
+            };
+            earnings = earnings + new_earnings;
+            i = i + 1;
+        };
+
+        user_stake.earned_reward + (earnings as u64)
+    }
 
     /// Checks stake unlock time in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
@@ -939,7 +929,8 @@ module harvest::stake {
 
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
-        math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time)
+        let current_epoch_endtime = vector::borrow(&pool.epochs, pool.current_epoch).end_time;
+        math64::min(current_epoch_endtime, table::borrow(&pool.stakes, user_addr).unlock_time)
     }
 
     /// Checks if stake is unlocked.
@@ -954,7 +945,9 @@ module harvest::stake {
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         let current_time = timestamp::now_seconds();
-        let unlock_time = math64::min(pool.end_timestamp, table::borrow(&pool.stakes, user_addr).unlock_time);
+        let current_epoch_endtime = vector::borrow(&pool.epochs, pool.current_epoch).end_time;
+        let unlock_time =
+            math64::min(current_epoch_endtime, table::borrow(&pool.stakes, user_addr).unlock_time);
 
         current_time >= unlock_time
     }
@@ -988,25 +981,9 @@ module harvest::stake {
         pool.emergency_locked || stake_config::is_global_emergency()
     }
 
-    // TODO: remove
-    /// Internal function to check if harvest finished on the pool.
-    ///     * `pool` - the pool itself.
-    /// Returns true if harvest finished for the pool.
-    fun is_finished_inner<S, R>(pool: &StakePool<S, R>): bool {
-        let now = timestamp::now_seconds();
-        now >= pool.end_timestamp
-    }
-
-    // fun is_epoch_finished_inner<S, R>(epoch: &Epoch<R>): bool {
-    //     let now = timestamp::now_seconds();
-    //     now >= epoch.end_time
-    // }
-
     /// Calculates pool accumulated reward, updating pool.
     ///     * `pool` - pool to update rewards.
     fun update_accum_reward<S, R>(pool: &mut StakePool<S, R>) {
-        // let current_time = get_time_for_last_update(pool);
-
         // we have 4 options here:
         // 1. Current epoch with no time passed
         //      ==> rewards 0
@@ -1043,21 +1020,21 @@ module harvest::stake {
                 );
             if (new_accum_rewards != 0) {
                 epoch.accum_reward = epoch.accum_reward + new_accum_rewards;
-                epoch.last_update_time = current_time;
             };
+            epoch.last_update_time = current_time;
 
             if (epoch_end_time < current_time) {
                 epoch.ended_at = current_time;
                 let ghost_epoch = Epoch<R> {
                     rewards_amount: 0,
-                    rewards_to_distribute: coin::zero(),
+                    // rewards_to_distribute: coin::zero(),
 
                     reward_per_sec: 0,
                     accum_reward: 0,
 
                     start_time: epoch_end_time,
-                    last_update_time: epoch_end_time,
-                    end_time: 0xFFFFFFFFFFFFFFFF,
+                    last_update_time: current_time,
+                    end_time: current_time + WEEK_IN_SECONDS,
 
                     distributed: 0,
                     ended_at: 0,
@@ -1095,20 +1072,18 @@ module harvest::stake {
 
     // TODO: descr
     fun updated_earnings_epochs<S, R>(pool: &mut StakePool<S, R>, user_address: address) {
-        let epoch_count = pool.current_epoch;
+        let epoch_count = pool.current_epoch + 1;
         let epochs = &mut pool.epochs;
         let user_stake = table::borrow_mut(&mut pool.stakes, user_address);
 
-        let total_accumulated = 0;
         let i = 0;
         while (i < epoch_count) {
             let epoch = vector::borrow_mut(epochs, i);
 
-            update_user_earnings(total_accumulated, pool.scale, user_stake, i);
-
-            total_accumulated = total_accumulated + epoch.accum_reward;
+            update_user_earnings(epoch.accum_reward, pool.scale, user_stake, i);
             i = i + 1;
         };
+
     }
 
     /// Calculates user earnings, updating user stake.
@@ -1118,7 +1093,6 @@ module harvest::stake {
     fun update_user_earnings(accum_reward: u128, scale: u128, user_stake: &mut UserStake, epoch: u64) {
         let earned =
             user_earned_since_last_update(accum_reward, scale, user_stake, epoch);
-        std::debug::print(&aptos_std::string_utils::format1(&b"earned = {}", earned));
         user_stake.earned_reward = user_stake.earned_reward + (earned as u64);
 
         // update unobtainable_reward for specific epoch
@@ -1137,23 +1111,16 @@ module harvest::stake {
         user_stake: &mut UserStake,
         epoch: u64,
     ): u128 {
-        std::debug::print(&aptos_std::string_utils::format1(&b"((accum_reward * user_stake_amount_with_boosted(user_stake)) / scale) = {}", ((accum_reward * user_stake_amount_with_boosted(user_stake)) / scale)));
-
         // create a slot for unobtainable reward if needed
-        if (vector::length(&user_stake.unobtainable_rewards) < epoch + 1) {
+        let unobtainable_reward = if (vector::length(&user_stake.unobtainable_rewards) < epoch + 1) {
             vector::push_back(&mut user_stake.unobtainable_rewards, 0);
+            0
+        } else {
+            *vector::borrow(&user_stake.unobtainable_rewards, epoch)
         };
-        let unobtainable_reward = vector::borrow(&user_stake.unobtainable_rewards, epoch);
-        std::debug::print(&aptos_std::string_utils::format1(&b"user_stake.unobtainable_reward = {}", *unobtainable_reward));
-        ((accum_reward * user_stake_amount_with_boosted(user_stake)) / scale)
-            - *unobtainable_reward
-    }
 
-    /// Get time for last pool update: current time if the pool is not finished or end timmestamp.
-    ///     * `pool` - pool to get time.
-    /// Returns timestamp.
-    fun get_time_for_last_update<S, R>(pool: &StakePool<S, R>): u64 {
-        math64::min(pool.end_timestamp, timestamp::now_seconds())
+        ((accum_reward * user_stake_amount_with_boosted(user_stake)) / scale)
+            - unobtainable_reward
     }
 
     /// Get total staked amount + boosted amount by the user.
@@ -1202,20 +1169,34 @@ module harvest::stake {
     public fun get_unobtainable_reward<S, R>(
         pool_addr: address,
         user_addr: address,
-        epoch: u64,
     ): u128 acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
+        let user_stake = table::borrow(&pool.stakes, user_addr);
 
-        *vector::borrow(&table::borrow(&pool.stakes, user_addr).unobtainable_rewards, epoch)
+        let total_unobt_rew = 0;
+        let unobt_len = vector::length(&user_stake.unobtainable_rewards);
+        let epoch_count = pool.current_epoch + 1;
+        let i = 0;
+        while (i < epoch_count) {
+            let unobt_rew = 0;
+            if (i < unobt_len) {
+                unobt_rew = *vector::borrow(&user_stake.unobtainable_rewards, i);
+            };
+
+            total_unobt_rew = total_unobt_rew + unobt_rew;
+            i = i + 1;
+        };
+
+        total_unobt_rew
     }
 
     #[test_only]
     /// Access staking pool fields with no getters.
     public fun get_pool_info<S, R>(pool_addr: address): (u64, u128, u64, u64, u128) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-
         let epoch = vector::borrow(&pool.epochs, pool.current_epoch);
-        (epoch.reward_per_sec, epoch.accum_reward, pool.last_updated,
+
+        (epoch.reward_per_sec, epoch.accum_reward, epoch.last_update_time,
             coin::value<R>(&pool.reward_coins), pool.scale)
     }
 
@@ -1224,8 +1205,8 @@ module harvest::stake {
     public fun get_epoch_info<S, R>(pool_addr: address, epoch: u64):
         (u64, u64, u128, u64, u64, u64, u64, u64, bool) acquires StakePool {
         let pool = borrow_global<StakePool<S, R>>(pool_addr);
-
         let epoch = vector::borrow(&pool.epochs, epoch);
+
         (epoch.rewards_amount, epoch.reward_per_sec, epoch.accum_reward, epoch.start_time,
             epoch.last_update_time, epoch.end_time, epoch.distributed, epoch.ended_at, epoch.is_ghost)
     }
@@ -1234,21 +1215,8 @@ module harvest::stake {
     /// Force pool & user stake recalculations.
     public fun recalculate_user_stake<S, R>(pool_addr: address, user_addr: address) acquires StakePool {
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
+
         update_accum_reward(pool);
-
-        let epoch_count = pool.current_epoch;
-        let epochs = &mut pool.epochs;
-        let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
-
-        let total_accumulated = 0;
-        let i = 0;
-        while (i < epoch_count) {
-            let epoch = vector::borrow_mut(epochs, i);
-
-            update_user_earnings(total_accumulated, pool.scale, user_stake, i);
-
-            total_accumulated = total_accumulated + epoch.accum_reward;
-            i = i + 1;
-        };
+        updated_earnings_epochs(pool, user_addr);
     }
 }
