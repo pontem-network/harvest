@@ -1,7 +1,7 @@
 [package]
 name = "Harvest"
 version = "1.0.0"
-upgrade_policy = "compatible"
+upgrade_policy = "immutable"
 
 [addresses]
 harvest = "0xb247ddeee87e848315caf9a33b8e4c71ac53db888cb88143d62d2370cca0ead2"
