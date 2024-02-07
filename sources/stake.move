@@ -9,7 +9,6 @@ module harvest::stake {
     use aptos_std::event::{Self, EventHandle};
     use aptos_std::math64;
     use aptos_std::math128;
-    use aptos_std::pool_u64::Pool;
     use aptos_std::table;
     use aptos_framework::account;
     use aptos_framework::coin::{Self, Coin};
@@ -400,9 +399,6 @@ module harvest::stake {
 
         let current_time = timestamp::now_seconds();
         let user_address = signer::address_of(user);
-
-        let epoch = vector::borrow(&pool.epochs, pool.current_epoch);
-        let accum_reward = epoch.accum_reward;
 
         if (!table::contains(&pool.stakes, user_address)) {
             let new_stake = UserStake {

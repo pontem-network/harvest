@@ -3,7 +3,6 @@ module harvest::staking_epochs_tests_move {
     use std::option;
 
     use aptos_framework::coin;
-    use aptos_framework::stake::withdraw;
     use aptos_framework::timestamp;
 
     use harvest::stake;
@@ -33,8 +32,6 @@ module harvest::staking_epochs_tests_move {
         std::debug::print(&std::string::utf8(b"============================================================================"));
     }
 
-    /// epoch duration      | #1 10   |
-    /// epoch reward        |    10   |
     #[test]
     public fun test_creaate_different_epochs() {
         let (harvest, _) = initialize_test();
@@ -168,8 +165,6 @@ module harvest::staking_epochs_tests_move {
         assert!(last_updated == START_TIME, 1);
         assert!(curr_epoch == 0, 1);
 
-        print_epoch(0);
-
         // wait half of duration & check accum reward
         timestamp::update_global_time_for_test_secs(START_TIME + duration / 2);
         stake::recalculate_user_stake<S, R>(@harvest, @alice);
@@ -181,20 +176,16 @@ module harvest::staking_epochs_tests_move {
         assert!(last_updated == START_TIME + duration / 2, 1);
         assert!(curr_epoch == 0, 1);
 
-        print_epoch(0);
-
         // wait full duration & check accum reward
         timestamp::update_global_time_for_test_secs(START_TIME + duration);
         stake::recalculate_user_stake<S, R>(@harvest, @alice);
         let (_, accum_reward, last_updated, _, _) = stake::get_pool_info<S, R>(@harvest);
         let reward_val = stake::get_pending_user_rewards<S, R>(@harvest, @alice);
         let curr_epoch = stake::get_pool_current_epoch<S, R>(@harvest);
-        assert!(reward_val == 157680000000000, 1);
+        assert!(reward_val == amount<R>(157680000, 0), 1);
         assert!(accum_reward == 1576800000000000000, 1);
         assert!(last_updated == START_TIME + duration, 1);
         assert!(curr_epoch == 0, 1);
-
-        print_epoch(0);
 
         // wait full duration + 1 sec & check accum reward
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 1);
@@ -202,13 +193,10 @@ module harvest::staking_epochs_tests_move {
         let (_, accum_reward, last_updated, _, _) = stake::get_pool_info<S, R>(@harvest);
         let reward_val = stake::get_pending_user_rewards<S, R>(@harvest, @alice);
         let curr_epoch = stake::get_pool_current_epoch<S, R>(@harvest);
-        assert!(reward_val == 157680000000000, 1);
+        assert!(reward_val == amount<R>(157680000, 0), 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == START_TIME + duration + 1, 1);
         assert!(curr_epoch == 1, 1);
-
-        print_epoch(0);
-        print_epoch(1);
 
         // wait full duration + 200 weeks & check accum reward
         timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS * 200);
@@ -216,17 +204,30 @@ module harvest::staking_epochs_tests_move {
         let (_, accum_reward, last_updated, _, _) = stake::get_pool_info<S, R>(@harvest);
         let reward_val = stake::get_pending_user_rewards<S, R>(@harvest, @alice);
         let curr_epoch = stake::get_pool_current_epoch<S, R>(@harvest);
-        assert!(reward_val == 157680000000000, 1);
+        assert!(reward_val == amount<R>(157680000, 0), 1);
         assert!(accum_reward == 0, 1);
         assert!(last_updated == START_TIME + duration + WEEK_IN_SECONDS * 200, 1);
         assert!(curr_epoch == 1, 1);
 
-        print_epoch(0);
-        print_epoch(1);
-
         // check user can get rewards after ghost epoch
-        // let reward_coins = mint_default_coin<R>(amount<R>(150, 0));
-        // stake::deposit_reward_coins<S, R>(&alice_acc, @harvest, reward_coins, 10);
 
+        // create new epoch
+        let reward_coins = mint_default_coin<R>(amount<R>(150, 0));
+        stake::deposit_reward_coins<S, R>(&alice_acc, @harvest, reward_coins, 150);
+
+        // wait full epoch duration & check accum reward
+        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS * 200 + 150);
+        stake::recalculate_user_stake<S, R>(@harvest, @alice);
+        let (_, accum_reward, last_updated, _, _) = stake::get_pool_info<S, R>(@harvest);
+        let reward_val = stake::get_pending_user_rewards<S, R>(@harvest, @alice);
+        let curr_epoch = stake::get_pool_current_epoch<S, R>(@harvest);
+        assert!(reward_val == amount<R>(157680000, 0) + amount<R>(150, 0), 1);
+        assert!(accum_reward == 1500000000000, 1);
+        assert!(last_updated == START_TIME + duration + WEEK_IN_SECONDS * 200 + 150, 1);
+        assert!(curr_epoch == 2, 1);
+
+        let gain = stake::harvest<S, R>(&alice_acc, @harvest);
+        assert!(coin::value(&gain) == amount<R>(157680000, 0) + amount<R>(150, 0), 1);
+        coin::deposit(@alice, gain);
     }
 }
