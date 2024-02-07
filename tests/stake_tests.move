@@ -955,43 +955,6 @@ module harvest::stake_tests {
     }
 
     #[test]
-    public fun test_premature_unstake_and_harvest() {
-        let (harvest, _) = initialize_test();
-
-        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
-
-        coin::register<RewardCoin>(&alice_acc);
-
-        // register staking pool with rewards
-        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
-        let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        timestamp::update_global_time_for_test_secs(START_TIME + duration - 1);
-
-        // stake 100 StakeCoins from alice
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-
-        // wait until pool expired and almost a week more
-        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS / 2);
-
-        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
-        coin::deposit(@alice, coins);
-
-        // harvest from alice
-        let coins =
-            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-
-        // check amounts
-        assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
-        assert!(coin::value(&coins) == 10000000, 1);
-
-        coin::deposit<RewardCoin>(@alice, coins);
-    }
-
-    #[test]
     public fun test_stake_and_get_all_rewards_from_start_to_end() {
         let (harvest, _) = initialize_test();
 

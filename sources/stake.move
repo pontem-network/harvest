@@ -302,6 +302,7 @@ module harvest::stake {
         duration: u64,
     ) acquires StakePool {
         assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+        assert!(duration > 0, ERR_DURATION_CANNOT_BE_ZERO);
 
         let pool = borrow_global_mut<StakePool<S, R>>(pool_addr);
         assert!(!is_emergency_inner(pool), ERR_EMERGENCY);
