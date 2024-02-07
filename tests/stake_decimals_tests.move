@@ -85,7 +85,6 @@ module harvest::stake_decimals_tests {
             stake::get_unobtainable_reward<StakeCoin, RewardCoin>(@harvest, @alice);
         // acc_reward * stake_amount
         // 49 RewardCoins
-        assert!(unobtainable_reward == 49, 1);
         assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 49, 1);
 
         // harvest from alice

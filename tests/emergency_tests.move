@@ -131,7 +131,7 @@ module harvest::emergency_tests {
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]
@@ -277,7 +277,7 @@ module harvest::emergency_tests {
         stake_config::enable_global_emergency(&emergency_admin);
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]

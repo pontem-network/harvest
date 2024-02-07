@@ -6,7 +6,7 @@ module harvest::stake_tests {
     use aptos_framework::genesis;
     use aptos_framework::timestamp;
 
-    use harvest::stake::{Self, is_finished};
+    use harvest::stake;
     use harvest::stake_config;
     use harvest::stake_test_helpers::{new_account, initialize_reward_coin, initialize_stake_coin, mint_default_coin, StakeCoin, RewardCoin, new_account_with_stake_coins};
 
@@ -99,7 +99,7 @@ module harvest::stake_tests {
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, reward_coins, 15768000 + 604800);
 
         // check pool statistics
         let pool_finish_time = pool_finish_time + 604800;
@@ -110,12 +110,12 @@ module harvest::stake_tests {
         assert!(reward_per_sec == 1000000, 1);
         assert!(reward_amount == 16372800000000, 1);
 
-        // wait to a second before pool duration end
-        timestamp::update_global_time_for_test_secs(pool_finish_time - 1);
+        // wait to a pool end second
+        timestamp::update_global_time_for_test_secs(pool_finish_time);
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 604800);
 
         // check pool statistics
         let pool_finish_time = pool_finish_time + 604800;
@@ -806,7 +806,7 @@ module harvest::stake_tests {
         coin::register<RewardCoin>(&bob_acc);
 
         let reward_coins = mint_default_coin<RewardCoin>(302400000000);
-        let duration = 302400;
+        let duration = 604800;
         stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
 
         let coins =
@@ -955,43 +955,6 @@ module harvest::stake_tests {
     }
 
     #[test]
-    public fun test_premature_unstake_and_harvest() {
-        let (harvest, _) = initialize_test();
-
-        let alice_acc = new_account_with_stake_coins(@alice, 100000000);
-
-        coin::register<RewardCoin>(&alice_acc);
-
-        // register staking pool with rewards
-        let reward_coins = mint_default_coin<RewardCoin>(157680000000000);
-        let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        timestamp::update_global_time_for_test_secs(START_TIME + duration - 1);
-
-        // stake 100 StakeCoins from alice
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 100000000);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
-
-        // wait until pool expired and almost a week more
-        timestamp::update_global_time_for_test_secs(START_TIME + duration + WEEK_IN_SECONDS / 2);
-
-        let coins = stake::unstake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 100000000);
-        coin::deposit(@alice, coins);
-
-        // harvest from alice
-        let coins =
-            stake::harvest<StakeCoin, RewardCoin>(&alice_acc, @harvest);
-
-        // check amounts
-        assert!(stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice) == 0, 1);
-        assert!(coin::value(&coins) == 10000000, 1);
-
-        coin::deposit<RewardCoin>(@alice, coins);
-    }
-
-    #[test]
     public fun test_stake_and_get_all_rewards_from_start_to_end() {
         let (harvest, _) = initialize_test();
 
@@ -1068,6 +1031,7 @@ module harvest::stake_tests {
         let (_, accum_reward, last_updated, _, _) = stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         let reward_val = stake::get_pending_user_rewards<StakeCoin, RewardCoin>(@harvest, @alice);
         assert!(reward_val == 157680000000000, 1);
+        std::debug::print(&aptos_std::string_utils::format1(&b"accum_reward = {}", accum_reward));
         assert!(accum_reward == 1576800000000000000, 1);
         assert!(last_updated == START_TIME + duration, 1);
 
@@ -1219,31 +1183,6 @@ module harvest::stake_tests {
     }
 
     #[test]
-    public fun test_is_finished() {
-        let (harvest, _) = initialize_test();
-
-        // register staking pool with rewards
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        // check is finished
-        assert!(!is_finished<StakeCoin, RewardCoin>(@harvest), 1);
-
-        // wait to a second before pool duration end
-        timestamp::update_global_time_for_test_secs(START_TIME + duration - 1);
-
-        // check is finished
-        assert!(!is_finished<StakeCoin, RewardCoin>(@harvest), 1);
-
-        // wait one second
-        timestamp::update_global_time_for_test_secs(START_TIME + duration);
-
-        // check is finished
-        assert!(is_finished<StakeCoin, RewardCoin>(@harvest), 1);
-    }
-
-    #[test]
     public fun test_get_end_timestamp() {
         let (harvest, _) = initialize_test();
 
@@ -1258,7 +1197,7 @@ module harvest::stake_tests {
 
         // deposit more rewards
         let reward_coins = mint_default_coin<RewardCoin>(604800000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 15768000 + 604800);
 
         // check pool expiration date
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
@@ -1274,7 +1213,7 @@ module harvest::stake_tests {
         initialize_reward_coin(&harvest, 6);
         let reward_coins = mint_default_coin<RewardCoin>(100);
 
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]
@@ -1320,6 +1259,12 @@ module harvest::stake_tests {
 
     #[test]
     #[expected_failure(abort_code = stake::ERR_NO_POOL)]
+    public fun test_get_pool_current_epoch_fails_if_pool_does_not_exist() {
+        stake::get_pool_current_epoch<StakeCoin, RewardCoin>(@harvest);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_get_user_stake_fails_if_pool_does_not_exist() {
         stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
     }
@@ -1340,12 +1285,6 @@ module harvest::stake_tests {
     #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_is_unlocked_fails_if_pool_does_not_exist() {
         stake::is_unlocked<StakeCoin, RewardCoin>(@harvest, @alice);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
-    public fun test_is_finished_fails_if_pool_does_not_exist() {
-        stake::is_finished<StakeCoin, RewardCoin>(@harvest);
     }
 
     #[test]
@@ -1537,7 +1476,7 @@ module harvest::stake_tests {
 
         // deposit 0 RewardCoins
         let reward_coins = coin::zero<RewardCoin>();
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]
@@ -1677,46 +1616,7 @@ module harvest::stake_tests {
 
         // deposit rewards less than rew_per_sec pool rate
         let reward_coins = mint_default_coin<RewardCoin>(999999);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = stake::ERR_HARVEST_FINISHED)]
-    public fun test_deposit_reward_coins_fails_after_harvest_is_finished() {
-        let (harvest, _) = initialize_test();
-
-        // register staking pool with rewards
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        // wait until pool expired
-        timestamp::update_global_time_for_test_secs(START_TIME + duration);
-
-        // deposit rewards less than rew_per_sec pool rate
-        let reward_coins = mint_default_coin<RewardCoin>(1000000);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
-    }
-
-    #[test]
-    #[expected_failure(abort_code = stake::ERR_HARVEST_FINISHED)]
-    public fun test_stake_fails_after_harvest_is_finished() {
-        let (harvest, _) = initialize_test();
-
-        let alice_acc = new_account_with_stake_coins(@alice, 12345);
-
-        // register staking pool with rewards
-        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
-        let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
-
-        // wait until pool expired
-        timestamp::update_global_time_for_test_secs(START_TIME + duration);
-
-        // stake from alice
-        let coins =
-            coin::withdraw<StakeCoin>(&alice_acc, 12345);
-        stake::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 0);
     }
 
     #[test]
