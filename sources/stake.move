@@ -749,6 +749,7 @@ module harvest::stake {
     // Getter functions
     //
 
+    #[view]
     /// Get timestamp of pool creation.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns timestamp contains date when pool created.
@@ -759,6 +760,7 @@ module harvest::stake {
         vector::borrow(&pool.epochs, 0).start_time
     }
 
+    #[view]
     /// Checks if user can boost own stake in pool.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if pool accepts boosts.
@@ -769,6 +771,7 @@ module harvest::stake {
         option::is_some(&pool.nft_boost_config)
     }
 
+    #[view]
     /// Get NFT boost config parameters for pool.
     ///     * `pool_addr` - the pool with with NFT boost collection enabled.
     /// Returns both `collection_owner`, `collection_name` and boost percent.
@@ -782,6 +785,7 @@ module harvest::stake {
         (boost_config.collection_owner, boost_config.collection_name, boost_config.boost_percent)
     }
 
+    #[view]
     /// Gets timestamp when harvest will be finished for the pool.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns timestamp.
@@ -792,6 +796,7 @@ module harvest::stake {
         vector::borrow(&pool.epochs, pool.current_epoch).end_time
     }
 
+    #[view]
     /// Checks if pool exists.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if pool exists.
@@ -799,6 +804,7 @@ module harvest::stake {
         exists<StakePool<S, R>>(pool_addr)
     }
 
+    #[view]
     /// Checks if stake exists.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -811,6 +817,7 @@ module harvest::stake {
         table::contains(&pool.stakes, user_addr)
     }
 
+    #[view]
     /// Checks current total staked amount in pool.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns total staked amount.
@@ -820,6 +827,7 @@ module harvest::stake {
         coin::value(&borrow_global<StakePool<S, R>>(pool_addr).stake_coins)
     }
 
+    #[view]
     /// Checks current total boosted amount in pool.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns total pool boosted amount.
@@ -829,6 +837,7 @@ module harvest::stake {
         borrow_global<StakePool<S, R>>(pool_addr).total_boosted
     }
 
+    #[view]
     /// Checks current amount staked by user in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -843,6 +852,7 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).amount
     }
 
+    #[view]
     /// Checks if user user stake is boosted.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -857,6 +867,7 @@ module harvest::stake {
         option::is_some(&table::borrow(&pool.stakes, user_addr).nft)
     }
 
+    #[view]
     /// Checks current user boosted amount in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -871,6 +882,7 @@ module harvest::stake {
         table::borrow(&pool.stakes, user_addr).boosted_amount
     }
 
+    #[view]
     /// Checks current pending user reward in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -883,6 +895,7 @@ module harvest::stake {
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
         let current_time = timestamp::now_seconds();
+        std::debug::print(&aptos_std::string_utils::format1(&b"current_time = {}", current_time));
 
         let earnings = 0;
         let scale = pool.scale;
@@ -919,6 +932,7 @@ module harvest::stake {
         user_stake.earned_reward + (earnings as u64)
     }
 
+    #[view]
     /// Checks stake unlock time in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -931,9 +945,11 @@ module harvest::stake {
         assert!(table::contains(&pool.stakes, user_addr), ERR_NO_STAKE);
 
         let current_epoch_endtime = vector::borrow(&pool.epochs, pool.current_epoch).end_time;
+        // todo: remove epoch endtime dep
         math64::min(current_epoch_endtime, table::borrow(&pool.stakes, user_addr).unlock_time)
     }
 
+    #[view]
     /// Checks if stake is unlocked.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -953,6 +969,7 @@ module harvest::stake {
         current_time >= unlock_time
     }
 
+    #[view]
     /// Checks whether "emergency state" is enabled. In that state, only `emergency_unstake()` function is enabled.
     ///     * `pool_addr` - address under which pool are stored.
     /// Returns true if emergency happened (local or global).
@@ -962,6 +979,7 @@ module harvest::stake {
         is_emergency_inner(pool)
     }
 
+    #[view]
     /// Checks whether a specific `<S, R>` pool at the `pool_addr` has an "emergency state" enabled.
     ///     * `pool_addr` - address of the pool to check emergency.
     /// Returns true if local emergency enabled for pool.
@@ -1004,6 +1022,7 @@ module harvest::stake {
         if (epoch.reward_per_sec == 0) {
             // handle ghost epoch
             epoch.last_update_time = current_time;
+            epoch.end_time = current_time;
         } else {
             // handle reward epoch
             let epoch_end_time = epoch.end_time;
