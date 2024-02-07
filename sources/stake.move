@@ -838,6 +838,16 @@ module harvest::stake {
     }
 
     #[view]
+    /// Checks current epoch id in pool.
+    ///     * `pool_addr` - address under which pool are stored.
+    /// Returns epoch id.
+    public fun get_pool_current_epoch<S, R>(pool_addr: address): u64 acquires StakePool {
+        assert!(exists<StakePool<S, R>>(pool_addr), ERR_NO_POOL);
+
+        borrow_global<StakePool<S, R>>(pool_addr).current_epoch
+    }
+
+    #[view]
     /// Checks current amount staked by user in specific pool.
     ///     * `pool_addr` - address under which pool are stored.
     ///     * `user_addr` - stake owner address.
@@ -895,7 +905,6 @@ module harvest::stake {
 
         let user_stake = table::borrow_mut(&mut pool.stakes, user_addr);
         let current_time = timestamp::now_seconds();
-        std::debug::print(&aptos_std::string_utils::format1(&b"current_time = {}", current_time));
 
         let earnings = 0;
         let scale = pool.scale;

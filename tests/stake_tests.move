@@ -1259,6 +1259,12 @@ module harvest::stake_tests {
 
     #[test]
     #[expected_failure(abort_code = stake::ERR_NO_POOL)]
+    public fun test_get_pool_current_epoch_fails_if_pool_does_not_exist() {
+        stake::get_pool_current_epoch<StakeCoin, RewardCoin>(@harvest);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = stake::ERR_NO_POOL)]
     public fun test_get_user_stake_fails_if_pool_does_not_exist() {
         stake::get_user_stake<StakeCoin, RewardCoin>(@harvest, @alice);
     }
