@@ -2,9 +2,9 @@
 module harvest::stake_test_helpers {
     use std::signer;
     use std::string::{String, utf8};
-
+    use aptos_std::math64;
     use aptos_framework::account;
-    use aptos_framework::coin::{Self, Coin, MintCapability, BurnCapability};
+    use aptos_framework::coin::{Self, BurnCapability, Coin, MintCapability};
 
     // Coins.
 
@@ -96,5 +96,13 @@ module harvest::stake_test_helpers {
 
     public fun to_u128(num: u64): u128 {
         (num as u128)
+    }
+
+    public fun amount<CoinType>(b: u64, f: u64): u64 {
+        let decimals_multiplier = math64::pow(10, (coin::decimals<CoinType>() as u64));
+        // common sense assert
+        assert!(f < decimals_multiplier * 10, 1);
+        let base = b * decimals_multiplier;
+        base + f
     }
 }

@@ -14,29 +14,41 @@ module harvest::scripts {
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `reward_amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
-    public entry fun register_pool<S, R>(pool_owner: &signer, reward_amount: u64, duration: u64) {
+    ///     * `lockup_period` - blocking withdrawal of stake in seconds.
+    ///     * `whitelist` - list of accounts allowed to stake. All are allowed if empty.
+    public entry fun register_pool<S, R>(
+        pool_owner: &signer,
+        reward_amount: u64,
+        duration: u64,
+        lockup_period: u64,
+        whitelist: vector<address>
+    ) {
         let rewards = coin::withdraw<R>(pool_owner, reward_amount);
-        stake::register_pool<S, R>(pool_owner, rewards, duration, option::none());
+        stake::register_pool<S, R>(pool_owner, rewards, duration, lockup_period, option::none(), whitelist);
     }
 
     /// Register new staking pool with staking coin `S` and reward coin `R` with nft boost.
     ///     * `pool_owner` - account which will be used as a pool storage.
     ///     * `reward_amount` - reward amount in R coins.
     ///     * `duration` - pool life duration, can be increased by depositing more rewards.
+    ///     * `lockup_period` - blocking withdrawal of stake in seconds.
     ///     * `collection_owner` - address of nft collection creator.
     ///     * `collection_name` - nft collection name.
     ///     * `boost_percent` - percentage of increasing user stake "power" after nft stake.
+    ///     * `whitelist` - list of accounts allowed to stake. All are allowed if empty.
     public entry fun register_pool_with_collection<S, R>(
         pool_owner: &signer,
         reward_amount: u64,
         duration: u64,
+        lockup_period: u64,
         collection_owner: address,
         collection_name: String,
-        boost_percent: u128
+        boost_percent: u128,
+        whitelist: vector<address>
     ) {
         let rewards = coin::withdraw<R>(pool_owner, reward_amount);
         let boost_config = stake::create_boost_config(collection_owner, collection_name, boost_percent);
-        stake::register_pool<S, R>(pool_owner, rewards, duration, option::some(boost_config));
+        stake::register_pool<S, R>(pool_owner, rewards, duration, lockup_period, option::some(boost_config), whitelist);
     }
 
     /// Stake an `amount` of `Coin<S>` to the pool of stake coin `S` and reward coin `R` on the address `pool_addr`.
@@ -115,9 +127,10 @@ module harvest::scripts {
     ///     * `depositor` - account with the `R` reward coins in the balance.
     ///     * `pool_addr` - address of the pool.
     ///     * `reward_amount` - amount of the reward coin `R` to deposit.
-    public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, reward_amount: u64) {
+    ///     * `duration` - pool life duration.
+    public entry fun deposit_reward_coins<S, R>(depositor: &signer, pool_addr: address, reward_amount: u64, duration: u64) {
         let reward_coins = coin::withdraw<R>(depositor, reward_amount);
-        stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins);
+        stake::deposit_reward_coins<S, R>(depositor, pool_addr, reward_coins, duration);
     }
 
     /// Boosts user stake with nft.
@@ -147,6 +160,21 @@ module harvest::scripts {
     public entry fun remove_boost<S, R>(user: &signer, pool_addr: address) {
         let nft = stake::remove_boost<S, R>(user, pool_addr);
         token::deposit_token(user, nft);
+    }
+
+    /// Add user into whitelist.
+    ///     * `pool_owner` - pool creator account.
+    ///     * `users` - list of users to whitelist.
+    public entry fun add_into_whitelist<S, R>(pool_owner: &signer, users: vector<address>) {
+        stake::add_into_whitelist<S, R>(pool_owner, users);
+    }
+
+    /// Remove user from whitelist.
+    ///     * `owner` - pool creator account.
+    ///     * `user` - address of user to remove from whitelist.
+    /// Note: If no users left in whitelist it become deactivated.
+    public entry fun remove_from_whitelist<S, R>(pool_owner: &signer, user: address) {
+        stake::remove_from_whitelist<S, R>(pool_owner, user);
     }
 
     /// Enable "emergency state" for a pool on a `pool_addr` address. This state cannot be disabled

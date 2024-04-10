@@ -78,7 +78,7 @@ module lp_staking_admin::lp_staking_tests {
         let aptos_coins = coin::withdraw<AptosCoin>(&harvest_acc, 50000000000);
         let duration = 5000000;
         stake::register_pool<LP<BTC, USDT, Uncorrelated>, AptosCoin>(&harvest_acc,
-            aptos_coins, duration, option::none());
+            aptos_coins, duration, WEEK_IN_SECONDS, option::none(), vector[]);
 
         // stake 999.999 LP from alice
         stake::stake<LP<BTC, USDT, Uncorrelated>, AptosCoin>(&alice_acc, @harvest, lp_coins);
@@ -106,7 +106,7 @@ module lp_staking_admin::lp_staking_tests {
         coin::deposit<LP<BTC, USDT, Uncorrelated>>(@alice, coins);
 
         // 0.00000001 APT lost during calculations
-        let (reward_per_sec, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, AptosCoin>(@harvest);
+        let (reward_per_sec, _, _, _, _, _) = stake::get_pool_info<LP<BTC, USDT, Uncorrelated>, AptosCoin>(@harvest);
         let total_rewards = WEEK_IN_SECONDS * reward_per_sec;
         let losed_rewards = total_rewards - coin::balance<AptosCoin>(@alice);
 

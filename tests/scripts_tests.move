@@ -29,11 +29,12 @@ module harvest::scripts_tests {
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, WEEK_IN_SECONDS, vector[]);
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale, lockup_period) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -42,7 +43,43 @@ module harvest::scripts_tests {
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(scale == 1000000000000, 1);
+        assert!(lockup_period == WEEK_IN_SECONDS, 1);
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+    }
+
+    #[test]
+    fun test_script_register_pool_with_whitelist() {
+        let (harvest, _) = initialize_test();
+
+        coin::register<RewardCoin>(&harvest);
+
+        let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
+        let duration = 100000000;
+        coin::deposit(@harvest, reward_coins);
+        assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, 0, vector[@alice, @bob, @0x41]);
+
+        assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
+
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale, lockup_period) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+        assert!(end_ts == START_TIME + duration, 1);
+        assert!(reward_per_sec == 10, 1);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == 682981200, 1);
+        assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
+        assert!(scale == 1000000000000, 1);
+        assert!(lockup_period == 0, 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+
+        // check whitelist
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x41), 1);
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x42), 1);
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x43), 1);
     }
 
     #[test]
@@ -56,20 +93,23 @@ module harvest::scripts_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
+        let lockup_period = 100000000;
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
         scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
             &harvest,
             1000 * ONE_COIN,
             duration,
+            lockup_period,
             @collection_owner,
             collection_name,
             10,
+            vector[],
         );
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale, pool_lockup_period) =
             stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -78,6 +118,7 @@ module harvest::scripts_tests {
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(scale == 1000000000000, 1);
+        assert!(pool_lockup_period == lockup_period, 1);
         assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
 
         let (collection_owner_addr, coll_name, boost_percent) =
@@ -85,6 +126,59 @@ module harvest::scripts_tests {
         assert!(collection_owner_addr == @collection_owner, 1);
         assert!(coll_name == collection_name, 1);
         assert!(boost_percent == 10, 1);
+    }
+
+    #[test]
+    fun test_script_register_pool_with_nft_collection_and_whitelist() {
+        let (harvest, _) = initialize_test();
+
+        coin::register<RewardCoin>(&harvest);
+
+        let collection_name = string::utf8(b"Test Collection");
+        create_collecton(@collection_owner, collection_name);
+
+        let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
+        let duration = 100000000;
+        let lockup_period = 100000000;
+        coin::deposit(@harvest, reward_coins);
+        assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
+        scripts::register_pool_with_collection<StakeCoin, RewardCoin>(
+            &harvest,
+            1000 * ONE_COIN,
+            duration,
+            lockup_period,
+            @collection_owner,
+            collection_name,
+            10,
+            vector[@alice, @bob, @0x41],
+        );
+
+        assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
+
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale, pool_lockup_period) =
+            stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
+        assert!(end_ts == START_TIME + duration, 1);
+        assert!(reward_per_sec == 10, 1);
+        assert!(accum_reward == 0, 1);
+        assert!(last_updated == 682981200, 1);
+        assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
+        assert!(scale == 1000000000000, 1);
+        assert!(pool_lockup_period == lockup_period, 1);
+        assert!(stake::pool_exists<StakeCoin, RewardCoin>(@harvest), 1);
+
+        let (collection_owner_addr, coll_name, boost_percent) =
+                stake::get_boost_config<StakeCoin, RewardCoin>(@harvest);
+        assert!(collection_owner_addr == @collection_owner, 1);
+        assert!(coll_name == collection_name, 1);
+        assert!(boost_percent == 10, 1);
+
+        // check whitelist
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x41), 1);
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x42), 1);
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @0x43), 1);
     }
 
     #[test]
@@ -100,11 +194,12 @@ module harvest::scripts_tests {
         coin::deposit(@harvest, reward_coins);
         assert!(coin::balance<RewardCoin>(@harvest) == 1000000000, 1);
 
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, WEEK_IN_SECONDS, vector[]);
 
         assert!(coin::balance<RewardCoin>(@harvest) == 0, 1);
 
-        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale) =
+        let (reward_per_sec, accum_reward, last_updated, reward_coin_amount, scale, lockup_period) =
             stake::get_pool_info<StakeCoin, RewardCoin>(pool_address);
         let end_ts = stake::get_end_timestamp<StakeCoin, RewardCoin>(@harvest);
         assert!(end_ts == START_TIME + duration, 1);
@@ -113,6 +208,7 @@ module harvest::scripts_tests {
         assert!(last_updated == 682981200, 1);
         assert!(reward_coin_amount == 1000 * ONE_COIN, 1);
         assert!(scale == 1000000000000, 1);
+        assert!(lockup_period == WEEK_IN_SECONDS, 1);
 
         let alice_acc = new_account_with_stake_coins(@alice, 100 * ONE_COIN);
 
@@ -162,6 +258,8 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
@@ -195,6 +293,8 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            WEEK_IN_SECONDS,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
@@ -237,6 +337,8 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
@@ -272,6 +374,8 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(
@@ -312,9 +416,11 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
             @collection_owner,
             collection_name,
             5,
+            vector[],
         );
 
         scripts::stake_and_boost<StakeCoin, RewardCoin>(
@@ -360,9 +466,11 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            WEEK_IN_SECONDS,
             @collection_owner,
             collection_name,
             5,
+            vector[],
         );
 
         scripts::stake_and_boost<StakeCoin, RewardCoin>(
@@ -417,9 +525,11 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
             @collection_owner,
             collection_name,
             5,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
@@ -460,9 +570,11 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
             @collection_owner,
             collection_name,
             5,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
@@ -493,17 +605,69 @@ module harvest::scripts_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
+        let lockup_period = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, lockup_period, vector[]);
 
         let reward_coins = mint_default_coin<RewardCoin>(1 * ONE_COIN);
         coin::deposit(@alice, reward_coins);
         assert!(coin::balance<RewardCoin>(@alice) == 1000000, 1);
-        scripts::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, 1 * ONE_COIN);
+        scripts::deposit_reward_coins<StakeCoin, RewardCoin>(&alice_acc, @harvest, 1 * ONE_COIN, 1);
 
-        let (_, _, _, reward_coin_amount, _) = stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
+        let (_, _, _, reward_coin_amount, _, _) = stake::get_pool_info<StakeCoin, RewardCoin>(@harvest);
         assert!(reward_coin_amount == 1001000000, 1);
         assert!(coin::balance<RewardCoin>(@alice) == 0, 1);
+    }
+
+    #[test]
+    fun test_script_add_and_remove_from_whitelist() {
+        let (harvest, _) = initialize_test();
+        let alice_acc = new_account_with_stake_coins(@alice, 10 * ONE_COIN);
+
+        let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
+        coin::register<RewardCoin>(&harvest);
+        coin::deposit(@harvest, reward_coins);
+
+        // register staking pool with rewards and boost config
+        let duration = 15768000;
+        let lockup_period = 15768000;
+        scripts::register_pool<StakeCoin, RewardCoin>(
+            &harvest,
+            15768000000000,
+            15768000,
+            lockup_period,
+            vector[@bob],
+        );
+
+        // check alice not in whitelist
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        // check bob in whitelist
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+
+        // add alice remove bob
+        scripts::add_into_whitelist<StakeCoin, RewardCoin>(&harvest, vector[@alice]);
+        scripts::remove_from_whitelist<StakeCoin, RewardCoin>(&harvest, @bob);
+
+        // check alice in whitelist
+        assert!(stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @alice), 1);
+        // check bob not in whitelist
+        assert!(!stake::is_whitelisted<StakeCoin, RewardCoin>(@harvest, @bob), 1);
+
+        scripts::stake<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest,
+            10 * ONE_COIN,
+        );
+
+        timestamp::update_global_time_for_test_secs(START_TIME + duration);
+
+        scripts::harvest<StakeCoin, RewardCoin>(
+            &alice_acc,
+            @harvest
+        );
+
+        assert!(coin::balance<RewardCoin>(@alice) == 15768000000000, 1);
     }
 
     #[test]
@@ -515,7 +679,8 @@ module harvest::scripts_tests {
         coin::deposit(@harvest, reward_coins);
 
         // register staking pool with rewards
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000,
+            15768000, 0, vector[]);
 
         scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -532,7 +697,8 @@ module harvest::scripts_tests {
         coin::deposit(@harvest, reward_coins);
 
         // register staking pool with rewards
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000, 15768000);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 15768000000000,
+            15768000, 0, vector[]);
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
         scripts::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
@@ -562,9 +728,11 @@ module harvest::scripts_tests {
             &harvest,
             15768000000000,
             15768000,
+            0,
             @collection_owner,
             collection_name,
             5,
+            vector[],
         );
 
         scripts::stake<StakeCoin, RewardCoin>(&alice_acc, @harvest, 10 * ONE_COIN);
@@ -593,8 +761,10 @@ module harvest::scripts_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
+        let lockup_period = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, lockup_period, vector[]);
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 
@@ -612,7 +782,8 @@ module harvest::scripts_tests {
         let reward_coins = mint_default_coin<RewardCoin>(1000 * ONE_COIN);
         let duration = 100000000;
         coin::deposit(@harvest, reward_coins);
-        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN, duration);
+        scripts::register_pool<StakeCoin, RewardCoin>(&harvest, 1000 * ONE_COIN,
+            duration, 0, vector[]);
 
         timestamp::update_global_time_for_test_secs(START_TIME + duration + 7257600);
 

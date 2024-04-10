@@ -74,7 +74,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
     }
 
     #[test]
@@ -87,7 +89,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
@@ -106,7 +110,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -126,12 +132,14 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]
@@ -144,7 +152,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 15768000;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -172,12 +182,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -202,12 +214,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -233,7 +247,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake_config::enable_global_emergency(&emergency_admin);
 
@@ -252,7 +268,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -272,12 +290,14 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period ,option::none(), vector[]);
 
         stake_config::enable_global_emergency(&emergency_admin);
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
-        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins);
+        stake::deposit_reward_coins<StakeCoin, RewardCoin>(&harvest, @harvest, reward_coins, 12345);
     }
 
     #[test]
@@ -290,7 +310,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -318,12 +340,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -348,12 +372,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -377,7 +403,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake_config::enable_global_emergency(&emergency_admin);
 
@@ -394,7 +422,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice_acc, @harvest);
     }
@@ -407,7 +437,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
         stake::enable_emergency<StakeCoin, RewardCoin>(&emergency_admin, @harvest);
@@ -422,7 +454,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -453,12 +487,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -488,7 +524,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -509,8 +547,11 @@ module harvest::emergency_tests {
         let reward_coins_1 = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let reward_coins_2 = mint_default_coin<StakeCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins_1, duration, option::none());
-        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins_2, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins_1,
+            duration, lockup_period, option::none(), vector[]);
+        stake::register_pool<RewardCoin, StakeCoin>(&harvest, reward_coins_2,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<RewardCoin, StakeCoin>(&emergency_admin, @harvest);
 
@@ -528,7 +569,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake_config::enable_global_emergency(&emergency_admin);
         stake_config::enable_global_emergency(&emergency_admin);
@@ -543,7 +586,9 @@ module harvest::emergency_tests {
         // register staking pool
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -575,12 +620,14 @@ module harvest::emergency_tests {
         // register staking pool with rewards and boost config
         let reward_coins = mint_default_coin<RewardCoin>(15768000000000);
         let duration = 15768000;
+        let lockup_period = 15768000;
         let boost_config = stake::create_boost_config(
             @collection_owner,
             collection_name,
             5
         );
-        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins, duration, option::some(boost_config));
+        stake::register_pool<StakeCoin, RewardCoin>(&harvest, reward_coins,
+            duration, lockup_period, option::some(boost_config), vector[]);
 
         let coins =
             coin::withdraw<StakeCoin>(&alice_acc, 1 * ONE_COIN);
@@ -625,7 +672,9 @@ module harvest::emergency_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake::enable_emergency<StakeCoin, RewardCoin>(&alice, @alice);
 
@@ -654,7 +703,9 @@ module harvest::emergency_tests {
 
         let reward_coins = mint_default_coin<RewardCoin>(12345 * ONE_COIN);
         let duration = 12345;
-        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins, duration, option::none());
+        let lockup_period = 12345;
+        stake::register_pool<StakeCoin, RewardCoin>(&alice, reward_coins,
+            duration, lockup_period, option::none(), vector[]);
 
         stake_config::enable_global_emergency(&alice);
 
