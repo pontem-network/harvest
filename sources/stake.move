@@ -97,11 +97,8 @@ module harvest::stake {
     // Constants
     //
 
-    // todo: AFTER REMOVE ALL TESTS SHOULD PASS
-    // todo: only for test
     /// Week in seconds, lockup period.
-    // const WEEK_IN_SECONDS: u64 = 604800;
-    const WEEK_IN_SECONDS: u64 = 10 * 60; // 10 mins // todo: <====== remove me
+    const WEEK_IN_SECONDS: u64 = 604800;
 
     /// When treasury can withdraw rewards (~3 months).
     const WITHDRAW_REWARD_PERIOD_IN_SECONDS: u64 = 7257600;

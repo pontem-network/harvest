@@ -5,8 +5,7 @@ upgrade_policy = "immutable"
 
 [addresses]
 harvest = "0x09d4b8802c2a21d99aed19a11991863ffc9b57122795de493b3a2ade9e7ac81e"
-# todo: replace with another address on real deploy
-stake_emergency_admin = "0x09d4b8802c2a21d99aed19a11991863ffc9b57122795de493b3a2ade9e7ac81e"
+stake_emergency_admin = "0x4820b22c0bd3049a2bc17c7b00fd94fd42fb97b39be9195fcab9ef02a5ff0323"
 
 # Test addresses.
 treasury = "0x13"
