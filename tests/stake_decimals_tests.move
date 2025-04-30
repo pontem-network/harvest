@@ -26,6 +26,9 @@ module harvest::stake_decimals_tests {
     public fun test_reward_calculation_decimals_s0_r0() {
         genesis::setup();
 
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
+
         let harvest_acc = new_account(@harvest);
 
         initialize_stake_coin(&harvest_acc, 0);
@@ -202,6 +205,9 @@ module harvest::stake_decimals_tests {
     #[test]
     public fun test_reward_calculation_decimals_s2_r8() {
         genesis::setup();
+
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
 
         let harvest_acc = new_account(@harvest);
 
@@ -380,6 +386,9 @@ module harvest::stake_decimals_tests {
     public fun test_reward_calculation_decimals_s6_r10() {
         genesis::setup();
 
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
+
         let harvest_acc = new_account(@harvest);
 
         initialize_stake_coin(&harvest_acc, 6);
@@ -555,6 +564,9 @@ module harvest::stake_decimals_tests {
     #[test]
     public fun test_reward_calculation_decimals_s8_r2() {
         genesis::setup();
+
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
 
         let harvest_acc = new_account(@harvest);
 
@@ -732,6 +744,9 @@ module harvest::stake_decimals_tests {
     #[test]
     public fun test_reward_calculation_case_1() {
         genesis::setup();
+
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
 
         let harvest_acc = new_account(@harvest);
 

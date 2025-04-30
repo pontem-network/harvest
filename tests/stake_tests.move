@@ -18,6 +18,9 @@ module harvest::stake_tests {
     public fun initialize_test(): (signer, signer) {
         genesis::setup();
 
+        let aptos_framework = new_account(@aptos_framework);
+        coin::create_coin_conversion_map(&aptos_framework);
+
         timestamp::update_global_time_for_test_secs(START_TIME);
 
         let harvest = new_account(@harvest);
